@@ -1,134 +1,121 @@
 # nixos-cursor
 
-**Status**: Beta Release Candidate (v2.1.20)  
+**Status**: Release Candidate Testing  
+**Current Version**: v2.1.20-rc1  
 **License**: MIT  
-**Maintained by**: e421 (distracted.e421@gmail.com)  
+**Maintained by**: e421
 
 A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers** and automated updates.
 
 ---
 
-## 🔗 Related Projects
+## Current Release
 
-This package focuses on Cursor IDE packaging and MCP integration. For additional functionality:
+**v2.1.20-rc1** is now available for community testing!
 
-- **[wayland-gpu-affinity](../wayland-gpu-affinity)** - General Wayland multi-monitor/GPU management (works with Niri, Hyprland, KDE, Cursor, etc.)
-- **[cursor-focus-fix](../cursor-focus-fix)** - Fix multi-window focus issues on X11/Wayland
-- **[cursor-cdp-daemon](../cursor-cdp-daemon)** - Chrome DevTools Protocol integration
-
----
-
-## 🎯 Overview
-
-This flake provides a **native** NixOS packaging of Cursor IDE. It solves the common issues users face when trying to run Cursor on NixOS: auto-updates, binary patching, and extension management.
-
-### Key Features
-- ✅ **Native Packaging**: Uses `autoPatchelfHook` for high performance and stability.
-- ✅ **Auto-Update System**: Automated script (`update.sh`) + Nix declarative updates.
-- ✅ **MCP Integration**: Pre-configured support for 5+ MCP servers (Filesystem, GitHub, etc.).
-- ✅ **Playwright Support**: Solved the browser path configuration challenge.
-- ✅ **Declarative Config**: Home Manager module for consistent setup.
+- **Try it**: `nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor`
+- **Documentation**: See [pre-release branch](https://github.com/Distracted-E421/nixos-cursor/tree/pre-release) for full docs
+- **Testing Guide**: [TESTING_RC.md](https://github.com/Distracted-E421/nixos-cursor/blob/pre-release/TESTING_RC.md)
 
 ---
 
-## 🏗️ Architecture & Extension Management
+## Features
 
-For users coming from other distributions or standard VS Code on NixOS, it's important to understand how this package works.
-
-### Native vs. FHS
-- **This Package (Native)**: We patch the official AppImage binary's ELF headers to use NixOS libraries directly.
-  - **Pros**: Faster startup, better integration, "cleaner" process tree.
-  - **Cons**: Binary patching can be fragile (though we have a robust pipeline).
-- **Code-Cursor-FHS (Legacy)**: Creates a "bubble" (FHS chroot) that looks like Ubuntu/Debian.
-  - **Pros**: Runs unpatched binaries.
-  - **Cons**: Heavier resource usage, complex to debug, often breaks interaction with system tools.
-
-**Verdict**: This project uses the **Native** approach for the best long-term experience.
-
-### Extension Management
-Cursor (like VS Code) downloads extensions at runtime.
-
-- **Method 1: Mutable (Default)**
-  - Extensions are downloaded to `~/.cursor/extensions/`.
-  - You install/update them via the Cursor UI.
-  - **Pros**: Easy, familiar user experience.
-  - **Cons**: Not declarative (reinstalling OS loses extensions unless backed up).
-
-- **Method 2: Declarative (via Home Manager)**
-  - You list extensions in your `home.nix`.
-  - **Pros**: Reproducible setup across machines.
-  - **Cons**: Cursor's marketplace is proprietary; getting hashes for extensions can be tedious.
-
-**Recommendation**: Start with **Method 1 (Mutable)** for ease of use. Switch to Method 2 only if you strictly require reproducibility.
+- Native NixOS packaging of Cursor IDE 2.1.20
+- Wayland + X11 support with GPU acceleration
+- MCP server integration (filesystem, memory, NixOS, GitHub, Playwright)
+- Automated update system with daily notifications
+- One-command updates (`cursor-update`)
+- GPU fixes (libGL, libxkbfile) for NixOS compatibility
+- Test instance for safe experimentation
 
 ---
 
-## 🔄 Auto-Update System
+## Quick Start
 
-**Important**: Cursor's native updater **does not work** on NixOS!
+### Try Without Installing
 
-### Why Updates Fail
-On typical Linux systems, Cursor can update itself by replacing the AppImage file. On NixOS:
-- Cursor is installed in `/nix/store` (read-only, immutable).
-- Cursor's updater tries to replace the file → **Permission denied**.
-- Falls back to "Please download from cursor.com" message.
-
-### How to Update
-
-**For End Users**:
 ```bash
-# Update your flake inputs (fetches new Cursor version)
-nix flake update cursor-with-mcp
-
-# Apply the update
-home-manager switch  # For Home Manager users
-# OR
-nixos-rebuild switch  # For system package
+# Run directly from GitHub
+nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
 ```
 
-**For Maintainers**:
-```bash
-# Automatically fetch latest Cursor version and update hashes
-cd cursor
-./update.sh
+### Install via Home Manager
 
-# Test and commit
-cd .. && nix build .#cursor
-git add cursor/default.nix
-git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
-```
-
----
-
-## 🚀 Quick Start
-
-### 1. Add to Flake
 ```nix
 {
-  inputs.nixos-cursor.url = "github:yourusername/nixos-cursor";
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
   
-  outputs = { self, nixpkgs, nixos-cursor, ... }: {
-    # ...
+  outputs = { nixos-cursor, home-manager, ... }: {
+    homeConfigurations.youruser = home-manager.lib.homeManagerConfiguration {
+      modules = [
+        nixos-cursor.homeManagerModules.default
+        {
+          programs.cursor = {
+            enable = true;
+            updateCheck.enable = true;  # Daily update notifications
+            mcp.enable = false;  # Optional: MCP servers
+          };
+        }
+      ];
+    };
   };
 }
 ```
 
-### 2. Enable in Home Manager
-```nix
-{
-  imports = [ inputs.nixos-cursor.homeManagerModules.default ];
-  
-  programs.cursor = {
-    enable = true;
-    mcp.enable = true;  # Enable MCP servers
-  };
-}
-```
+---
 
-See `examples/` for full configurations.
+## Update System
+
+Cursor includes an automated update system that:
+
+- Checks for updates daily via systemd timer
+- Shows desktop notifications when updates available
+- Provides one-command updates: `cursor-update`
+- Maintains Nix reproducibility guarantees
+
+**Why?** Cursor can't self-update on NixOS (read-only `/nix/store`). Our system provides convenience while respecting Nix principles.
 
 ---
 
-## 📄 License
+## Documentation
+
+- **[Release Notes](https://github.com/Distracted-E421/nixos-cursor/releases/tag/v2.1.20-rc1)** - RC1 details
+- **[Testing Guide](https://github.com/Distracted-E421/nixos-cursor/blob/pre-release/TESTING_RC.md)** - How to test RC1
+- **[Update System](https://github.com/Distracted-E421/nixos-cursor/blob/pre-release/docs/AUTO_UPDATE_IMPLEMENTATION.md)** - Technical details
+- **[Examples](https://github.com/Distracted-E421/nixos-cursor/tree/pre-release/examples)** - Configuration examples
+- **[Known Issues](https://github.com/Distracted-E421/nixos-cursor/blob/pre-release/KNOWN_ISSUES.md)** - Limitations
+
+---
+
+## Reporting Issues
+
+Found a bug? [Open an issue](https://github.com/Distracted-E421/nixos-cursor/issues) with:
+
+- System information (`nixos-version`, `uname -m`)
+- Steps to reproduce
+- Expected vs actual behavior
+
+---
+
+## Development
+
+- **Main branch**: Stable releases (coming soon)
+- **Pre-release branch**: RC testing (current: v2.1.20-rc1)
+- **Dev branch**: Active development
+
+---
+
+## License
 
 MIT License - See [LICENSE](LICENSE) file.
+
+```
+MIT License - Copyright (c) 2025 e421
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software.
+```
