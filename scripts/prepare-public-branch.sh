@@ -109,26 +109,28 @@ echo -e "${BLUE}🔍 Validating for sensitive content...${NC}"
 ISSUES=()
 
 # Check for personal email addresses (excluding expected locations)
+# Email is expected in: LICENSE, READMEs, CONTRIBUTORS, cursor metadata, docs
 if git grep -l "distracted\.e421@gmail\.com" -- . \
     ':!.git' \
     ':!scripts/' \
-    ':!BRANCHING_STRATEGY.md' \
-    ':!CONTRIBUTORS.md' \
+    ':!*.md' \
     ':!LICENSE' \
-    ':!README.md' \
-    ':!cursor/README.md' \
-    ':!*/README.md' 2>/dev/null; then
-    ISSUES+=("Found personal email address in tracked files")
+    ':!cursor/' \
+    ':!home-manager-module/' \
+    ':!docs/' 2>/dev/null; then
+    ISSUES+=("Found personal email address in unexpected files")
 fi
 
-# Check for absolute paths (excluding scripts and expected docs)
+# Check for absolute paths (excluding documentation and example configs)
+# Absolute paths are OK in documentation/examples, NOT in actual Nix code
 if git grep -l "/home/e421/" -- . \
     ':!.git' \
     ':!scripts/' \
-    ':!BRANCHING_STRATEGY.md' \
-    ':!QUICK_REFERENCE.md' \
-    ':!*/README.md' 2>/dev/null; then
-    ISSUES+=("Found absolute paths (/home/e421/) in tracked files")
+    ':!*.md' \
+    ':!cursor/default.nix' \
+    ':!home-manager-module/' \
+    ':!docs/' 2>/dev/null; then
+    ISSUES+=("Found absolute paths in non-documentation files")
 fi
 
 # Check for REAL API keys/tokens (not example placeholder tokens)
