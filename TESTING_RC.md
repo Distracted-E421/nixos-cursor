@@ -8,7 +8,7 @@ Welcome RC testers! This guide will help you test the pre-release candidate prop
 
 ---
 
-## 📋 What You're Testing
+##  What You're Testing
 
 This is a **Release Candidate (RC)** for nixos-cursor - a native NixOS packaging of Cursor IDE with:
 - Native Wayland/X11 support
@@ -19,7 +19,7 @@ This is a **Release Candidate (RC)** for nixos-cursor - a native NixOS packaging
 
 ---
 
-## 🎯 Testing Scope
+##  Testing Scope
 
 ### Critical (Please Test)
 - [ ] Package builds successfully
@@ -42,7 +42,7 @@ This is a **Release Candidate (RC)** for nixos-cursor - a native NixOS packaging
 
 ---
 
-## 🚀 Quick Start - Testing RC1
+##  Quick Start - Testing RC1
 
 ### Method 1: Try Without Installing
 
@@ -109,9 +109,9 @@ home-manager switch
 
 ---
 
-## 🔍 What to Look For
+##  What to Look For
 
-### ✅ Success Indicators
+### DONE: Success Indicators
 
 **Cursor launches and shows**:
 - Normal Cursor interface
@@ -131,7 +131,7 @@ Cursor 2.1.20
 
 ---
 
-### ❌ Problems to Report
+### NOT: Problems to Report
 
 **Critical Issues** (please report ASAP):
 - Cursor won't launch
@@ -153,7 +153,7 @@ Cursor 2.1.20
 
 ---
 
-## 📊 System Information
+##  System Information
 
 When reporting issues, please include:
 
@@ -176,7 +176,7 @@ nix-shell -p glxinfo --run "glxinfo | grep 'OpenGL renderer'"
 
 ---
 
-## 🐛 How to Report Issues
+##  How to Report Issues
 
 ### Via GitHub Issues
 
@@ -217,7 +217,7 @@ nix-shell -p glxinfo --run "glxinfo | grep 'OpenGL renderer'"
 
 ---
 
-## 🧪 Advanced Testing
+##  Advanced Testing
 
 ### Testing MCP Integration (Optional)
 
@@ -256,7 +256,7 @@ Safe to experiment with, won't touch your main setup.
 
 ---
 
-## ✅ What Happens After Testing?
+## DONE: What Happens After Testing?
 
 Based on your feedback:
 
@@ -268,7 +268,7 @@ Your testing helps make this better for everyone!
 
 ---
 
-## 🙏 Thank You!
+##  Thank You!
 
 Testing RC releases is crucial for quality. We appreciate you taking the time to help!
 

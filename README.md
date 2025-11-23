@@ -1,14 +1,14 @@
 # nixos-cursor
 
-> **🚀 Release Candidate**: This is **v2.1.20-rc1** - currently in testing phase.  
-> **👉 Want to help test?** See **[TESTING_RC.md](TESTING_RC.md)** for instructions.
+> **Release Candidate**: This is **v2.1.20-rc1** - currently in testing phase.  
+> **Want to help test?** See **[TESTING_RC.md](TESTING_RC.md)** for instructions.
 
 **License**: [MIT](LICENSE) | **Maintained by**: e421  
 **Repository**: https://github.com/Distracted-E421/nixos-cursor
 
 A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers** and automated updates.
 
-## ✨ Features
+## Features
 
 - **Native NixOS packaging** of Cursor IDE 2.1.20
 - **Wayland + X11 support** with GPU acceleration
@@ -19,7 +19,7 @@ A production-ready NixOS package for **Cursor IDE** with built-in support for **
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Testing RC1 (No Installation)
 
@@ -64,7 +64,7 @@ See [`examples/`](examples/) for more configurations.
 
 ---
 
-## 🔄 Updating Cursor
+## Updating Cursor
 
 ### Automatic Notifications (Enabled by Default)
 
@@ -108,7 +108,7 @@ See **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)**
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### Getting Started
 - **[TESTING_RC.md](TESTING_RC.md)** - RC1 testing guide (START HERE)
@@ -126,7 +126,7 @@ See **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)**
 
 ---
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 Found a bug in RC1? Please report it!
 
@@ -136,7 +136,7 @@ Found a bug in RC1? Please report it!
 
 ---
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE](LICENSE) file.
 

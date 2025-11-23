@@ -4,9 +4,9 @@ Minimal Cursor installation with no MCP servers.
 
 ## What This Does
 
-- ✅ Installs Cursor IDE
-- ❌ No MCP servers
-- ❌ No extra configuration
+- - Installs Cursor IDE
+- - No MCP servers
+- - No extra configuration
 
 **Use case**: Just want Cursor, don't need tools
 

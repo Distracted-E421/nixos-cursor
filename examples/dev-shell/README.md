@@ -12,10 +12,10 @@ How to use Cursor with `nix develop` for project-specific dependencies.
 
 ## What This Does
 
-- ✅ Project-specific dependencies via Nix
-- ✅ Cursor inherits shell environment
-- ✅ No global package pollution
-- ✅ Reproducible development environment
+- - Project-specific dependencies via Nix
+- - Cursor inherits shell environment
+- - No global package pollution
+- - Reproducible development environment
 
 ---
 
@@ -44,7 +44,7 @@ nix develop --command cursor .
 
 ## Key Insight: buildInputs vs nativeBuildInputs
 
-### ❌ Wrong (VSCode style)
+### - Wrong (VSCode style)
 
 ```nix
 devShells.default = pkgs.mkShell {
@@ -54,7 +54,7 @@ devShells.default = pkgs.mkShell {
 
 **Problem**: Environment not passed to GUI applications
 
-### ✅ Correct (Cursor style)
+### - Correct (Cursor style)
 
 ```nix
 devShells.default = pkgs.mkShell {

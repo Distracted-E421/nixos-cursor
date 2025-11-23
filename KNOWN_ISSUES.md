@@ -22,7 +22,7 @@
 
 ---
 
-## ⚠️ Issue #2: Context Menu Pop-Out Breaks Badly
+## WARNING: Issue #2: Context Menu Pop-Out Breaks Badly
 
 **Status**: Active investigation needed
 
@@ -55,7 +55,7 @@ journalctl -u display-manager -f
 
 ---
 
-## ⚠️ Issue #3: Significant Lag on Window Transitions
+## WARNING: Issue #3: Significant Lag on Window Transitions
 
 **Status**: Active investigation needed
 
@@ -102,7 +102,7 @@ intel_gpu_top              # Arc A770 utilization
 
 ---
 
-## 🚀 Issue #4: Rust Monitor Build Failure (Low Priority)
+##  Issue #4: Rust Monitor Build Failure (Low Priority)
 
 **Status**: Documented, Python fallback working
 
@@ -116,7 +116,7 @@ intel_gpu_top              # Arc A770 utilization
 
 ---
 
-## 🎯 New: Multi-GPU Window Management (Feature Request)
+##  New: Multi-GPU Window Management (Feature Request)
 
 **Vision**: Make NixOS the BEST platform for heterogeneous GPU setups
 
@@ -148,7 +148,7 @@ intel_gpu_top              # Arc A770 utilization
 
 ---
 
-## 📋 Investigation Plan
+##  Investigation Plan
 
 ### Phase 1: Measurement and Profiling
 
@@ -201,7 +201,7 @@ intel_gpu_top              # Arc A770 utilization
 
 ---
 
-## 🎨 Broader Vision: NixOS Multi-Monitor Framework
+##  Broader Vision: NixOS Multi-Monitor Framework
 
 **Goal**: Make NixOS "THE OS to rule them all" for multi-GPU, multi-monitor setups
 
@@ -265,7 +265,7 @@ homelab.display = {
 
 ---
 
-## 🚀 Next Steps (Prioritized)
+##  Next Steps (Prioritized)
 
 ### Immediate (This Week)
 
@@ -332,9 +332,9 @@ homelab.display = {
 
 ---
 
-## 🎯 Success Criteria
+##  Success Criteria
 
-**Phase 1** (Current): ✅ ACHIEVED
+**Phase 1** (Current): DONE: ACHIEVED
 - [x] 99% typing success in detached windows
 - [x] Electron preload script working
 - [x] Documentation complete
@@ -359,7 +359,7 @@ homelab.display = {
 
 ---
 
-## 💡 Philosophy
+##  Philosophy
 
 **"Assume hostile, patch externally, benefit everyone"**
 

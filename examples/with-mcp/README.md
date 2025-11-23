@@ -4,12 +4,12 @@ Cursor with all MCP servers enabled - the full AI-powered experience.
 
 ## What This Does
 
-- ✅ Installs Cursor IDE
-- ✅ **filesystem** MCP - Read/write local files
-- ✅ **memory** MCP - Persistent AI context
-- ✅ **nixos** MCP - Package/option search
-- ✅ **github** MCP - Repository operations
-- ✅ **playwright** MCP - Browser automation
+- - Installs Cursor IDE
+- - **filesystem** MCP - Read/write local files
+- - **memory** MCP - Persistent AI context
+- - **nixos** MCP - Package/option search
+- - **github** MCP - Repository operations
+- - **playwright** MCP - Browser automation
 
 **Note:** You may need to disable a few of the tools you are not using per server, as well as ensure the built in cursor browser (currently broken, unknown if fixable for NixOS) is disabled. These are not the only mcp servers that work on NixOS, but these are the only ones I really use in my workflow.
 

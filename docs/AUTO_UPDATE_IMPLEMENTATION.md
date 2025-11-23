@@ -1,6 +1,6 @@
 # Cursor Auto-Update System
 
-**Status**: ✅ **Implemented** in v2.1.20-rc1
+**Status**: DONE: **Implemented** in v2.1.20-rc1
 
 ---
 
@@ -126,20 +126,20 @@ cursor-check-update
 ```bash
 cursor-update
 # Output:
-# 🚀 Cursor Nix Updater
+#  Cursor Nix Updater
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 
-# 📁 Flake directory: /home/user/.config/home-manager
-# 📦 Current version: 2.1.20
+# Flake directory: /home/user/.config/home-manager
+# Current version: 2.1.20
 # 
-# 🔄 Updating nixos-cursor flake input...
-# ✅ Flake input updated
+#  Updating nixos-cursor flake input...
+# DONE: Flake input updated
 # 
-# 🏠 Rebuilding Home Manager configuration...
-# ✅ Home Manager rebuilt successfully
+# Rebuilding Home Manager configuration...
+# DONE: Home Manager rebuilt successfully
 # 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# ✅ Update complete!
+# DONE: Update complete!
 #    2.1.20 → 2.1.21
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -229,17 +229,17 @@ systemctl --user start cursor-update-check.service
 
 ## Comparison with Other Solutions
 
-### ❌ Option 1: Let Cursor Self-Update
+### NOT: Option 1: Let Cursor Self-Update
 
 **Problem**: Requires Nix rebuild after every update (autoPatchelfHook)
 **Status**: Not feasible
 
-### ❌ Option 2: Background Service Auto-Patching
+### NOT: Option 2: Background Service Auto-Patching
 
 **Problem**: Complex, breaks reproducibility, security concerns
 **Status**: Rejected
 
-### ✅ Option 3: Notifications (What We Implemented)
+### DONE: Option 3: Notifications (What We Implemented)
 
 **Benefits**:
 - Simple and reliable
@@ -247,7 +247,7 @@ systemctl --user start cursor-update-check.service
 - User stays informed
 - Still uses proper Nix workflow
 
-### ✅ Option 4: Convenience Command (What We Implemented)
+### DONE: Option 4: Convenience Command (What We Implemented)
 
 **Benefits**:
 - One-command updates
@@ -395,14 +395,14 @@ journalctl --user -u cursor-update-check.service
 **Problem**: Cursor can't self-update on NixOS (read-only /nix/store + autoPatchelfHook requirement)
 
 **Solution**: 
-- ✅ Daily update notifications (systemd timer)
-- ✅ Convenience command: `cursor-update`
-- ✅ Automatic flake detection
-- ✅ Works with Home Manager and NixOS
+- DONE: Daily update notifications (systemd timer)
+- DONE: Convenience command: `cursor-update`
+- DONE: Automatic flake detection
+- DONE: Works with Home Manager and NixOS
 
-**Result**: Cursor updates are **easy, automatic, and Nix-native**. Users get the best of both worlds: convenience of auto-updates + reproducibility of Nix. 🚀
+**Result**: Cursor updates are **easy, automatic, and Nix-native**. Users get the best of both worlds: convenience of auto-updates + reproducibility of Nix. 
 
 ---
 
-**Status**: ✅ Implemented in v2.1.20-rc1  
+**Status**: DONE: Implemented in v2.1.20-rc1  
 **Last Updated**: 2025-11-22

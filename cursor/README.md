@@ -11,24 +11,24 @@ Production-ready Cursor IDE package with NixOS-specific fixes.
 
 ### NixOS Fixes Included
 
-- ✅ **libxkbfile** - Fixes keyboard mapping errors
-- ✅ **libGL** - GPU acceleration support
-- ✅ **Wayland** - Native Wayland window decorations
-- ✅ **Proper wrapping** - All dependencies in LD_LIBRARY_PATH
+- - **libxkbfile** - Fixes keyboard mapping errors
+- - **libGL** - GPU acceleration support
+- - **Wayland** - Native Wayland window decorations
+- - **Proper wrapping** - All dependencies in LD_LIBRARY_PATH
 
 ### What This Solves
 
 **Before** (stock AppImage):
-- ❌ Keyboard mapping errors
-- ❌ GPU acceleration disabled
-- ❌ Poor Wayland support
-- ❌ Missing system libraries
+- - Keyboard mapping errors
+- - GPU acceleration disabled
+- - Poor Wayland support
+- - Missing system libraries
 
 **After** (this package):
-- ✅ Full keyboard support
-- ✅ Hardware-accelerated graphics
-- ✅ Native Wayland experience
-- ✅ All dependencies bundled
+- - Full keyboard support
+- - Hardware-accelerated graphics
+- - Native Wayland experience
+- - All dependencies bundled
 
 ---
 
@@ -171,11 +171,11 @@ $out/
 
 | Feature | nixpkgs | This Package |
 |---------|---------|--------------|
-| libxkbfile fix | ❌ | ✅ |
-| GPU acceleration | ⚠️ | ✅ |
-| Wayland flags | ⚠️ | ✅ |
-| Version flexibility | ❌ | ✅ |
-| ARM64 support | ⚠️ | ✅ |
+| libxkbfile fix | - | - |
+| GPU acceleration | WARNING: | - |
+| Wayland flags | WARNING: | - |
+| Version flexibility | - | - |
+| ARM64 support | WARNING: | - |
 | Update speed | Slow | Fast |
 
 ### Why Not Contribute to nixpkgs?

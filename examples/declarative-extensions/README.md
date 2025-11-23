@@ -1,12 +1,12 @@
 # Declarative Extension Management Example
 
-**Status**: ⚠️ Semi-Declarative (Best Effort)
+**Status**: WARNING: Semi-Declarative (Best Effort)
 
 How to manage Cursor extensions declaratively (with limitations).
 
 ---
 
-## ⚠️ Important Limitations
+## WARNING: Important Limitations
 
 ### Why Not Fully Declarative?
 
@@ -16,7 +16,7 @@ How to manage Cursor extensions declaratively (with limitations).
 
 | Feature | VSCode | Cursor |
 |---------|--------|--------|
-| Pre-bundled extensions | ✅ `vscode-with-extensions` | ❌ Not possible |
+| Pre-bundled extensions | - `vscode-with-extensions` | - Not possible |
 | AppImage structure | N/A | Read-only squashfs |
 | Extension location | `/nix/store/...` | `~/.cursor/extensions/` (mutable) |
 | Runtime patching | No | Yes |
@@ -28,10 +28,10 @@ How to manage Cursor extensions declaratively (with limitations).
 ## What This Example Does
 
 **Semi-declarative approach**:
-- ✅ Declares extensions in Nix config
-- ✅ Auto-installs on system activation
-- ⚠️ Cursor can still modify extensions
-- ⚠️ Not immutable (Cursor owns `~/.cursor/extensions/`)
+- - Declares extensions in Nix config
+- - Auto-installs on system activation
+- WARNING: Cursor can still modify extensions
+- WARNING: Not immutable (Cursor owns `~/.cursor/extensions/`)
 
 **Think of it as**: "Declarative defaults with mutable runtime"
 
@@ -186,14 +186,14 @@ home.activation.cursorExtensions = /* install script */;
 
 ## Advantages & Disadvantages
 
-### ✅ Advantages
+### - Advantages
 
 - **Reproducible**: Declare extensions in Nix config
 - **Portable**: Same config works on multiple machines
 - **Recoverable**: Lost extensions? Just `home-manager switch`
 - **Versionable**: Extension list in Git
 
-### ❌ Disadvantages
+### - Disadvantages
 
 - **Not immutable**: Cursor can modify extensions
 - **Slower activation**: Downloads extensions each time (if missing)
@@ -342,17 +342,17 @@ nixos-rebuild build-vm --flake '.#test'
 
 ### What Works
 
-✅ Declare extension list in Nix  
-✅ Auto-install on activation  
-✅ Reproducible across machines  
-✅ Version-controlled configuration  
+- Declare extension list in Nix  
+- Auto-install on activation  
+- Reproducible across machines  
+- Version-controlled configuration  
 
 ### What Doesn't Work
 
-❌ Immutable extensions  
-❌ Version pinning  
-❌ Pre-bundling in `/nix/store/`  
-❌ Atomic updates  
+- Immutable extensions  
+- Version pinning  
+- Pre-bundling in `/nix/store/`  
+- Atomic updates  
 
 ### Verdict
 

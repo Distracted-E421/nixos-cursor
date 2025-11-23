@@ -6,9 +6,9 @@
 
 ---
 
-## 🎯 What's Ready
+## What's Ready
 
-### Core Functionality ✅
+### Core Functionality
 
 1. **Native Cursor Packaging**
    - Cursor IDE 2.1.20 AppImage properly patched for NixOS
@@ -16,7 +16,7 @@
    - Wayland + X11 support
    - Both x86_64 and aarch64 architectures
 
-2. **Auto-Update System** ✅ **NEW**
+2. **Auto-Update System** (NEW)
    - **Daily update notifications** via systemd timer
    - **One-command updates**: `cursor-update`
    - **Manual check**: `cursor-check-update`
@@ -44,7 +44,7 @@
 
 ---
 
-## 📦 Installation Methods
+## Installation Methods
 
 ### Method 1: Try Without Installing (Recommended for Testing)
 
@@ -107,7 +107,7 @@ nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
 
 ---
 
-## 🔄 Using the Update System
+## Using the Update System
 
 ### Automatic Notifications (Default)
 
@@ -162,7 +162,7 @@ See [docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md) for
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 All essential docs are in place:
 
@@ -176,7 +176,7 @@ All essential docs are in place:
 
 ---
 
-## ⚠️ Known Caveats for RC1
+## Known Caveats for RC1
 
 ### 1. MCP Server Configuration
 
@@ -220,7 +220,7 @@ All essential docs are in place:
 
 ---
 
-## ✅ Pre-Release Checklist
+## Pre-Release Checklist
 
 - [x] Core package builds on x86_64
 - [x] Core package builds on aarch64 (CI verified, runtime untested)
@@ -237,7 +237,7 @@ All essential docs are in place:
 
 ---
 
-## 🚀 Next Steps to Release
+## Next Steps to Release
 
 **1. Tag the Release**
 
@@ -310,7 +310,7 @@ Found a bug? Please report it: https://github.com/Distracted-E421/nixos-cursor/i
 
 ---
 
-## 📊 Post-Release Checklist
+## Post-Release Checklist
 
 After tagging and creating GitHub Release:
 
@@ -323,16 +323,16 @@ After tagging and creating GitHub Release:
 
 ---
 
-## 🎯 Success Criteria for Stable Release
+## Success Criteria for Stable Release
 
 RC1 graduates to stable v2.1.20 when:
 
-1. ✅ At least 5 users test successfully on x86_64
-2. ✅ At least 1 user tests successfully on aarch64
-3. ✅ No critical bugs reported
-4. ✅ Update system works reliably
-5. ✅ MCP integration functional (even if setup manual)
-6. ✅ Documentation complete and clear
+1. At least 5 users test successfully on x86_64
+2. At least 1 user tests successfully on aarch64
+3. No critical bugs reported
+4. Update system works reliably
+5. MCP integration functional (even if setup manual)
+6. Documentation complete and clear
 
 Timeline: **1-2 weeks of testing** → stable release
 
@@ -340,4 +340,4 @@ Timeline: **1-2 weeks of testing** → stable release
 
 **Prepared by**: AI Agent (Maxim)  
 **Reviewed by**: e421  
-**Status**: Ready for Tag & Push ✅
+**Status**: Ready for Tag & Push
