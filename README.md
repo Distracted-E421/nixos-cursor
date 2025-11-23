@@ -1,8 +1,10 @@
 # nixos-cursor
 
-**Status**: Beta Release Candidate (v2.1.20)  
-**License**: MIT  
-**Maintained by**: e421 (distracted.e421@gmail.com)  
+> **🚀 Release Candidate**: This is **v2.1.20-rc1** - currently in testing phase.  
+> **👉 Want to help test?** See **[TESTING_RC.md](TESTING_RC.md)** for instructions.
+
+**License**: [MIT](LICENSE) | **Maintained by**: e421  
+**Repository**: https://github.com/Distracted-E421/nixos-cursor
 
 A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers** and automated updates.
 
@@ -102,33 +104,90 @@ git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
 
 ## 🚀 Quick Start
 
-### 1. Add to Flake
+### Testing RC1 (No Installation)
+
+**Fastest way to try it**:
+
+```bash
+# Run directly from GitHub (RC1 release)
+nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
+```
+
+See **[TESTING_RC.md](TESTING_RC.md)** for full testing instructions.
+
+---
+
+### Installing RC1 via Home Manager
+
+Add to your `flake.nix`:
+
 ```nix
 {
-  inputs.nixos-cursor.url = "github:yourusername/nixos-cursor";
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
   
-  outputs = { self, nixpkgs, nixos-cursor, ... }: {
-    # ...
+  outputs = { self, nixpkgs, nixos-cursor, home-manager, ... }: {
+    homeConfigurations.youruser = home-manager.lib.homeManagerConfiguration {
+      modules = [
+        nixos-cursor.homeManagerModules.default
+        {
+          programs.cursor = {
+            enable = true;
+            mcp.enable = false;  # Optional: MCP servers
+          };
+        }
+      ];
+    };
   };
 }
 ```
 
-### 2. Enable in Home Manager
-```nix
-{
-  imports = [ inputs.nixos-cursor.homeManagerModules.default ];
-  
-  programs.cursor = {
-    enable = true;
-    mcp.enable = true;  # Enable MCP servers
-  };
-}
-```
+Then: `home-manager switch`
 
-See `examples/` for full configurations.
+See [`examples/`](examples/) for more configurations.
+
+---
+
+## 📚 Documentation
+
+### Getting Started
+- **[TESTING_RC.md](TESTING_RC.md)** - RC1 testing guide (START HERE)
+- **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - MCP server setup
+- **[examples/](examples/)** - Example configurations
+
+### Technical Details
+- **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)** - Update system
+- **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)** - Known problems
+- **[cursor/README.md](cursor/README.md)** - Package documentation
+
+### Project Info
+- **[LICENSE](LICENSE)** - MIT License
+- **[RELEASE_STRATEGY.md](RELEASE_STRATEGY.md)** - Release process
+
+---
+
+## 🐛 Reporting Issues
+
+Found a bug in RC1? Please report it!
+
+1. Go to [GitHub Issues](https://github.com/Distracted-E421/nixos-cursor/issues)
+2. Include system information (see [TESTING_RC.md](TESTING_RC.md#-system-information))
+3. Describe the problem clearly
 
 ---
 
 ## 📄 License
 
 MIT License - See [LICENSE](LICENSE) file.
+
+```
+MIT License - Copyright (c) 2025 e421
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+[Full license text in LICENSE file]
+```

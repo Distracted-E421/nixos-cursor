@@ -1,17 +1,3 @@
-# Cursor with MCP - Release Strategy
-
-**Project**: cursor-with-mcp  
-**Repository**: (To be created) `github.com/yourusername/cursor-nixos`  
-**Status**: Pre-release (Phase 2 testing)  
-**Last Updated**: 2025-11-22  
-
----
-
-## 🔄 Auto-Update System (NEW)
-
-**Status**: ✅ Implemented (2025-11-22)
-
-### How It Works
 
 Unlike typical Linux apps, Cursor **cannot self-update** on NixOS because:
 - Applications are stored in `/nix/store` (read-only, immutable)
