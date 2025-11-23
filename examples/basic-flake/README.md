@@ -8,7 +8,7 @@ Minimal Cursor installation with no MCP servers.
 - ❌ No MCP servers
 - ❌ No extra configuration
 
-**Use case**: Just want Cursor, don't need AI tools
+**Use case**: Just want Cursor, don't need tools
 
 ## Usage
 
