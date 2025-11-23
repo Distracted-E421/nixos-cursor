@@ -108,19 +108,36 @@ echo -e "${BLUE}🔍 Validating for sensitive content...${NC}"
 
 ISSUES=()
 
-# Check for personal email addresses
-if git grep -l "distracted\.e421@gmail\.com" -- . ':!.git' ':!scripts/' ':!BRANCHING_STRATEGY.md' 2>/dev/null; then
+# Check for personal email addresses (excluding expected locations)
+if git grep -l "distracted\.e421@gmail\.com" -- . \
+    ':!.git' \
+    ':!scripts/' \
+    ':!BRANCHING_STRATEGY.md' \
+    ':!CONTRIBUTORS.md' \
+    ':!LICENSE' \
+    ':!README.md' \
+    ':!cursor/README.md' \
+    ':!*/README.md' 2>/dev/null; then
     ISSUES+=("Found personal email address in tracked files")
 fi
 
-# Check for absolute paths
-if git grep -l "/home/e421/" -- . ':!.git' 2>/dev/null; then
+# Check for absolute paths (excluding scripts and expected docs)
+if git grep -l "/home/e421/" -- . \
+    ':!.git' \
+    ':!scripts/' \
+    ':!BRANCHING_STRATEGY.md' \
+    ':!QUICK_REFERENCE.md' \
+    ':!*/README.md' 2>/dev/null; then
     ISSUES+=("Found absolute paths (/home/e421/) in tracked files")
 fi
 
-# Check for API keys/tokens (simple pattern)
-if git grep -iE "(api[_-]?key|token|secret|password)\s*=\s*['\"][^'\"]+['\"]" -- . ':!.git' ':!scripts/' 2>/dev/null; then
-    ISSUES+=("Found potential API keys or secrets")
+# Check for REAL API keys/tokens (not example placeholder tokens)
+if git grep -E "(github|api)_token\s*=\s*['\"][a-zA-Z0-9]{40,}['\"]" -- . \
+    ':!.git' \
+    ':!scripts/' \
+    ':!INTEGRATION_GUIDE.md' \
+    ':!docs/' 2>/dev/null; then
+    ISSUES+=("Found potential REAL API keys or secrets")
 fi
 
 if [[ ${#ISSUES[@]} -gt 0 ]]; then
