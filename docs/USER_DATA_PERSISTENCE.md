@@ -1,0 +1,253 @@
+# Cursor User Data Persistence
+
+**Issue**: After updating Cursor, custom agents/settings don't show up.
+
+**Root Cause**: Cursor stores user data in `~/.config/Cursor/` and `~/.cursor/`, but some features (like custom agents) are **workspace-specific**, stored in `.cursor/agents/` within each project.
+
+---
+
+## 📁 Where Cursor Stores Data
+
+### Global Data (Persists Across Updates)
+- **`~/.config/Cursor/User/settings.json`** - Global settings
+- **`~/.config/Cursor/User/keybindings.json`** - Custom keybindings
+- **`~/.config/Cursor/extensions/`** - Installed extensions
+- **`~/.cursor/mcp.json`** - MCP server config (symlinked by Home Manager)
+
+### Workspace-Specific Data (Per Project)
+- **`.cursor/agents/`** - Custom agents (Maxim, Gorky, etc.)
+- **`.cursor/rules/`** - Workspace rules
+- **`.cursorrules`** - Cursor rules file
+- **`.cursor/mcp.json`** - Workspace MCP config (overrides global)
+
+### Version-Specific Data (Changes with Updates)
+- **`~/.config/Cursor/CachedData/`** - Version-specific cache
+- **`~/.config/Cursor/Code Cache/`** - Renderer cache
+
+---
+
+## ✅ Solutions
+
+### Option 1: Always Open Cursor with Workspace
+
+```bash
+# Add to your shell aliases
+alias cursor='cursor ~/homelab'
+
+# Or create a launcher script
+cat > ~/bin/cursor-homelab << 'EOF'
+#!/usr/bin/env bash
+/nix/store/*/bin/cursor ~/homelab "$@"
+EOF
+chmod +x ~/bin/cursor-homelab
+```
+
+### Option 2: Make Agents Global (Symlink)
+
+```bash
+# Symlink workspace agents to global location
+mkdir -p ~/.cursor/agents
+ln -sf ~/homelab/.cursor/agents/* ~/.cursor/agents/
+
+# Cursor will then load these agents globally
+```
+
+**Note**: Workspace-specific agents are intentional - different projects may need different agents.
+
+### Option 3: Verify Workspace on Startup
+
+Add to your Cursor `settings.json`:
+
+```json
+{
+  "window.restoreWindows": "all",
+  "window.reopenFolders": "all"
+}
+```
+
+This ensures Cursor reopens your last workspace (homelab) on startup.
+
+---
+
+## 🧪 Testing After Update
+
+After running `./update.sh` and updating Cursor:
+
+### 1. Check Agents Load
+```bash
+# Open Cursor with homelab workspace
+cursor ~/homelab
+
+# Verify agents show in UI
+# Top right → Agent selector → Should see: Maxim, Gorky, etc.
+```
+
+### 2. Check MCP Servers
+```bash
+# Verify MCP config
+cat ~/.cursor/mcp.json | jq '.mcpServers | keys'
+
+# Should show: filesystem, memory, nixos, github, playwright
+```
+
+### 3. Check Settings Persisted
+```bash
+# Verify settings
+cat ~/.config/Cursor/User/settings.json | jq
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Agents Missing After Update
+
+**Check**:
+```bash
+ls -la ~/homelab/.cursor/agents/
+# Should show: maxim.json, gorky.json, etc.
+```
+
+**Verify** Cursor opened with workspace:
+```bash
+ps aux | grep cursor | grep homelab
+# Should show cursor process with /home/e421/homelab argument
+```
+
+**If still missing**:
+1. Close all Cursor windows
+2. Open explicitly: `cursor ~/homelab`
+3. Check agent selector in UI
+
+### MCP Servers Not Working
+
+**Check** symlink:
+```bash
+ls -la ~/.cursor/mcp.json
+# Should point to: /nix/store/.../home-manager-files/.cursor/mcp.json
+```
+
+**Restart** MCP servers:
+```bash
+# Kill existing servers
+pkill -f 'mcp-server'
+
+# Cursor will restart them automatically
+```
+
+### Settings Reset After Update
+
+**Symptom**: Font sizes, themes, keybindings reset
+
+**Cause**: Cursor reads `~/.config/Cursor/User/settings.json` - this should persist
+
+**Check**:
+```bash
+# Verify settings file exists
+cat ~/.config/Cursor/User/settings.json
+
+# Check modification time
+ls -l ~/.config/Cursor/User/settings.json
+```
+
+**If reset**: Settings were likely in an old version-specific location. Re-apply via Home Manager:
+
+```nix
+programs.cursor-ide.userSettings = {
+  "window.zoomLevel" = 1.75;
+  # ... your settings ...
+};
+```
+
+---
+
+## 📊 What Persists vs. What Doesn't
+
+| Data Type | Location | Persists Across Updates? |
+|-----------|----------|-------------------------|
+| **Global settings** | `~/.config/Cursor/User/settings.json` | ✅ Yes |
+| **Keybindings** | `~/.config/Cursor/User/keybindings.json` | ✅ Yes |
+| **Extensions** | `~/.config/Cursor/extensions/` | ✅ Yes |
+| **MCP config (global)** | `~/.cursor/mcp.json` | ✅ Yes (symlinked) |
+| **Workspace agents** | `~/homelab/.cursor/agents/` | ✅ Yes (if workspace opened) |
+| **Workspace rules** | `~/homelab/.cursor/rules/` | ✅ Yes (if workspace opened) |
+| **Cache** | `~/.config/Cursor/Cache/` | ❌ No (rebuilt per version) |
+| **Code Cache** | `~/.config/Cursor/Code Cache/` | ❌ No (version-specific) |
+
+---
+
+## 🎯 Recommended Workflow
+
+### When Updating Cursor
+
+1. **Close Cursor** (save any unsaved work)
+2. **Run update script**: `cd cursor && ./update.sh`
+3. **Build new version**: `nix build .#cursor`
+4. **Test before switching**:
+   ```bash
+   # Test new version
+   ./result/bin/cursor ~/homelab
+   
+   # Check agents load
+   # Check MCP servers work
+   # Check settings persisted
+   ```
+5. **If good, commit and switch**: `home-manager switch`
+6. **If issues, rollback**: `home-manager switch --rollback`
+
+### Always Open with Workspace
+
+```bash
+# ~/.bashrc or ~/.zshrc
+alias cursor='cursor ~/homelab'
+```
+
+This ensures agents always load.
+
+---
+
+## 🔐 Data Safety
+
+**What's Safe to Delete (Cache)**:
+- `~/.config/Cursor/Cache/` - Cursor will rebuild
+- `~/.config/Cursor/CachedData/` - Version-specific cache
+- `~/.config/Cursor/Code Cache/` - Renderer cache
+
+**What's NEVER Safe to Delete**:
+- `~/.config/Cursor/User/` - **YOUR SETTINGS**
+- `~/.config/Cursor/extensions/` - Installed extensions
+- `~/homelab/.cursor/` - **YOUR CUSTOM AGENTS**
+
+---
+
+## 📝 Future Improvements
+
+### Home Manager Integration (Planned)
+
+```nix
+programs.cursor-ide = {
+  enable = true;
+  
+  # Global agents (applied to all workspaces)
+  globalAgents = {
+    maxim = ./agents/maxim.json;
+    gorky = ./agents/gorky.json;
+  };
+  
+  # Workspace-specific agents (only for homelab)
+  workspaceAgents = {
+    "/home/e421/homelab" = {
+      maxim-neon = ./agents/maxim-neon.json;
+      gorky-neon = ./agents/gorky-neon.json;
+    };
+  };
+};
+```
+
+This would make agents part of your declarative config.
+
+---
+
+**Last Updated**: 2025-11-22  
+**Status**: Documented  
+**Next**: Implement agent loading verification in update script
