@@ -27,16 +27,16 @@
           default = self.packages.${system}.cursor;
           cursor = pkgs.callPackage ./cursor {};
           
-          # Isolated test instance
+          # Isolated test instance (separate profile for testing)
           cursor-test = (pkgs.callPackage ./cursor {
             commandLineArgs = "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions";
           }).overrideAttrs (old: {
             pname = "cursor-test";
-            postInstall = old.postInstall + ''
+            postInstall = (old.postInstall or "") + ''
               mv $out/bin/cursor $out/bin/cursor-test
               substituteInPlace $out/share/applications/cursor.desktop \
-                --replace "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
-                --replace "Name=Cursor" "Name=Cursor (Test)"
+                --replace-fail "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
+                --replace-fail "Name=Cursor" "Name=Cursor (Test)"
             '';
           });
         }
