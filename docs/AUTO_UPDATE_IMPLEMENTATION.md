@@ -1,599 +1,408 @@
-# Cursor Auto-Update Implementation Guide
+# Cursor Auto-Update System
 
-**Issue**: Cursor's native update system is broken on NixOS - instead of auto-updating, it redirects to the website.
-
-**Root Cause**: Cursor's built-in updater expects to replace the AppImage file itself. On NixOS, the application is in `/nix/store` (read-only), causing updates to fail.
-
-**Date**: 2025-11-22  
-**Status**: Implementation Required  
+**Status**: ✅ **Implemented** in v2.1.20-rc1
 
 ---
 
-## 🎯 The Solution
+## Overview
 
-Following nixpkgs' `code-cursor` implementation, we need three components:
-
-### 1. Disable Cursor's Built-in Updater
-Add `--update=false` flag to prevent Cursor from attempting self-updates.
-
-### 2. Provide `passthru.updateScript`
-Automate version checking and hash updating via Cursor's API.
-
-### 3. User Update via Nix
-Users update by running `nix flake update` instead of Cursor's internal updater.
+Cursor's native update system is incompatible with NixOS because the application lives in the read-only `/nix/store`. This document explains our solution: **automated update notifications + convenience commands**.
 
 ---
 
-## 📋 Implementation Steps
+## Why Cursor Can't Self-Update on NixOS
 
-### Step 1: Update `cursor/default.nix`
+### The Technical Problem
 
-**Changes needed**:
-
-```nix
-# Add commandLineArgs parameter
-{ lib
-, stdenv
-, fetchurl
-, appimageTools
-, makeWrapper
-# ... other deps ...
-, commandLineArgs ? ""  # NEW: Command-line arguments
-}:
-
-let
-  # Disable Cursor's built-in updater (NixOS incompatible)
-  finalCommandLineArgs = "--update=false " + commandLineArgs;  # NEW
-  
-  # ... rest of let block ...
-in
-stdenv.mkDerivation {
-  # ... existing code ...
-  
-  installPhase = ''
-    # ... existing wrapper code ...
-    
-    makeWrapper $out/share/cursor/cursor $out/bin/cursor \
-      --prefix LD_LIBRARY_PATH : "..." \
-      # ... existing flags ...
-      --add-flags "${finalCommandLineArgs}"  # NEW: Add update disable flag
-  '';
-  
-  passthru = {
-    unwrapped = cursor-extracted;
-    updateScript = ./update.sh;  # NEW: Update automation
-    inherit sources;  # NEW: Expose sources for update script
-  };
-}
+**Before Nix (Manual AppImage)**:
+```bash
+# Cursor can update itself:
+1. Download new AppImage
+2. Replace ~/Downloads/cursor.AppImage
+3. Done! ✅
 ```
 
-**Key changes**:
-- Add `commandLineArgs` parameter with `--update=false` default
-- Pass to wrapper as `--add-flags`
-- Add `updateScript` to passthru
-- Expose `sources` attrset for update script access
+**With Nix (Read-Only Store)**:
+```bash
+# Cursor lives in /nix/store (read-only)
+/nix/store/abc123-cursor-2.1.20/bin/cursor
+
+# During build, autoPatchelfHook:
+- Rewrites ELF headers for NixOS
+- Points to Nix-managed libraries
+- Fixes library paths
+
+# If Cursor tries to self-update:
+1. Downloads new AppImage (UNPATCHED)
+2. Can't modify /nix/store (read-only) ❌
+3. Unpatched binary won't run on NixOS ❌
+```
+
+**Core Issue**: Every Cursor update needs to be re-patched via Nix build, which Cursor itself cannot do.
 
 ---
 
-### Step 2: Create `cursor/update.sh`
+## Our Solution: Hybrid Update System
 
-**Purpose**: Automated version checking and hash updating.
+We provide **three components**:
 
-**Location**: `projects/cursor-with-mcp/cursor/update.sh`
+### 1. Daily Update Notifications (Automatic)
+
+A systemd user timer checks for updates daily and shows desktop notifications:
+
+```nix
+programs.cursor = {
+  enable = true;
+  updateCheck.enable = true;  # Default: true
+  updateCheck.interval = "daily";  # or "weekly", etc.
+};
+```
+
+**How it works**:
+- Queries Cursor's API: `https://api2.cursor.sh/updates/api/download/stable`
+- Compares current version (2.1.20) vs latest available
+- Shows notification if update available: "Cursor 2.1.21 available!"
+
+**Manual check**: `cursor-check-update`
+
+---
+
+### 2. Convenience Update Command
+
+One command to update Cursor via Nix:
 
 ```bash
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash -p curl jq coreutils common-updater-scripts nix-prefetch
-set -eu -o pipefail
-
-# Cursor API endpoint for stable releases
-CURSOR_API="https://api2.cursor.sh/updates/api/download/stable"
-
-# Get current version from package
-currentVersion=$(nix-instantiate --eval -E "with import ./. {}; cursor.version or (lib.getVersion cursor)" | tr -d '"')
-
-echo "Current version: $currentVersion"
-
-# Platform mapping (Cursor API uses different names than Nix)
-declare -A platforms=(
-  [x86_64-linux]='linux-x64'
-  [aarch64-linux]='linux-arm64'
-)
-
-declare -A updates=()
-first_version=""
-
-# Check each platform for updates
-for platform in "${!platforms[@]}"; do
-  api_platform=${platforms[$platform]}
-  
-  echo "Checking $platform ($api_platform)..."
-  
-  # Query Cursor API
-  result=$(curl -s "$CURSOR_API/$api_platform/cursor")
-  version=$(echo "$result" | jq -r '.version')
-  
-  echo "  Latest version: $version"
-  
-  # Check if already up to date
-  if [[ "$version" == "$currentVersion" ]]; then
-    echo "Already up to date!"
-    exit 0
-  fi
-  
-  # Ensure consistent version across platforms
-  if [[ -z "$first_version" ]]; then
-    first_version=$version
-    first_platform=$platform
-  elif [[ "$version" != "$first_version" ]]; then
-    >&2 echo "ERROR: Version mismatch! $first_version ($first_platform) vs $version ($platform)"
-    exit 1
-  fi
-  
-  # Get download URL
-  url=$(echo "$result" | jq -r '.downloadUrl')
-  
-  # Verify URL is accessible
-  if ! curl --output /dev/null --silent --head --fail "$url"; then
-    >&2 echo "ERROR: Cannot download from $url"
-    exit 1
-  fi
-  
-  updates+=( [$platform]="$result" )
-done
-
-# Apply updates to default.nix
-echo ""
-echo "Updating cursor package to version $first_version..."
-
-for platform in "${!updates[@]}"; do
-  result=${updates[$platform]}
-  version=$(echo "$result" | jq -r '.version')
-  url=$(echo "$result" | jq -r '.downloadUrl')
-  
-  echo "  Updating $platform..."
-  echo "    URL: $url"
-  
-  # Prefetch the file and calculate SRI hash
-  source=$(nix-prefetch-url "$url" --name "cursor-$version")
-  hash=$(nix-hash --to-sri --type sha256 "$source")
-  
-  echo "    Hash: $hash"
-  
-  # Update the version and hash in default.nix
-  update-source-version cursor "$version" "$hash" "$url" \
-    --system="$platform" \
-    --ignore-same-version \
-    --source-key="officialVersions.\"$version\".$platform"
-done
-
-echo ""
-echo "✅ Update complete! New version: $first_version"
-echo ""
-echo "Next steps:"
-echo "  1. Test the build: nix build .#cursor"
-echo "  2. Update flake.lock: nix flake update"
-echo "  3. Commit changes: git add cursor/default.nix flake.lock"
-echo "  4. Tag release: git tag v$first_version"
+# Automatic update (finds your flake, runs update)
+cursor-update
 ```
 
-**Features**:
-- Queries Cursor's official API for latest version
-- Verifies version consistency across platforms
-- Prefetches AppImages and calculates SRI hashes
-- Updates `officialVersions` in `default.nix`
-- Validates downloads before applying changes
+**What it does**:
+```bash
+1. Auto-detects your flake directory
+   (or uses $NIXOS_CURSOR_FLAKE_DIR)
+2. Runs: nix flake update nixos-cursor
+3. Rebuilds: home-manager switch OR nixos-rebuild switch
+4. Reports: "2.1.20 → 2.1.21"
+```
+
+**Set flake directory** (optional):
+```nix
+programs.cursor = {
+  enable = true;
+  flakeDir = "/home/user/.config/home-manager";
+};
+```
+
+Or export it:
+```bash
+export NIXOS_CURSOR_FLAKE_DIR=/home/user/.config/home-manager
+```
 
 ---
 
-### Step 3: Restructure `officialVersions` in `cursor/default.nix`
+### 3. Disabled Built-In Updater
 
-**Current format** (problematic for update script):
-
-```nix
-officialVersions = {
-  "0.42.5" = {
-    x86_64-linux = { url = "..."; hash = "..."; };
-    aarch64-linux = { url = "..."; hash = "..."; };
-  };
-};
-```
-
-**Updated format** (matches nixpkgs pattern):
-
-```nix
-sources = {
-  x86_64-linux = fetchurl {
-    url = "https://downloads.cursor.com/production/COMMIT_HASH/linux/x64/Cursor-VERSION-x86_64.AppImage";
-    hash = "sha256-HASH_HERE";
-  };
-  aarch64-linux = fetchurl {
-    url = "https://downloads.cursor.com/production/COMMIT_HASH/linux/arm64/Cursor-VERSION-aarch64.AppImage";
-    hash = "sha256-HASH_HERE";
-  };
-};
-
-appImageSrc = sources.${stdenv.hostPlatform.system} or (throw "Unsupported platform: ${stdenv.hostPlatform.system}");
-```
-
-**Why this change**:
-- Simpler for update script to modify
-- Matches nixpkgs convention
-- Single source of truth per platform
-- Version derived from filename, not attrset key
+Cursor's internal updater is **automatically disabled** via `--update=false` flag to prevent confusing error messages.
 
 ---
 
-### Step 4: Update Home Manager Module
+## Usage Examples
 
-**Change**: Document that `allowSelfUpdate` doesn't work on NixOS.
+### Check for Updates Manually
+
+```bash
+cursor-check-update
+# Output:
+# Checking for Cursor updates...
+# Current version: 2.1.20
+# Latest version:  2.1.21
+# Update available: 2.1.20 → 2.1.21
+# 
+# [Desktop notification appears]
+```
+
+### Update Cursor
+
+```bash
+cursor-update
+# Output:
+# 🚀 Cursor Nix Updater
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 
+# 📁 Flake directory: /home/user/.config/home-manager
+# 📦 Current version: 2.1.20
+# 
+# 🔄 Updating nixos-cursor flake input...
+# ✅ Flake input updated
+# 
+# 🏠 Rebuilding Home Manager configuration...
+# ✅ Home Manager rebuilt successfully
+# 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ✅ Update complete!
+#    2.1.20 → 2.1.21
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Update Manually (Traditional Nix Way)
+
+```bash
+# Still works if you prefer manual control:
+cd ~/.config/home-manager
+nix flake update nixos-cursor
+home-manager switch
+```
+
+---
+
+## Configuration Options
+
+### Home Manager Module
 
 ```nix
-# programs.cursor-ide options (if using the old home.nix format)
-
-updateChannel = mkOption {
-  type = types.enum [ "stable" "nightly" ];
-  default = "stable";
-  description = ''
-    Update channel for Cursor.
-    
-    Note: On NixOS, Cursor's built-in updater is disabled because
-    applications reside in the read-only /nix/store. Updates are
-    handled via Nix package management instead.
-    
-    To update Cursor:
-      1. nix flake update (updates flake inputs)
-      2. nixos-rebuild switch (applies system changes)
-      3. home-manager switch (applies user changes)
-  '';
+programs.cursor = {
+  enable = true;
+  
+  # Update notifications (default: enabled)
+  updateCheck = {
+    enable = true;  # Show desktop notifications for updates
+    interval = "daily";  # "daily", "weekly", "Mon 09:00", etc.
+  };
+  
+  # Flake directory for cursor-update command
+  flakeDir = "/home/user/.config/home-manager";  # Optional: auto-detects if not set
+  
+  # MCP servers, etc.
+  mcp.enable = false;
 };
+```
 
-allowSelfUpdate = mkOption {
-  type = types.bool;
-  default = false;  # Changed from true
-  description = ''
-    Allow Cursor to self-update (DISABLED on NixOS).
-    
-    This option has no effect on NixOS because Cursor's updater
-    requires write access to its installation directory, which
-    is read-only in /nix/store.
-    
-    Use Nix's update mechanisms instead:
-      - nix flake update cursor-with-mcp
-      - nixos-rebuild switch
-  '';
+### Disable Update Notifications
+
+```nix
+programs.cursor = {
+  enable = true;
+  updateCheck.enable = false;  # No automatic checks
 };
 ```
 
 ---
 
-### Step 5: CI/CD Automation (Future Enhancement)
+## Implementation Details
 
-**Goal**: Automatically detect new Cursor releases and create PRs.
+### Components
 
-**Implementation** (GitHub Actions):
+1. **`cursor/check-update.sh`** - Queries Cursor API, shows notifications
+2. **`cursor/nix-update.sh`** - Convenience wrapper for Nix update workflow
+3. **`cursor/default.nix`** - Installs scripts as `cursor-check-update` and `cursor-update`
+4. **Home Manager Module** - Configures systemd timer for daily checks
 
-```yaml
-# .github/workflows/update-cursor.yml
-name: Update Cursor
+### Systemd Timer
 
-on:
-  schedule:
-    - cron: '0 12 * * 1,4'  # Monday and Thursday at 12:00 UTC
-  workflow_dispatch:        # Manual trigger
+Automatically enabled when `updateCheck.enable = true`:
 
-jobs:
-  check-update:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: cachix/install-nix-action@v25
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      
-      - name: Check for Cursor updates
-        id: update
-        run: |
-          cd cursor
-          ./update.sh || echo "update_available=false" >> $GITHUB_OUTPUT
-          
-          # Check if files changed
-          if git diff --quiet cursor/default.nix; then
-            echo "update_available=false" >> $GITHUB_OUTPUT
-            echo "No updates available"
-          else
-            NEW_VERSION=$(nix-instantiate --eval -E "with import ./. {}; cursor.version" | tr -d '"')
-            echo "update_available=true" >> $GITHUB_OUTPUT
-            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-            echo "Update available: $NEW_VERSION"
-          fi
-      
-      - name: Create Pull Request
-        if: steps.update.outputs.update_available == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: "chore: Update Cursor to ${{ steps.update.outputs.new_version }}"
-          title: "Update Cursor to ${{ steps.update.outputs.new_version }}"
-          body: |
-            Automated update of Cursor IDE to version ${{ steps.update.outputs.new_version }}.
-            
-            **Changes**:
-            - Updated cursor/default.nix with new version and hashes
-            - All platforms verified and prefetched
-            
-            **Testing Required**:
-            - [ ] Build succeeds on x86_64-linux
-            - [ ] Build succeeds on aarch64-linux
-            - [ ] All MCP servers still functional
-            - [ ] No breaking changes in Cursor
-            
-            **Merge Checklist**:
-            - [ ] CI/CD passes
-            - [ ] Manual testing complete
-            - [ ] CHANGELOG.md updated
-            - [ ] Tag created: v${{ steps.update.outputs.new_version }}
-          branch: "auto-update-cursor-${{ steps.update.outputs.new_version }}"
-          delete-branch: true
+```bash
+# Check status
+systemctl --user status cursor-update-check.timer
+
+# View logs
+journalctl --user -u cursor-update-check.service
+
+# Force check now
+systemctl --user start cursor-update-check.service
 ```
+
+### Update Script Logic
+
+```bash
+# Flake directory detection priority:
+1. $NIXOS_CURSOR_FLAKE_DIR environment variable
+2. Auto-detect common locations:
+   - ~/.config/home-manager
+   - ~/.config/nixos
+   - ~/nixos
+   - ~/.nixos
+3. If not found, show manual instructions
+```
+
+---
+
+## Comparison with Other Solutions
+
+### ❌ Option 1: Let Cursor Self-Update
+
+**Problem**: Requires Nix rebuild after every update (autoPatchelfHook)
+**Status**: Not feasible
+
+### ❌ Option 2: Background Service Auto-Patching
+
+**Problem**: Complex, breaks reproducibility, security concerns
+**Status**: Rejected
+
+### ✅ Option 3: Notifications (What We Implemented)
 
 **Benefits**:
-- Automatic detection of new Cursor releases
-- Creates PR with prefetched hashes
-- Maintainer reviews and merges manually
-- Ensures no breaking changes slip through
+- Simple and reliable
+- Maintains Nix reproducibility
+- User stays informed
+- Still uses proper Nix workflow
+
+### ✅ Option 4: Convenience Command (What We Implemented)
+
+**Benefits**:
+- One-command updates
+- Auto-detects flake location
+- Handles both Home Manager and NixOS
+- User-friendly while using Nix properly
 
 ---
 
-## 📖 User Documentation
+## Testing
 
-### For End Users
+### Test Update Checker
 
-**Before** (broken on NixOS):
-```
-Cursor → Help → Check for Updates
-❌ "Please download the latest version from cursor.com"
-```
-
-**After** (Nix-managed updates):
 ```bash
-# Update your Cursor installation
-nix flake update cursor-with-mcp
+# Check current version
+cursor --version
 
-# Apply updates (Home Manager)
+# Manually test update check
+cursor-check-update
+
+# Should output:
+# - Current version
+# - Latest version from API
+# - Desktop notification if update available
+```
+
+### Test Update Command
+
+```bash
+# Dry-run (won't actually update)
+# Set environment to test path detection
+export NIXOS_CURSOR_FLAKE_DIR=/path/to/test
+
+cursor-update
+
+# Should:
+# 1. Find your flake directory
+# 2. Run nix flake update nixos-cursor
+# 3. Rebuild Home Manager or NixOS
+# 4. Report old → new version
+```
+
+### Test Systemd Timer
+
+```bash
+# Check timer status
+systemctl --user status cursor-update-check.timer
+
+# List next scheduled run
+systemctl --user list-timers cursor-update-check
+
+# Force run now
+systemctl --user start cursor-update-check.service
+
+# Check logs
+journalctl --user -u cursor-update-check.service -f
+```
+
+---
+
+## Troubleshooting
+
+### "Could not find your flake directory"
+
+**Solution 1**: Set environment variable
+```bash
+export NIXOS_CURSOR_FLAKE_DIR=/path/to/your/flake
+cursor-update
+```
+
+**Solution 2**: Set in Home Manager config
+```nix
+programs.cursor.flakeDir = "/path/to/your/flake";
+```
+
+**Solution 3**: Update manually
+```bash
+cd /path/to/your/flake
+nix flake update nixos-cursor
 home-manager switch
-
-# Or for NixOS system package
-nixos-rebuild switch
 ```
 
-### Update Frequency
+### Update notification not showing
 
-**Flake maintainer responsibilities**:
-- Monitor Cursor releases: https://cursor.com/changelog
-- Run `cursor/update.sh` when new version released
-- Test on at least 1 platform
-- Tag release matching Cursor version
-- Update CHANGELOG.md
-
-**Recommended schedule**:
-- **Stable channel**: 2-4 weeks after Cursor release (after testing)
-- **Unstable channel**: 1 week after Cursor release
-- **Security updates**: Immediate (within 48 hours)
-
----
-
-## 🚀 Release Process (Post-Update)
-
-### After Running update.sh
-
+**Check timer status**:
 ```bash
-# 1. Verify the changes
-git diff cursor/default.nix
-
-# 2. Test build locally
-cd projects/cursor-with-mcp
-nix build .#cursor
-./result/bin/cursor --version
-
-# 3. Test with MCP servers
-nix build .#homeConfigurations.test-user.activationPackage
-./result/activate
-
-# 4. Commit if successful
-git add cursor/default.nix
-git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
-
-# 5. Update flake.lock (pulls in any dependency updates)
-nix flake update
-
-# 6. Tag the release
-NEW_VERSION=$(nix eval .#cursor.version --raw)
-git tag "v$NEW_VERSION"
-git push origin main --tags
-
-# 7. Create GitHub release
-gh release create "v$NEW_VERSION" \
-  --title "Cursor $NEW_VERSION with MCP" \
-  --notes "Updated to Cursor $NEW_VERSION. See CHANGELOG.md for details."
+systemctl --user status cursor-update-check.timer
 ```
 
----
-
-## 🐛 Troubleshooting
-
-### Update Script Fails
-
-**Problem**: `curl: (22) The requested URL returned error: 404`
-
-**Solution**: Cursor changed their API or download URLs.
-
-**Fix**:
-1. Check https://cursor.com/changelog for new download structure
-2. Update `CURSOR_API` in `update.sh`
-3. Verify URL format with browser DevTools during manual download
-
----
-
-### Version Mismatch Between Platforms
-
-**Problem**: `ERROR: Version mismatch! 2.0.65 (x86_64-linux) vs 2.0.64 (aarch64-linux)`
-
-**Cause**: Cursor releases ARM and x64 builds separately (rare but possible).
-
-**Solution**:
-1. Wait 24 hours for all platforms to publish
-2. Re-run update script
-3. If persists, manually specify newer version only
-
----
-
-### Hash Verification Fails
-
-**Problem**: `error: hash mismatch in fixed-output derivation`
-
-**Cause**: Download URL changed after prefetch or network error.
-
-**Solution**:
+**Check if notification daemon is running**:
 ```bash
-# Clear Nix store cache
-nix-store --delete /nix/store/*cursor*.AppImage
+# Should have a notification daemon (dunst, mako, etc.)
+ps aux | grep -E 'dunst|mako|notification'
+```
 
-# Re-run update script
-cd cursor
-./update.sh
+**Manual test**:
+```bash
+cursor-check-update
+# Should show desktop notification
+```
 
-# If still fails, manually prefetch
-nix-prefetch-url <URL> --name cursor-VERSION.AppImage
+### Update check fails with HTTP error
+
+**Check network**:
+```bash
+# Test Cursor API directly
+curl -s https://api2.cursor.sh/updates/api/download/stable | jq
+```
+
+**Check logs**:
+```bash
+journalctl --user -u cursor-update-check.service
 ```
 
 ---
 
-## 📊 Comparison: Before vs After
+## Future Enhancements
 
-| Aspect | Before (Broken) | After (Nix-managed) |
-|--------|----------------|---------------------|
-| **Update Method** | Cursor's built-in (fails) | `nix flake update` |
-| **User Experience** | Redirects to website | Seamless Nix update |
-| **Automation** | None | CI/CD auto-detects |
-| **Rollback** | Reinstall old AppImage | `nix profile rollback` |
-| **Reproducibility** | ❌ Version drift | ✅ Locked with flake.lock |
-| **Multi-device** | Manual sync | Declarative (same flake) |
-| **Offline Updates** | ❌ Requires download | ✅ Cached in /nix/store |
+### Potential Improvements
 
----
+1. **Auto-Update Option** - Automatically run `nix flake update` on notification
+   ```nix
+   programs.cursor.autoUpdate = true;  # Runs update automatically
+   ```
 
-## ✅ Implementation Checklist
+2. **Update Cadence Control** - More granular control over update timing
+   ```nix
+   programs.cursor.updateCheck.interval = "Mon,Wed,Fri 09:00";
+   ```
 
-### Phase 1: Core Functionality
-- [ ] Add `commandLineArgs` to `cursor/default.nix`
-- [ ] Add `--update=false` flag to wrapper
-- [ ] Restructure `officialVersions` → `sources`
-- [ ] Create `cursor/update.sh` script
-- [ ] Make `update.sh` executable: `chmod +x`
-- [ ] Test update script on current version (should detect no update)
-- [ ] Add `passthru.updateScript` to derivation
-- [ ] Update `passthru.sources` exposure
+3. **Version Pinning** - Opt-out of updates for stability
+   ```nix
+   programs.cursor.version = "2.1.20";  # Pin to specific version
+   ```
 
-### Phase 2: Documentation
-- [ ] Update README.md with update instructions
-- [ ] Add AUTO_UPDATE_IMPLEMENTATION.md to docs/
-- [ ] Update RELEASE_STRATEGY.md with update workflow
-- [ ] Document `allowSelfUpdate = false` in Home Manager module
-- [ ] Create user-facing "How to Update" guide
-
-### Phase 3: Testing
-- [ ] Test `update.sh` with mock version bump
-- [ ] Verify hash calculations are correct
-- [ ] Test update on both x86_64-linux and aarch64-linux
-- [ ] Ensure MCP servers still work after update
-- [ ] Test rollback: `nix profile rollback`
-
-### Phase 4: Automation (Future)
-- [ ] Create GitHub Actions workflow
-- [ ] Set up automated PR creation
-- [ ] Add CI/CD tests for new versions
-- [ ] Configure release tagging automation
-
-### Phase 5: Public Release Prep
-- [ ] Add update documentation to public repo
-- [ ] Include update.sh in release
-- [ ] Document maintainer responsibilities
-- [ ] Create update schedule (stable vs unstable)
+4. **Changelog Integration** - Show what's new in updates
+   ```bash
+   cursor-update --show-changelog
+   ```
 
 ---
 
-## 🎓 Key Learnings
+## Summary
 
-### Why Cursor's Updater Fails on NixOS
+**Problem**: Cursor can't self-update on NixOS (read-only /nix/store + autoPatchelfHook requirement)
 
-**Typical Linux app update**:
-1. Download new AppImage to `/tmp/`
-2. Replace `/usr/local/bin/cursor` with new AppImage
-3. Restart application
+**Solution**: 
+- ✅ Daily update notifications (systemd timer)
+- ✅ Convenience command: `cursor-update`
+- ✅ Automatic flake detection
+- ✅ Works with Home Manager and NixOS
 
-**NixOS reality**:
-1. Cursor binary lives in `/nix/store/HASH-cursor-2.0.64/bin/cursor`
-2. `/nix/store` is **read-only** (immutable)
-3. Cursor updater tries to write → **Permission denied**
-4. Falls back to "please download manually"
-
-**Nix solution**:
-1. New version → new `/nix/store/HASH2-cursor-2.0.65/`
-2. Symlink updated: `/run/current-system/sw/bin/cursor` → new store path
-3. Old version retained for rollback
-4. Garbage collection cleans old versions when safe
-
-### Why `--update=false` is Critical
-
-Without this flag:
-- Cursor **will** try to update itself on startup (if update available)
-- Update **will** fail (read-only `/nix/store`)
-- User sees annoying "update failed" message **every time**
-- User clicks "Download" → manual install → conflicts with Nix
-
-With this flag:
-- Cursor never checks for updates
-- User updates via Nix (declarative, reproducible)
-- No confusing error messages
-- Clean user experience
+**Result**: Cursor updates are **easy, automatic, and Nix-native**. Users get the best of both worlds: convenience of auto-updates + reproducibility of Nix. 🚀
 
 ---
 
-## 📅 Timeline
-
-**Week 1** (Current):
-- Implement core update mechanism
-- Test update script locally
-- Document user update process
-
-**Week 2**:
-- Add CI/CD automation
-- Test on multiple devices
-- Prepare for public release
-
-**Week 3**:
-- Public release with working updates
-- Monitor community feedback
-- Iterate on update frequency
-
----
-
-## 🙏 Credits
-
-**Upstream Implementation**:
-- Nixpkgs `code-cursor` package: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/co/code-cursor/package.nix
-- Update script pattern: https://github.com/NixOS/nixpkgs/blob/master/pkgs/by-name/co/code-cursor/update.sh
-- Cursor API: https://api2.cursor.sh/updates/api/download/stable/{platform}/cursor
-
-**Our Contribution**:
-- MCP server integration
-- Declarative Home Manager module
-- Multi-monitor/window support
-- Playwright automation fixes
-
----
-
-**Last Updated**: 2025-11-22  
-**Status**: Implementation Plan Ready  
-**Next Step**: Implement Phase 1 changes to cursor/default.nix
+**Status**: ✅ Implemented in v2.1.20-rc1  
+**Last Updated**: 2025-11-22

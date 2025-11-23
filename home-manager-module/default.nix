@@ -11,6 +11,32 @@ with lib;
 let
   cfg = config.programs.cursor;
   
+  updateCheckService = {
+    Unit = {
+      Description = "Check for Cursor updates";
+      After = [ "network-online.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${cfg.package}/bin/cursor-check-update";
+      Environment = [ "DISPLAY=:0" ];
+    };
+  };
+  
+  updateCheckTimer = {
+    Unit = {
+      Description = "Check for Cursor updates daily";
+    };
+    Timer = {
+      OnCalendar = "daily";
+      Persistent = true;
+      RandomizedDelaySec = "1h";
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
+    };
+  };
+  
   # Detect browser executable path automatically
   getBrowserPath = browser: package:
     if browser == "chrome" then
@@ -105,6 +131,38 @@ in {
       description = ''
         The Cursor IDE package to use.
         Defaults to the enhanced Cursor package from this flake.
+      '';
+    };
+    
+    updateCheck = {
+      enable = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Enable daily checks for Cursor updates.
+          Shows desktop notification when new version is available.
+        '';
+      };
+      
+      interval = mkOption {
+        type = types.str;
+        default = "daily";
+        example = "weekly";
+        description = ''
+          How often to check for updates.
+          Accepts systemd.time calendar event format.
+        '';
+      };
+    };
+    
+    flakeDir = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      example = "/home/user/.config/home-manager";
+      description = ''
+        Directory containing your flake.nix that uses nixos-cursor.
+        Used by `cursor-update` command for automatic updates.
+        If not set, will try to auto-detect.
       '';
     };
 
@@ -283,6 +341,17 @@ in {
     # Install Cursor package and optional browser
     home.packages = [ cfg.package ]
       ++ optionals cfg.mcp.playwright.enable [ cfg.mcp.playwright.browserPackage ];
+    
+    # Set flake directory for update command
+    home.sessionVariables = mkIf (cfg.flakeDir != null) {
+      NIXOS_CURSOR_FLAKE_DIR = cfg.flakeDir;
+    };
+    
+    # Enable update checking service
+    systemd.user.services.cursor-update-check = mkIf cfg.updateCheck.enable updateCheckService;
+    systemd.user.timers.cursor-update-check = mkIf cfg.updateCheck.enable (updateCheckTimer // {
+      Timer.OnCalendar = mkForce cfg.updateCheck.interval;
+    });
 
     # Generate MCP configuration file
     home.file.".cursor/mcp.json" = mkIf cfg.mcp.enable {

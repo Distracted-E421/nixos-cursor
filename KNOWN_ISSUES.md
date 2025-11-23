@@ -4,14 +4,14 @@
 
 ---
 
-## ✅ Issue #1: Separate Window Input Focus - 99% SOLVED!
+## Issue #1: Separate Window Input Focus - 99% SOLVED!
 
 **Status**: Phase 1 preload script working excellently
 
 **Symptoms**:
-- ✅ **FIXED**: Can type in detached agent/chat windows
-- ✅ **FIXED**: Alt+Tab works properly
-- ⚠️ **Minor**: Occasional small hiccups (< 1% of time)
+- **FIXED**: Can type in detached agent/chat windows
+- **FIXED**: Alt+Tab works properly
+- **Minor**: Occasional small hiccups (< 1% of time)
 
 **Solution**: Electron preload script (Phase 1)
 - Location: `nixos/pkgs/cursor-focus-fix/preload.js`

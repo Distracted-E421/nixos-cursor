@@ -1,45 +1,52 @@
-# RC1 Release Summary ✅
+# RC1 Release Summary
 
-**Version**: v2.1.20-rc1  
-**Branch**: pre-release  
-**Date**: 2025-11-23  
-**Status**: READY TO TAG AND PUSH 🚀
+**Version**: v2.1.20-rc1
+**Branch**: pre-release
+**Date**: 2025-11-23
+**Status**: READY TO TAG AND PUSH
 
 ---
 
-## ✅ What's Ready
+## What's Ready
 
 ### **Core Package**
-- ✅ Cursor 2.1.20 builds successfully
-- ✅ `nix flake check` passes
-- ✅ Native NixOS packaging (not FHS)
-- ✅ Wayland + X11 support
-- ✅ GPU acceleration enabled
-- ✅ Auto-update system (disabled, documented)
+
+- Cursor 2.1.20 builds successfully
+- `nix flake check` passes
+- Native NixOS packaging (not FHS)
+- Wayland + X11 support
+- GPU acceleration enabled
+- Auto-update system (disabled, documented)
 
 ### **Installation Methods**
+
 1. **Direct Run** (no install):
+
    ```bash
    nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
    ```
 
 2. **Temporary Shell**:
+
    ```bash
    nix shell github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
    cursor
    ```
 
 3. **Home Manager** (permanent):
+
    ```nix
    inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
    ```
 
 4. **Isolated Testing** (safe profile):
+
    ```bash
    nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor-test
    ```
 
 ### **Documentation**
+
 - ✅ **[TESTING_RC.md](TESTING_RC.md)** - Comprehensive RC1 testing guide
 - ✅ **[README.md](README.md)** - Updated with RC1 banner and links
 - ✅ **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - MCP setup guide
@@ -49,7 +56,9 @@
 - ✅ **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)** - Update system docs
 
 ### **Embedded Links**
+
 All documentation now has proper cross-links:
+
 - ✅ README → TESTING_RC.md (prominent)
 - ✅ README → LICENSE, INTEGRATION_GUIDE, examples
 - ✅ TESTING_RC → All relevant docs
@@ -89,7 +98,7 @@ git push origin v2.1.20-rc1
 
 ### **3. Create GitHub Release**
 
-Go to: https://github.com/Distracted-E421/nixos-cursor/releases/new
+Go to: <https://github.com/Distracted-E421/nixos-cursor/releases/new>
 
 **Tag**: `v2.1.20-rc1`  
 **Title**: `nixos-cursor v2.1.20-rc1 - Release Candidate`  
@@ -130,15 +139,17 @@ See **[TESTING_RC.md](TESTING_RC.md)** for comprehensive testing guide.
 ## 🐛 Reporting Issues
 
 Found a bug? Please [open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new/choose) with:
+
 - System information (see [TESTING_RC.md](TESTING_RC.md#-system-information))
 - Steps to reproduce
 - Expected vs actual behavior
 
-## 🙏 Help Us Test!
+## 🙏 Help Us Test
 
 This is a **Release Candidate** - we need your help testing before stable release!
 
 **What to test**:
+
 - Package builds on your system
 - Cursor launches and works
 - Keyboard shortcuts function
@@ -156,6 +167,7 @@ See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 ---
 
 **License**: MIT | **Maintainer**: e421
+
 ```
 
 **Check**: ✅ Mark as "pre-release"

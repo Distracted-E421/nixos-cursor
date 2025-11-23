@@ -32,8 +32,10 @@
             commandLineArgs = "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions";
           }).overrideAttrs (old: {
             pname = "cursor-test";
-            postInstall = old.postInstall + ''
+            postInstall = (old.postInstall or "") + ''
               mv $out/bin/cursor $out/bin/cursor-test
+              mv $out/bin/cursor-update $out/bin/cursor-test-update
+              mv $out/bin/cursor-check-update $out/bin/cursor-test-check-update
               substituteInPlace $out/share/applications/cursor.desktop \
                 --replace "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
                 --replace "Name=Cursor" "Name=Cursor (Test)"

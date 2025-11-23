@@ -130,6 +130,16 @@ stdenv.mkDerivation rec {
       cp -r usr/share/pixmaps $out/share/
     fi
     
+    # Install helper scripts
+    mkdir -p $out/libexec/cursor
+    substitute ${./check-update.sh} $out/libexec/cursor/check-update \
+      --subst-var-by version "${version}"
+    chmod +x $out/libexec/cursor/check-update
+    
+    substitute ${./nix-update.sh} $out/libexec/cursor/nix-update \
+      --subst-var-by version "${version}"
+    chmod +x $out/libexec/cursor/nix-update
+    
     # Create wrapper with proper environment and NixOS-specific fixes
     makeWrapper $out/share/cursor/cursor $out/bin/cursor \
       --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [
@@ -162,6 +172,8 @@ stdenv.mkDerivation rec {
       --set VSCODE_BUILTIN_EXTENSIONS_DIR "$out/share/cursor/resources/app/extensions" \
       --set ELECTRON_NO_SANDBOX "1" \
       --set ELECTRON_DISABLE_SECURITY_WARNINGS "1" \
+      --set CURSOR_CHECK_UPDATE "$out/libexec/cursor/check-update" \
+      --set CURSOR_NIX_UPDATE "$out/libexec/cursor/nix-update" \
       --add-flags "${finalCommandLineArgs}" \
       --add-flags "--ozone-platform-hint=auto" \
       --add-flags "--enable-features=UseOzonePlatform,WaylandWindowDecorations,VaapiVideoDecoder,WebRTCPipeWireCapturer" \
@@ -172,6 +184,20 @@ stdenv.mkDerivation rec {
       --add-flags "--enable-accelerated-2d-canvas" \
       --add-flags "--num-raster-threads=4" \
       --add-flags "--enable-oop-rasterization"
+    
+    # Create convenience update command
+    cat > $out/bin/cursor-update << 'EOF'
+#!/usr/bin/env bash
+exec "$CURSOR_NIX_UPDATE" "$@"
+EOF
+    chmod +x $out/bin/cursor-update
+    
+    # Create update check command
+    cat > $out/bin/cursor-check-update << 'EOF'
+#!/usr/bin/env bash
+exec "$CURSOR_CHECK_UPDATE" "$@"
+EOF
+    chmod +x $out/bin/cursor-check-update
     
     # Create desktop entry
     mkdir -p $out/share/applications
