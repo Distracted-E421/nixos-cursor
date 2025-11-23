@@ -1,0 +1,499 @@
+# Playwright Browser Automation via MCP
+
+This rule defines how to effectively use the Playwright MCP server for browser automation, testing, and web scraping within the homelab development workflow.
+
+## 🌐 What Playwright MCP Does
+
+The Playwright MCP server provides browser automation capabilities directly through Cursor:
+
+- Navigate and interact with web pages
+- Take screenshots and snapshots
+- Fill forms and click elements
+- Test web applications
+- Scrape dynamic web content
+- Debug web interfaces
+- Verify deployments visually
+
+## 📝 When to Use Playwright MCP
+
+### ALWAYS Use For
+
+- ✅ **Testing Deployed Services** - Verify Home Assistant, Grafana, web UIs
+- ✅ **Visual Verification** - Screenshot comparison for UI changes
+- ✅ **Form Automation** - Auto-fill configuration forms
+- ✅ **Dynamic Content Extraction** - Scrape JavaScript-rendered pages
+- ✅ **Browser Debugging** - Inspect console errors, network requests
+- ✅ **Integration Testing** - End-to-end workflow validation
+- ✅ **Accessibility Testing** - Verify page structure and ARIA labels
+
+### NEVER Use For
+
+- ❌ Static HTML parsing (use curl + grep)
+- ❌ API testing (use curl directly)
+- ❌ File downloads (use wget/curl)
+- ❌ When simpler tools suffice
+
+## 🎯 Core Capabilities
+
+### Navigation & Page State
+
+**Tools:**
+- `browser_navigate` - Navigate to URL
+- `browser_navigate_back` - Go back in history
+- `browser_resize` - Set viewport size
+- `browser_wait_for` - Wait for text/conditions
+
+**Usage Patterns:**
+```
+Navigate: "Go to http://192.168.0.61:8123 (Home Assistant)"
+Verify: "Take snapshot to see page elements"
+Wait: "Wait for 'Dashboard' text to appear"
+```
+
+### Page Inspection
+
+**Tools:**
+- `browser_snapshot` - Accessibility tree snapshot (BEST for actions)
+- `browser_take_screenshot` - Visual screenshot (PNG/JPEG)
+- `browser_console_messages` - JavaScript console logs
+- `browser_network_requests` - Network activity
+
+**Snapshot vs Screenshot:**
+- **Snapshot** (preferred): Structured accessibility tree, actionable elements
+- **Screenshot**: Visual inspection only, can't interact with it
+
+**Usage:**
+```
+"Snapshot the Home Assistant dashboard"
+"Take screenshot of Grafana for documentation"
+"Check console for JavaScript errors"
+"Show network requests to debug API calls"
+```
+
+### Interaction
+
+**Tools:**
+- `browser_click` - Click elements (buttons, links)
+- `browser_type` - Type text into inputs
+- `browser_hover` - Hover over elements
+- `browser_press_key` - Keyboard input (Enter, Tab, etc.)
+- `browser_select_option` - Select dropdown options
+- `browser_drag` - Drag and drop
+- `browser_fill_form` - Fill multiple fields at once
+
+**Element References:**
+- Use accessibility snapshot to get `ref` (CSS selector)
+- Always provide human-readable `element` description
+- Example: `element="Login button"`, `ref="button[type='submit']"`
+
+**Usage:**
+```
+"Click the login button (ref: button.login-btn)"
+"Type 'admin' into username field"
+"Fill the form with: username=admin, password=***"
+```
+
+### Tab Management
+
+**Tools:**
+- `browser_tabs` - List, create, close, or select tabs
+
+**Usage:**
+```
+"Open a new tab"
+"List all open tabs"
+"Switch to tab 2"
+"Close current tab"
+```
+
+### Advanced Features
+
+**Evaluation (JavaScript Execution):**
+- `browser_evaluate` - Run JS on page or element
+
+**Handle Dialogs:**
+- `browser_handle_dialog` - Accept/dismiss alerts/confirms
+
+**Installation:**
+- `browser_install` - Install Chromium browser (run once)
+
+## 🎨 Workflow Patterns
+
+### Pattern 1: Service Health Check
+
+**Goal:** Verify deployed service is working
+
+```
+1. Navigate to service URL
+2. Snapshot to verify page loaded
+3. Check console for errors
+4. Check network requests for failed calls
+5. Take screenshot for documentation
+```
+
+**Example:**
+```
+AI: Checking Home Assistant health...
+    1. Navigating to http://192.168.0.61:8123
+    2. Snapshot shows: Login form present ✓
+    3. Console: No errors ✓
+    4. Network: All requests 200 OK ✓
+    5. Screenshot saved: home-assistant-login.png
+    Status: Healthy ✓
+```
+
+### Pattern 2: Configuration Verification
+
+**Goal:** Verify configuration changes are reflected in UI
+
+```
+1. Navigate to config page
+2. Snapshot to find form fields
+3. Check current values match expected
+4. Take before screenshot
+5. Update configuration
+6. Refresh and verify changes
+7. Take after screenshot
+```
+
+### Pattern 3: Integration Testing
+
+**Goal:** Test end-to-end workflow
+
+```
+1. Navigate to starting page
+2. Fill login form
+3. Wait for dashboard
+4. Click through workflow
+5. Verify final state
+6. Check for errors throughout
+```
+
+### Pattern 4: Web Scraping
+
+**Goal:** Extract data from dynamic JavaScript-rendered page
+
+```
+1. Navigate to target URL
+2. Wait for content to load
+3. Take snapshot to get structure
+4. Evaluate JavaScript to extract data
+5. Process and return results
+```
+
+## 🔗 Integration with Homelab Services
+
+### Home Assistant
+- **URL:** `http://192.168.0.61:8123`
+- **Use Cases:** Dashboard screenshots, automation testing, config verification
+- **Elements:** Login form, entity cards, automation triggers
+
+### Grafana (if deployed)
+- **URL:** `http://<grafana-host>:3000`
+- **Use Cases:** Dashboard exports, panel verification, alert testing
+
+### Kubernetes Dashboard (if deployed)
+- **URL:** `http://<k8s-dashboard-url>`
+- **Use Cases:** Deployment verification, resource monitoring
+
+### Local Dev Servers
+- **URL:** `http://localhost:<port>`
+- **Use Cases:** Test local changes before deployment
+
+## 💡 Best Practices
+
+### 1. Always Use Snapshot Before Interacting
+
+**Why:** Snapshot provides element references (`ref`) needed for clicks/typing
+
+**Pattern:**
+```
+1. Navigate to page
+2. Snapshot to see elements
+3. Use `ref` from snapshot for interactions
+```
+
+### 2. Wait for Dynamic Content
+
+**Pattern:**
+```
+1. Navigate to page
+2. Wait for key text/element to appear
+3. Then snapshot/interact
+```
+
+### 3. Check Console and Network
+
+**For debugging:**
+```
+1. Navigate to problematic page
+2. Check console messages for JS errors
+3. Check network requests for failed API calls
+4. Identify root cause
+```
+
+### 4. Take Screenshots for Documentation
+
+**Pattern:**
+```
+1. Complete configuration/deployment
+2. Navigate to relevant pages
+3. Take screenshots with descriptive names
+4. Save to docs/ or device reports/
+```
+
+### 5. Use Accessibility Snapshot Over Screenshot
+
+**For actions:** Always use snapshot, not screenshot
+**For documentation:** Use screenshot
+**For debugging:** Use both (snapshot for structure, screenshot for visuals)
+
+## 🚫 Anti-Patterns to Avoid
+
+### ❌ Don't Use Browser for API Testing
+
+**Bad:**
+```
+Open browser → Login → Navigate to API endpoint
+```
+
+**Good:**
+```
+curl http://api-host/endpoint -H "Authorization: Bearer $TOKEN"
+```
+
+### ❌ Don't Parse Screenshots
+
+**Bad:**
+```
+Take screenshot → Try to read text from image
+```
+
+**Good:**
+```
+Take snapshot → Extract text from accessibility tree
+```
+
+### ❌ Don't Use for Static Content
+
+**Bad:**
+```
+Open browser → Navigate to simple HTML page → Read content
+```
+
+**Good:**
+```
+curl http://site.com | grep -A5 "content"
+```
+
+## 🎯 Common Homelab Use Cases
+
+### 1. Verify Service Deployment
+
+```
+Deploy new service version:
+1. Deploy via nixos-rebuild or k8s apply
+2. Navigate to service URL with browser
+3. Snapshot to verify UI loaded
+4. Check console for errors
+5. Take screenshot for changelog
+6. Update device changelog with verification
+```
+
+### 2. Test Home Assistant Automation
+
+```
+Test automation trigger:
+1. Navigate to Home Assistant
+2. Login (if needed)
+3. Navigate to automations
+4. Click automation to trigger
+5. Wait for state change
+6. Verify automation executed
+7. Check logs
+```
+
+### 3. Extract Metrics from Web UI
+
+```
+Get current system stats from web UI:
+1. Navigate to monitoring dashboard
+2. Wait for metrics to load
+3. Evaluate JavaScript to extract data
+4. Return structured data
+5. Process for reports/alerts
+```
+
+### 4. Visual Regression Testing
+
+```
+Compare UI after changes:
+1. Take "before" screenshot
+2. Make configuration changes
+3. Deploy changes
+4. Take "after" screenshot
+5. Compare for unexpected changes
+```
+
+## 🔧 Configuration & Setup
+
+### Initial Setup
+
+```bash
+# Install Playwright browsers (first time only)
+# This is done via the browser_install tool
+"Install the Playwright browser"
+```
+
+### Browser Selection
+
+Default: Chromium (cross-platform, lightweight)
+
+**Configuration:** See `~/.cursor/mcp.json`
+
+### Storage for Screenshots
+
+**Default:** Current directory  
+**Recommended:** Organize by service/date
+
+**Pattern:**
+```
+devices/<device>/reports/screenshots/YYYY-MM-DD/
+services/<service>/docs/screenshots/
+```
+
+## 📊 Monitoring MCP Activity
+
+### Check if Browser Tools Available
+
+```
+Ask: "Are browser automation tools available?"
+AI: Will confirm Playwright MCP server status
+```
+
+### Debug Browser Issues
+
+```
+"Check browser console messages"
+"Show network requests"
+"Take screenshot to see current state"
+```
+
+## 🚀 Advanced Patterns
+
+### Pattern: Multi-Step Form Automation
+
+```
+1. Navigate to form page
+2. Snapshot to identify all fields
+3. Use browser_fill_form with all values at once
+4. Click submit button
+5. Wait for confirmation message
+6. Verify success
+```
+
+### Pattern: Authentication Flow Testing
+
+```
+1. Navigate to login page
+2. Type username and password
+3. Click login button
+4. Wait for dashboard to load
+5. Verify logged in (check for logout button)
+6. Take authenticated screenshot
+```
+
+### Pattern: Configuration Backup via Screenshots
+
+```
+For each critical config page:
+1. Navigate to page
+2. Take full-page screenshot
+3. Save with timestamp
+4. Store in device notes/backups/
+```
+
+## 📚 Tool Reference Quick Sheet
+
+| Tool | Purpose | Returns |
+|------|---------|---------|
+| `browser_navigate` | Go to URL | Page loaded |
+| `browser_snapshot` | Get page structure | Accessibility tree |
+| `browser_take_screenshot` | Visual capture | Image file |
+| `browser_click` | Click element | Action completed |
+| `browser_type` | Type text | Text entered |
+| `browser_wait_for` | Wait for condition | Condition met |
+| `browser_console_messages` | Get console logs | Log entries |
+| `browser_network_requests` | Get network activity | Request list |
+| `browser_evaluate` | Run JavaScript | JS result |
+| `browser_fill_form` | Fill multiple fields | Form filled |
+| `browser_tabs` | Manage tabs | Tab list/action |
+
+## 🔄 Integration with Other MCP Servers
+
+### Playwright + Filesystem MCP
+
+```
+Pattern: Screenshot → Save to docs
+1. Take screenshot with Playwright
+2. Save to appropriate docs/ location
+3. Update documentation with image reference
+```
+
+### Playwright + GitHub MCP
+
+```
+Pattern: Visual test → Report issue
+1. Navigate and test feature
+2. Find visual bug
+3. Take screenshot
+4. Create GitHub issue with screenshot link
+5. Assign for fixing
+```
+
+### Playwright + Memory MCP
+
+```
+Pattern: Remember login flows
+Store: "Remember that Home Assistant login is at :8123/login"
+Use: Quickly navigate to stored URLs
+```
+
+## 🎯 Custom Commands (Suggested)
+
+### Health Check Command
+
+**Pattern:** `web health [service-name]`
+
+**Implementation:**
+```
+1. Lookup service URL from Memory
+2. Navigate with Playwright
+3. Snapshot to verify page structure
+4. Check console for errors
+5. Check network for failures
+6. Report health status
+```
+
+### Visual Verify Command
+
+**Pattern:** `web verify [service-name]`
+
+**Implementation:**
+```
+1. Navigate to service
+2. Take snapshot for structure
+3. Take screenshot for visuals
+4. Save screenshot to device reports/
+5. Confirm visual state matches expected
+```
+
+---
+
+**Remember:** Playwright is powerful for dynamic web content, but use simpler tools (curl, grep) for static content and APIs. Always snapshot before interacting with page elements.
+
+**Integration Status:** Playwright MCP is active and ready for browser automation tasks across all homelab services.
+
+**Next Steps:** Try testing Home Assistant UI, verifying Grafana dashboards, or automating web-based configuration tasks.
+alwaysApply: true
+---

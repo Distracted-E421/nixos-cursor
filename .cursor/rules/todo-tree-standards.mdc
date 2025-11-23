@@ -1,0 +1,211 @@
+     STDIN
+   1 # TODO Tree Standards and Technical Debt Management
+   2 
+   3 This rule defines the standardized approach to technical debt tracking using the `todo-tree` extension.
+   4 
+   5 ## 🎯 Purpose
+   6 
+   7 Enable asynchronous development between AI agents (Maxim, Gorky, Claude, Gemini) by maintaining a shared, always-visible view of:
+   8 - Pending tasks
+   9 - Known bugs
+  10 - Technical debt
+  11 - Architectural notes
+  12 - Optimization opportunities
+  13 
+  14 ## 🏷️ Supported Tags
+  15 
+  16 | Tag | Priority | Color | Icon | Usage |
+  17 |-----|----------|-------|------|-------|
+  18 | **TODO** | Medium | 🟨 Yellow | \`check\` | General tasks, features to implement, missing functionality |
+  19 | **FIXME** | High | 🟥 Red | \`flame\` | Broken code, critical issues, runtime errors - needs immediate attention |
+  20 | **BUG** | High | 🟥 Red | \`bug\` | Confirmed bugs that need fixing |
+  21 | **HACK** | Medium | 🟪 Purple | \`tools\` | Workarounds, temporary fixes, non-idiomatic code needing refactoring |
+  22 | **NOTE** | Info | 🟦 Blue | \`note\` | Important context, explanations, warnings for future developers |
+  23 | **OPTIMIZE** | Low | 🟩 Green | \`zap\` | Working code that could be more efficient (performance, memory, etc.) |
+  24 | **REVIEW** | Medium | 🔶 Orange | \`eye\` | Code requiring review or validation from another agent/user |
+  25 | **DEPRECATED** | Info | ⬜ Grey | \`trash\` | Code slated for removal or replacement |
+  26 
+  27 ## 📝 Formatting Standards
+  28 
+  29 ### Single Line Format
+  30 \`\`\`python
+  31 # TODO: Description of the task
+  32 # FIXME: This crashes if input is null
+  33 # HACK: Temporary workaround for upstream bug
+  34 # NOTE: This value is set by systemd environment
+  35 \`\`\`
+  36 
+  37 ### With Context/Assignee (Recommended for Long-term Items)
+  38 \`\`\`python
+  39 # TODO(Agent): Specific task description
+  40 # FIXME(Maxim): Requires deep architectural changes
+  41 # HACK(2025-11-21): Remove after nixpkgs issue #12345 is fixed
+  42 # OPTIMIZE(Performance): Current O(n²), should be O(n log n)
+  43 \`\`\`
+  44 
+  45 ## 🎯 Agent Workflow
+  46 
+  47 ### 1. Scan on Entry
+  48 When starting work on a file or feature:
+  49 - Check Todo Tree sidebar for relevant tags
+  50 - Read context from TODO/NOTE comments
+  51 - Check FIXME tags for blockers
+  52 
+  53 ### 2. Add While Working
+  54 When encountering issues or deferring work:
+  55 \`\`\`nix
+  56 # TODO(Agent): Implement actual position editing
+  57 # FIXME: This requires ncurses-style dragging validation
+  58 # HACK: Hardcoded path until we package this properly
+  59 \`\`\`
+  60 
+  61 ### 3. Clean on Completion
+  62 When fixing issues:
+  63 - Remove the tag completely (don't comment it out)
+  64 - Update related documentation
+  65 - Commit with clear message referencing the tag
+  66 
+  67 ### 4. Update for Context Collapse Prevention
+  68 When changes affect future work:
+  69 \`\`\`nix
+  70 # NOTE: This environment variable is required for Arc A770 compatibility
+  71 # NOTE: We use systemd not cron per user preference (see .cursor/rules/)
+  72 \`\`\`
+  73 
+  74 ## ⚙️ Configuration
+  75 
+  76 The Todo Tree extension is configured in \`.vscode/settings.json\` (tracked in git).
+  77 
+  78 **Why git-tracked:** Ensures all agents (Maxim, Gorky) see the same configuration.
+  79 
+  80 ## 🗺️ Strategic TODO Map
+  81 
+  82 For high-level architectural TODOs, see: \`nixos/docs/TODO_MAP.md\`
+  83 
+  84 **Inline TODOs** = Tactical (code-level tasks)  
+  85 **TODO_MAP.md** = Strategic (system-level goals)
+  86 
+  87 ## 🚨 Critical TODOs (Require Immediate Attention)
+  88 
+  89 Based on initial audit (2025-11-21):
+  90 
+  91 1.  **\`nixos/modules/services/homelab-scripts.nix\`**
+  92     - FIXME: Hardcoded path prevents portability
+  93 
+  94 2.  **\`projects/gpu-window-manager/src/cli.rs\`**
+  95     - TODO/FIXME: Monitor position editing missing
+  96 
+  97 3.  **\`nixos/flake.nix\`**
+  98     - TODO: Refactor pi-server duplication
+  99 
+ 100 4.  **\`nixos/modules/desktop/niri-kde-integration.nix\`**
+ 101     - TODO: Consider overlay for brittle workarounds
+ 102 
+ 103 ## 🔄 Integration with Other Systems
+ 104 
+ 105 ### With Git
+ 106 \`\`\`bash
+ 107 # Search TODOs before committing
+ 108 git grep "TODO\|FIXME" --
+ 109 
+ 110 # Commit message format when fixing
+ 111 git commit -m "fix: Resolve FIXME in homelab-scripts hardcoded path"
+ 112 \`\`\`
+ 113 
+ 114 ### With Device Changelogs
+ 115 When fixing TODOs/FIXMEs that affect device config, update the device changelog.
+ 116 
+ 117 ## 🎨 Usage in Different File Types
+ 118 
+ 119 ### Nix Files
+ 120 \`\`\`nix
+ 121 # TODO: Add error handling for missing package
+ 122 # FIXME: This breaks on NixOS < 24.05
+ 123 # HACK: Workaround for nixpkgs issue #12345
+ 124 # NOTE: This option is hardware-specific (Arc A770)
+ 125 \`\`\`
+ 126 
+ 127 ### Rust Files
+ 128 \`\`\`rust
+ 129 // TODO: Implement async version
+ 130 // FIXME: Panics on invalid input
+ 131 // HACK: Temporary until upstream PR merges
+ 132 // OPTIMIZE: This allocates unnecessarily
+ 133 \`\`\`
+ 134 
+ 135 ### Shell Scripts
+ 136 \`\`\`bash
+ 137 # TODO: Add validation for empty variables
+ 138 # FIXME: Doesn't handle spaces in filenames
+ 139 # HACK: Using sleep instead of proper sync
+ 140 \`\`\`
+ 141 
+ 142 ## 📊 Metrics for Success
+ 143 
+ 144 ### Good TODO Hygiene
+ 145 - ✅ Each TODO has clear, actionable description
+ 146 - ✅ FIXMEs are prioritized and tracked
+ 147 - ✅ HACKs have context (why temporary, when to remove)
+ 148 - ✅ NOTEs prevent context collapse (explain "why")
+ 149 - ✅ TODOs are cleaned up when completed
+ 150 
+ 151 ## 🔍 Finding TODOs
+ 152 
+ 153 ### In Cursor/VS Code
+ 154 1. Open **Todo Tree** icon in sidebar
+ 155 2. View by tag type or file
+ 156 3. Click to jump to location
+ 157 
+ 158 ### Via Terminal
+ 159 \`\`\`bash
+ 160 # All TODOs in project
+ 161 rg "TODO|FIXME|HACK" --color=always | less -R
+ 162 
+ 163 # Only FIXMEs (urgent)
+ 164 rg "FIXME" --color=always
+ 165 
+ 166 # TODOs in specific directory
+ 167 rg "TODO" nixos/modules/
+ 168 \`\`\`
+ 169 
+ 170 ## 🎯 Context Collapse Prevention
+ 171 
+ 172 **Problem:** Without TODO tags, agents lose context between sessions and repeat work or introduce regressions.
+ 173 
+ 174 **Solution:** Use TODO/NOTE tags to preserve:
+ 175 1. **Why decisions were made** - \`NOTE: Using systemd not cron per user preference\`
+ 176 2. **What's incomplete** - \`TODO: Add error handling for edge case X\`
+ 177 3. **What's broken** - \`FIXME: Crashes on null input\`
+ 178 4. **What's temporary** - \`HACK: Remove after nixpkgs updates to 25.11\`
+ 179 
+ 180 **Result:** Agents can resume work seamlessly without asking "why did we do this?"
+ 181 
+ 182 ## 🚀 Advanced Patterns
+ 183 
+ 184 ### Multi-Agent Task Delegation
+ 185 \`\`\`python
+ 186 # TODO(Maxim): Research best NixOS package structure for this
+ 187 # TODO(Gorky): Test on neon-laptop after Maxim's changes
+ 188 \`\`\`
+ 189 
+ 190 ### Time-Boxed Cleanup
+ 191 \`\`\`nix
+ 192 # HACK(2025-11-21): Temporary workaround, revisit in 2 weeks
+ 193 # DEPRECATED(2026-01-01): Remove after migration to new system
+ 194 \`\`\`
+ 195 
+ 196 ### Priority Levels
+ 197 \`\`\`rust
+ 198 // FIXME(CRITICAL): Memory leak causes OOM after 24h
+ 199 // TODO(Low-Priority): Refactor for better readability
+ 200 // OPTIMIZE(Nice-to-have): Could use SIMD here
+ 201 \`\`\`
+ 202 
+ 203 ## 📚 Related Documentation
+ 204 
+ 205 - **Main standards:** [docs/TODO_STANDARDS.md](../../../docs/TODO_STANDARDS.md)
+ 206 - **Strategic map:** [nixos/docs/TODO_MAP.md](../../nixos/docs/TODO_MAP.md)
+ 207 
+ 208 ---
+ 209 
+ 210 **Key Principle:** TODO tags are not just reminders—they're **context preservation** for async agent collaboration. Use them liberally, clean them diligently.

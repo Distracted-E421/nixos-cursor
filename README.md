@@ -105,7 +105,7 @@ git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
 ### 1. Add to Flake
 ```nix
 {
-  inputs.nixos-cursor.url = "github:yourusername/nixos-cursor";
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor";
   
   outputs = { self, nixpkgs, nixos-cursor, ... }: {
     # ...
@@ -126,6 +126,24 @@ git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
 ```
 
 See `examples/` for full configurations.
+
+---
+
+## 🌿 Development & Contributing
+
+This project uses a **public/private branching strategy**:
+
+- **`main`**: Stable releases (public)
+- **`pre-release`**: Release candidates for testing (public)
+- **`dev`**: Active development (private)
+
+See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for full details.
+
+### Quick Links
+
+- [Branching Strategy](BRANCHING_STRATEGY.md) - Development workflow
+- [Scripts Documentation](scripts/README.md) - Automation tools
+- [Release Strategy](RELEASE_STRATEGY.md) - Versioning and releases
 
 ---
 

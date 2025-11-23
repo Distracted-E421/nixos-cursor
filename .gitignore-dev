@@ -1,0 +1,30 @@
+# Development branch - more permissive
+# This file is used only on dev branch to track .cursor folder
+
+# Build artifacts
+result
+result-*
+*.AppImage
+
+# Nix build outputs
+.direnv/
+.envrc
+
+# Editor artifacts (excluding .cursor)
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# Exclude sensitive .cursor contents
+.cursor/chat-history/*.md

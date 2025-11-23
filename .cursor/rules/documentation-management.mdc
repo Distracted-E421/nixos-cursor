@@ -1,0 +1,158 @@
+---
+alwaysApply: true
+---
+
+# Documentation Management and Maintenance Rules
+
+## 🎯 **Core Documentation Principles**
+
+1. **NEVER keep outdated or incorrect documentation** - Remove or update rather than accumulate
+2. **Consolidate redundant information** - Avoid multiple sources of truth
+3. **Update documentation immediately** when making related changes
+4. **Use dynamic references** - Link to actual files rather than copy content
+5. **Maintain consistency** across all README files and documentation
+
+## 📋 **Required Documentation Updates**
+
+### **When Editing Any File in `/devices/`**
+
+- ✅ **ALWAYS** update the relevant `devices/{device}/notes/device-changelog.md`
+- ✅ **Check** if the main [README.md](mdc:README.md) needs updating
+- ✅ **Update** device-specific README if scripts/services change
+- ✅ **Remove** any outdated references in related documentation
+
+### **When Creating New Scripts or Services**
+
+- ✅ **Document** purpose, usage, and dependencies immediately
+- ✅ **Add** to appropriate device changelog with structured entry
+- ✅ **Update** automation status in main README if applicable
+- ✅ **Check** for duplicate or superseded documentation to consolidate
+
+### **When Deprecating or Archiving Files**
+
+- ✅ **Move** to appropriate `archive/` directory
+- ✅ **Update** all documentation referencing the deprecated files
+- ✅ **Add** deprecation notice to device changelog
+- ✅ **Remove** from active documentation and READMEs
+
+## 🔄 **Documentation Review Process**
+
+### **Before Each Commit**
+
+1. **Scan** for temporary documentation files that should be integrated
+2. **Check** for outdated information in modified files
+3. **Verify** all internal links still work: `[file.ext](mdc:path/to/file.ext)`
+4. **Update** timestamps in documentation headers
+5. **Remove** contradictory or superseded information
+
+### **Weekly Documentation Maintenance**
+
+- Review [HOMELAB_AUTOMATION_TODO.md](mdc:HOMELAB_AUTOMATION_TODO.md) for completion status
+- Update device status in [README.md](mdc:README.md)
+- Consolidate temporary notes into permanent documentation
+- Archive completed project documentation appropriately
+
+## 🗂️ **File Organization Standards**
+
+### **Main Documentation Hub** ([README.md](mdc:README.md))
+
+- **Quick Status Dashboard** - Always current automation status
+- **Quick Start Commands** - Verified working examples
+- **Service Status** - Real device and service status
+- **Architecture Overview** - High-level system description
+
+### **Device-Specific Documentation**
+
+- `devices/{device}/README.md` - Device-specific setup and usage
+- `devices/{device}/notes/device-changelog.md` - All changes with timestamps
+- `devices/{device}/notes/` - Device-specific guides and troubleshooting
+
+### **Project Documentation** ([docs/](mdc:docs/))
+
+- **Guides** - Step-by-step procedures that work
+- **Decisions** - [DECISION_LOG.md](mdc:docs/DECISION_LOG.md) with rationale
+- **Architecture** - System design and integration patterns
+
+## 🚨 **Documentation Anti-Patterns to Avoid**
+
+### **NEVER Do These**
+
+- ❌ Create duplicate documentation for the same topic
+- ❌ Leave temporary documentation files uncommitted long-term
+- ❌ Copy-paste information instead of linking to source
+- ❌ Write documentation without testing the actual steps
+- ❌ Keep outdated automation status or device information
+
+### **ALWAYS Remove**
+
+- ❌ Conflicting information between documents
+- ❌ References to deprecated or moved files
+- ❌ Outdated installation or usage instructions
+- ❌ Dead internal links or broken references
+- ❌ Temporary notes that should be integrated elsewhere
+
+## 📊 **Documentation Quality Checklist**
+
+### **For Every Documentation Update**
+
+- [ ] **Accuracy**: All commands and examples tested
+- [ ] **Completeness**: No missing context or prerequisites
+- [ ] **Consistency**: Aligns with established patterns
+- [ ] **Currency**: Information is current and relevant
+- [ ] **Clarity**: Understandable by intended audience
+
+### **For Major Documentation Changes**
+
+- [ ] **Integration**: Consolidated related information
+- [ ] **Navigation**: Easy to find and follow
+- [ ] **Maintenance**: Plan for keeping updated
+- [ ] **Deprecation**: Removed outdated information
+- [ ] **Cross-references**: Links between related documents
+
+## 🔧 **Automated Documentation Patterns**
+
+### **Use These Templates for Consistency**
+
+#### **Device Changelog Entry Format**
+
+```markdown
+## YYYY-MM-DD HH:MM:SS - [TYPE]
+
+**Description**: Clear natural language description
+
+**Files**: List of affected files/components
+
+**Notes**: Additional context, deprecation info, or migration notes
+
+---
+```
+
+#### **Script Documentation Header**
+
+```python
+"""
+Script Purpose and Description
+
+Usage:
+    python script_name.py [options]
+
+Dependencies:
+    - List required packages
+    - System requirements
+
+Integration:
+    - How it fits with other scripts
+    - Related automation
+"""
+```
+
+## 🎯 **Immediate Actions Required**
+
+### **When Using This Rule**
+
+1. **Before committing**: Check for outdated references in your changes
+2. **After adding files**: Update relevant documentation immediately  
+3. **When deprecating**: Remove from active docs and add to changelog
+4. **During reviews**: Look for consolidation opportunities
+
+This rule ensures our documentation remains accurate, helpful, and doesn't create "weird ghosts of counterproductive code" in the Cursor index.

@@ -1,0 +1,176 @@
+# Single-Focus Research and Implementation Rule
+
+## 🎯 **Purpose**
+
+Maintain information integrity and veracity by focusing on one topic at a time when research requires deep accuracy.
+
+---
+
+## 📋 **The Rule**
+
+### **When Working on Complex Topics:**
+
+**IF** the AI assistant cannot use the browser tool to cross-reference information between multiple documents:
+
+**THEN** focus on **ONE topic at a time** to prevent:
+
+- Information cross-contamination
+- Incorrect assumptions from multiple contexts
+- Degraded information integrity
+- Long-term strategic hindering
+
+### **Examples of Complex Topics:**
+
+1. **Technical Research:**
+   - CPU offloading strategies
+   - Kubernetes architecture comparisons
+   - Network bandwidth optimization
+   - Quantization quality assessments
+
+2. **Strategic Planning:**
+   - Infrastructure decision making
+   - Multi-system orchestration planning
+   - Long-term architecture design
+
+3. **Cross-System Integration:**
+   - Home Assistant + AI integration
+   - Multi-device resource sharing
+   - Distributed compute strategies
+
+---
+
+## ✅ **How to Apply This Rule**
+
+### **Single-Focus Workflow:**
+
+1. **Choose One Topic:**
+   - Pick a single strategy, technology, or question
+   - Example: "Strategy 1D - CPU Core Partitioning"
+
+2. **Deep Dive:**
+   - Research thoroughly on that ONE topic
+   - Create comprehensive documentation
+   - Answer all related questions
+   - Test or simulate where possible
+
+3. **Complete Before Moving:**
+   - Finish documentation
+   - Commit changes
+   - Mark as "researched" or "complete"
+   - ONLY THEN move to next topic
+
+4. **Avoid Topic Mixing:**
+   - Don't jump between Kubernetes and CPU offloading in same session
+   - Don't mix hardware research with software framework research
+   - Keep contexts clean and isolated
+
+---
+
+## 🚫 **What NOT To Do**
+
+### **Anti-Patterns That Degrade Quality:**
+
+❌ **Don't:** Research 5 different CPU offloading strategies in one response
+✅ **Do:** Research Strategy 1A completely, document it, then move to 1B
+
+❌ **Don't:** Compare k3s vs k0s vs Ray vs vLLM all at once
+✅ **Do:** Deep dive on k3s first, then k0s separately, then Ray
+
+❌ **Don't:** Mix network bandwidth research with quantization benchmarking
+✅ **Do:** Complete network research, commit docs, then start quantization
+
+---
+
+## 🔄 **Exceptions: When Multi-Focus is OK**
+
+### **Browser Tool Available:**
+
+If the AI assistant can use `mcp_cursor-playwright` browser tools:
+
+- ✅ Can research multiple topics in parallel
+- ✅ Can cross-reference between sources
+- ✅ Browser provides fresh, verified information
+
+### **Simple Updates:**
+
+For non-research tasks:
+
+- ✅ Updating multiple changelogs
+- ✅ Fixing multiple typos across files
+- ✅ Applying same pattern to multiple configs
+
+### **Related Sub-Topics:**
+
+When topics are tightly coupled:
+
+- ✅ Researching GPU offloading AND the specific GPU's architecture
+- ✅ Documenting a strategy AND its implementation steps
+- ✅ Testing performance AND documenting results
+
+---
+
+## 📊 **Quality Metrics**
+
+### **Success Indicators:**
+
+- ✅ Each document is accurate and complete
+- ✅ No contradictory information between documents
+- ✅ Research is thorough, not superficial
+- ✅ Recommendations are based on solid understanding
+- ✅ User can trust the information for decision-making
+
+### **Failure Indicators:**
+
+- ❌ Information conflicts between documents
+- ❌ Superficial coverage of multiple topics
+- ❌ User has to fact-check every claim
+- ❌ Long-term strategic decisions hindered by bad info
+- ❌ Need to redo research later
+
+---
+
+## 🎯 **Current Application**
+
+### **Active Research Topics (Do One at a Time):**
+
+1. **CPU Core/RAM Partitioning** (Strategy 1D)
+2. **k3s vs k0s Decision** (Kubernetes)
+3. **Quantization Benchmarking** (Strategy 7)
+4. **Network Bandwidth Testing** (Foundation for Strategy 2/3)
+5. **framework CPU Performance** (Strategy 2A)
+6. **Wake-on-LAN Research** (Strategy 4A)
+7. **Ray vs K8s Evaluation** (Infrastructure)
+8. **Strategy 3C Feasibility** (Long-term goal)
+
+**Current Priority:** User will indicate which to research first.
+
+---
+
+## 🔧 **Integration with Existing Rules**
+
+### **Works With:**
+
+- **Documentation Management:** Single-focus ensures accurate docs
+- **Device Changelog:** Updates reflect focused, complete work
+- **Git Workflow:** Commit after completing one topic
+- **Dynamic Pathing:** Can focus on device-specific research
+
+### **Enforced By:**
+
+- AI assistant self-monitoring
+- User feedback on information quality
+- Commit message patterns (one topic per commit)
+- Documentation review process
+
+---
+
+## 💡 **User Can Override**
+
+The user can explicitly request multi-topic work:
+
+- "Research both X and Y together"
+- "Compare A vs B vs C in one document"
+
+But the AI should warn about potential information integrity risks.
+
+---

@@ -1,0 +1,350 @@
+---
+alwaysApply: true
+---
+
+# Safety Guardrails - Preventing Past Mistakes
+
+## 🚨 **Critical Incident Reference**
+
+On **October 18, 2025 at ~22:00 Central Time**, a rogue AI agent executed an overzealous "deep clean" operation on Obsidian that resulted in:
+
+- ❌ **Data Loss**: Cursor conversations, bash history, AppImages
+- ❌ **Session Invalidation**: All app session tokens cleared
+- ❌ **System Disruption**: Forced shutdown/logout
+- ❌ **SQLite Corruption**: VACUUM operation on Cursor database
+- ❌ **File Deletion**: SSH keys, shell configs, git config
+
+**Root Cause**: User requested "deep clean" and agent interpreted it too literally, executing destructive operations without adequate safeguards or confirmation.
+
+**Full Incident Report**: [OBSIDIAN_REPAIR_SUMMARY.md](mdc:OBSIDIAN_REPAIR_SUMMARY.md)
+
+## 🛡️ **Absolute Prohibitions**
+
+The following operations are **NEVER** allowed without **explicit, specific user confirmation** including the exact command to be run:
+
+### **❌ NEVER: Bulk File Deletion**
+
+```bash
+# PROHIBITED without explicit user approval:
+rm -rf ~/*
+rm -rf ~/.*
+find ~ -delete
+find ~ -name "*.log" -delete  # Unless explicitly requested
+```
+
+**Why**: Can delete user data, application configs, session tokens.
+
+**Exception**: User provides **exact** file path or pattern, and you confirm what will be deleted before executing.
+
+### **❌ NEVER: SQLite Operations on User Databases**
+
+```bash
+# ABSOLUTELY PROHIBITED:
+sqlite3 <any_db> "VACUUM;"
+sqlite3 <any_db> "PRAGMA optimize;"
+sqlite3 <any_db> "DELETE FROM ..."
+
+# Especially these paths:
+~/.config/Cursor/User/workspaceStorage/*/state.vscdb
+~/.config/Cursor/User/globalStorage/state.vscdb
+```
+
+**Why**: VACUUM can corrupt databases, especially when file handles are open. It destroyed all Cursor conversation history in the incident.
+
+**Exception**: **NEVER**. If database maintenance is needed, user must do it manually with apps closed.
+
+### **❌ NEVER: Session/History Clearing**
+
+```bash
+# PROHIBITED:
+history -c
+> ~/.bash_history
+rm ~/.bash_history
+pkill -u $USER  # Force kill all user processes
+loginctl terminate-session <session>
+```
+
+**Why**: Destroys shell history, invalidates sessions, can force logout and clear app tokens.
+
+**Exception**: User must execute these commands themselves if truly needed.
+
+### **❌ NEVER: Bulk Config Deletion**
+
+```bash
+# PROHIBITED:
+rm -rf ~/.config/*
+rm -rf ~/.local/*
+rm -rf ~/.cache/*  # Unless specifically requested for troubleshooting
+rm ~/.bashrc ~/.bash_profile ~/.profile
+```
+
+**Why**: Destroys application configurations, desktop environment settings, authentication tokens.
+
+**Exception**: Specific file deletion only, with user confirmation of exact path.
+
+### **❌ NEVER: System-Wide Forced Operations**
+
+```bash
+# PROHIBITED without explicit confirmation:
+sudo shutdown -h now
+sudo reboot
+loginctl reboot
+pkill -9 -u $USER
+systemctl --force --force reboot
+```
+
+**Why**: Forces system shutdown, kills processes without graceful cleanup, invalidates sessions.
+
+**Exception**: User must explicitly request system restart/shutdown.
+
+### **❌ NEVER: SSH Key Operations**
+
+```bash
+# PROHIBITED without explicit user instruction:
+rm ~/.ssh/id_*
+ssh-keygen -f ~/.ssh/id_rsa -N ""  # Overwriting existing
+```
+
+**Why**: Destroys authentication to remote systems, breaks git push access.
+
+**Exception**: User explicitly requests key regeneration with specific instructions.
+
+### **❌ NEVER: Git Destructive Operations**
+
+```bash
+# PROHIBITED without explicit user confirmation:
+git reset --hard HEAD~<n>  # Losing uncommitted work
+git clean -fdx  # Deleting untracked files
+rm -rf .git
+git push --force  # Without user explicitly typing this command
+```
+
+**Why**: Can lose uncommitted work, delete important files, corrupt repository.
+
+**Exception**: User types the exact git command they want to run.
+
+## ⚠️ **High-Risk Operations Requiring Confirmation**
+
+These operations require **explicit user approval** before execution:
+
+### **⚠️ CAUTION: Package Removal**
+
+```bash
+# REQUIRES CONFIRMATION:
+sudo apt remove <package>
+sudo apt autoremove
+sudo apt purge <package>
+nix-collect-garbage -d
+```
+
+**Confirmation Required**: "Should I remove package `<name>`? This will also remove: [list dependencies]"
+
+### **⚠️ CAUTION: Filesystem Cleanup**
+
+```bash
+# REQUIRES CONFIRMATION:
+find /tmp -delete
+rm -rf /tmp/*
+docker system prune -a
+```
+
+**Confirmation Required**: "Should I clean [directory/system]? This will remove: [estimate size/types]"
+
+### **⚠️ CAUTION: Service/Process Termination**
+
+```bash
+# REQUIRES CONFIRMATION:
+systemctl stop <important-service>
+pkill <process-name>
+killall <process>
+```
+
+**Confirmation Required**: "Should I stop service/process `<name>`? This may disrupt: [list potential impacts]"
+
+### **⚠️ CAUTION: Configuration Changes**
+
+```bash
+# REQUIRES CONFIRMATION for system-wide changes:
+sudo vim /etc/<config>
+sudo systemctl daemon-reload
+sudo nixos-rebuild switch
+```
+
+**Confirmation Required**: "Should I modify system configuration [file/setting]? This will affect: [description of impact]"
+
+## ✅ **Safe Operations (No Confirmation Needed)**
+
+These operations are **always safe** and require no special confirmation:
+
+### **✅ SAFE: Read Operations**
+
+```bash
+# Always allowed:
+cat <file>
+less <file>
+grep <pattern> <file>
+tail -f <log>
+ls -la
+find <path> -name <pattern>  # WITHOUT -delete
+git status
+git diff
+git log
+```
+
+### **✅ SAFE: Status Checks**
+
+```bash
+# Always allowed:
+systemctl status <service>
+ps aux
+top / htop
+df -h
+free -h
+ip addr
+ping <host>
+ssh <host> "status-command"
+```
+
+### **✅ SAFE: Documentation**
+
+```bash
+# Always allowed:
+echo "<content>" > docs/file.md
+vim docs/file.md
+git add docs/
+git commit -m "docs: ..."
+```
+
+### **✅ SAFE: Temporary File Creation**
+
+```bash
+# Always allowed:
+mktemp
+touch /tmp/test.txt
+echo "<content>" > /tmp/script.sh
+```
+
+## 🎯 **Decision Framework**
+
+Before executing ANY command, ask yourself:
+
+1. **Could this delete user data?**
+   - If yes: **HALT** - Get explicit confirmation with exact command
+
+2. **Could this disrupt the user's session?**
+   - If yes: **HALT** - Get explicit confirmation
+
+3. **Could this affect system stability?**
+   - If yes: **CONFIRM** first - Explain impact clearly
+
+4. **Is this a bulk operation?**
+   - If yes: **CONFIRM** first - List what will be affected
+
+5. **Is this reversible?**
+   - If no: **CONFIRM** first - User must approve irreversible actions
+
+**Default stance**: When in doubt, **DON'T**. Ask the user first.
+
+## 🔍 **Pattern Recognition**
+
+### **Red Flags That Should Trigger Confirmation**
+
+- User says "clean up" or "remove" without specifics
+- User says "optimize" or "compress" databases
+- User mentions "clearing" or "resetting" without details
+- User wants to "fix" something by removing files
+- User asks to "make more space" without specifying what to delete
+- User says "speed up" system without specific targets
+
+**Response**: Ask clarifying questions:
+- "Which specific files/directories should I clean?"
+- "Should I show you what will be removed before deleting?"
+- "Are you sure you want to delete [specific items]?"
+- "Do you have a backup of this data?"
+
+### **Safe Request Patterns**
+
+- User provides exact file paths to delete
+- User provides exact commands to run (you execute as-is)
+- User says "show me" or "list" (read-only)
+- User says "check" or "verify" (status checks)
+- User says "document" or "record" (documentation)
+
+## 📋 **Confirmation Template**
+
+When a high-risk operation is requested, use this template:
+
+```
+⚠️ **Confirmation Required**
+
+**Operation**: [Brief description]
+
+**Command**: `[exact command]`
+
+**Impact**: 
+- Will affect: [list what will be changed/deleted/stopped]
+- Cannot be undone: [Yes/No]
+- Estimated data loss: [size/number of files]
+
+**Recommendation**: [Safer alternative if one exists]
+
+**Proceed?** Type "yes" to confirm, or suggest an alternative approach.
+```
+
+## 🚫 **Conversation Halt Triggers**
+
+If ANY of these phrases/commands are detected, **IMMEDIATELY HALT** the conversation and warn the user:
+
+- `rm -rf ~/*`
+- `VACUUM` on any SQLite database in user directory
+- `history -c` or clearing bash history
+- `pkill -u $USER` or `loginctl terminate-session`
+- `rm ~/.ssh/id_*`
+- `rm ~/.bashrc` or similar shell configs
+- `rm -rf ~/.config/Cursor`
+- `find ~ -delete`
+
+**Halt Message**:
+
+```
+🚨 **SAFETY HALT**
+
+This operation resembles the October 18, 2025 incident that caused significant data loss on Obsidian.
+
+**Requested**: [command/operation]
+
+**Risk**: [description of potential harm]
+
+**Recommendation**: [safer alternative]
+
+I will NOT proceed with this operation without your EXPLICIT confirmation that you understand the risks and want to proceed.
+
+Type "I understand the risks and want to proceed with: [exact command]" to continue.
+```
+
+## 🔄 **Recovery Readiness**
+
+If a mistake does happen despite these guardrails:
+
+1. **STOP IMMEDIATELY** - Don't make it worse
+2. **Document what happened** - Create incident report
+3. **Check for backups** - Git, timeshift, snapshots
+4. **Inform user** - Be transparent about what occurred
+5. **Assist with recovery** - Help restore from backups
+6. **Learn and adapt** - Update these guardrails
+
+## 🎯 **Success Criteria**
+
+These guardrails are successful if:
+
+- ✅ No destructive operations execute without explicit user confirmation
+- ✅ User is always aware of potential impacts before changes
+- ✅ High-risk operations trigger clear warning prompts
+- ✅ Ambiguous requests result in clarifying questions
+- ✅ Zero incidents resembling the October 18 event
+
+---
+
+**Core Principle**: The AI assistant is a **tool**, not an autonomous agent. Destructive operations require human decision-making. When in doubt, **ask first, execute later**.
+
+**Remember the incident. Never repeat it.**

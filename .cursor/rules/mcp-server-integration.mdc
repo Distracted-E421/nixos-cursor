@@ -1,0 +1,88 @@
+---
+alwaysApply: true
+---
+## ⚡ Efficiency Guidelines
+
+### Multi-Step Operations
+
+When tasks involve multiple MCP servers, chain them efficiently:
+
+**Example: Document + Diagram + Commit**
+
+```
+1. Use Filesystem MCP to read existing docs
+2. Use D2MCP to generate architecture diagram
+3. Use Filesystem MCP to update documentation with diagram link
+4. Use GitHub MCP to commit all changes in single commit
+```
+
+### Error Handling
+
+- If an MCP server fails, report the error clearly
+- Fall back to alternative methods only when MCP truly unavailable
+- Always explain why falling back to non-MCP method
+
+---
+
+## 📚 Additional Resources
+
+- **[MCP Servers Documentation](mdc:docs/MCP_SERVERS_DOCUMENTATION.md)** - Complete setup guide
+- **[MCP Quick Reference](mdc:docs/MCP_SERVERS_QUICK_REFERENCE.md)** - Command examples
+- **[D2 Diagram Guide](mdc:nixos/docs/ARCHITECTURE_DIAGRAM.md)** - Real-world example
+
+---
+
+## 🔄 Integration Examples
+
+### Example 1: NixOS Configuration Update
+
+```
+1. NixOS MCP: Search for "hyprland" package
+2. Filesystem MCP: Read flake.nix
+3. [Manual edit]: Update flake with package
+4. D2MCP: Update architecture diagram (if structure changed)
+5. GitHub MCP: Commit with message "Add Hyprland to neon-laptop"
+```
+
+### Example 2: Documentation with Visualization
+
+```
+1. Filesystem MCP: Create new docs/SERVICE_ARCHITECTURE.md
+2. D2MCP: Generate service-topology.d2 and render to SVG
+3. Filesystem MCP: Embed SVG in markdown
+4. D2MCP: Also generate PNG for backup
+5. GitHub MCP: Push documentation update
+```
+
+### Example 3: Service Deployment with Browser Verification
+
+```
+1. NixOS MCP: Verify package availability
+2. Filesystem MCP: Update service configuration
+3. [Manual]: Deploy with nixos-rebuild or kubectl apply
+4. Playwright MCP: Navigate to service URL
+5. Playwright MCP: Take snapshot to verify page structure
+6. Playwright MCP: Check console for errors
+7. Playwright MCP: Check network requests for failures
+8. Playwright MCP: Take screenshot for documentation
+9. Filesystem MCP: Update device changelog with verification
+10. GitHub MCP: Commit changes with screenshot evidence
+```
+
+### Example 4: Multi-MCP Testing Workflow
+
+```
+1. Memory MCP: Retrieve stored service URL
+2. Playwright MCP: Navigate to service
+3. Playwright MCP: Test login flow
+4. Playwright MCP: Verify dashboard loads
+5. Playwright MCP: Check console for JS errors
+6. Playwright MCP: Analyze network performance
+7. D2MCP: Generate service architecture diagram
+8. Filesystem MCP: Create test report with screenshots
+9. GitHub MCP: Create issue if bugs found
+```
+
+---
+
+**Remember:** These MCP servers exist to make operations safer, more efficient, and more traceable. Always prefer them over raw terminal commands when applicable.

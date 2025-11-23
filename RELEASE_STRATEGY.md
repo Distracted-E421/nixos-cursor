@@ -1,9 +1,9 @@
 # Cursor with MCP - Release Strategy
 
-**Project**: cursor-with-mcp  
-**Repository**: (To be created) `github.com/yourusername/cursor-nixos`  
-**Status**: Pre-release (Phase 2 testing)  
-**Last Updated**: 2025-11-22  
+**Project**: cursor-with-mcp
+**Repository**: (To be created) `github.com/yourusername/cursor-nixos`
+**Status**: Pre-release (Phase 2 testing)
+**Last Updated**: 2025-11-22
 
 ---
 

@@ -1,0 +1,534 @@
+---
+alwaysApply: true
+---
+
+# Memory MCP Server Usage Patterns
+
+This rule defines how to effectively use the Memory MCP server for persistent context and knowledge retention across sessions.
+
+## 🧠 What Memory MCP Does
+
+The Memory MCP server provides persistent knowledge storage that survives:
+
+- Session restarts
+- Cursor application restarts
+- Context window resets
+- Multi-day gaps in conversations
+
+## 📝 When to Use Memory MCP
+
+### ALWAYS Store
+
+- ✅ **System Specifications** - Hardware details (GPUs, CPUs, RAM)
+- ✅ **User Preferences** - Wayland vs X11, systemd vs cron, coding styles
+- ✅ **Project Decisions** - Why certain architectures were chosen
+- ✅ **Device Configurations** - Special hardware setups, quirks
+- ✅ **Recurring Patterns** - Common workflows, debugging approaches
+- ✅ **Important Constraints** - Security requirements, compatibility needs
+- ✅ **Long-term Goals** - Migration plans, deployment roadmaps
+
+### NEVER Store
+
+- ❌ Temporary task-specific information
+- ❌ One-time debugging steps
+- ❌ Session-specific file paths
+- ❌ Sensitive tokens or passwords
+- ❌ Transient state information
+
+## 🎯 Memory Storage Patterns
+
+### Pattern 1: Explicit Storage Requests
+
+When user says "Remember [something]":
+
+```
+User: "Remember that Obsidian has Intel Arc A770 16GB + RTX 2080 8GB"
+AI Action: Store in Memory MCP as hardware configuration fact
+```
+
+### Pattern 2: Implicit Learning
+
+Store automatically when discovering important facts:
+
+```
+During conversation: User mentions preferring Wayland over X11
+AI Action: Create memory entry about display server preference
+```
+
+### Pattern 3: Decision Documentation
+
+After making significant choices:
+
+```
+After: Choosing to use NixOS flakes over channels
+AI Action: Store rationale and decision in memory
+```
+
+### Pattern 4: Problem-Solution Pairs
+
+When solving recurring issues:
+
+```
+After: Fixing Hyprland login loop issue
+AI Action: Store problem + solution for future reference
+```
+
+## 💡 Memory Organization Strategy
+
+### Categorize by Type
+
+**Hardware & Devices:**
+
+- Device specifications
+- GPU configurations
+- Network setup
+
+**Preferences & Conventions:**
+
+- Coding style preferences
+- Tool choices (e.g., systemd over cron)
+- Documentation format preferences
+
+**Project Knowledge:**
+
+- Architecture decisions
+- Migration status
+- Service dependencies
+
+**Troubleshooting:**
+
+- Known issues and fixes
+- Configuration quirks
+- Workarounds
+
+## 🔄 Memory Maintenance
+
+### Regular Review
+
+Periodically ask:
+
+- "What do you remember about my homelab setup?"
+- "Show me your stored knowledge about NixOS configuration"
+- "What hardware specs do you have stored?"
+
+### Update When Things Change
+
+```
+User: "I upgraded the Arc A770 to 32GB model"
+AI Action: Update existing memory entry with new spec
+```
+
+### Delete Outdated Information
+
+```
+User: "I no longer use the RTX 2080 in Obsidian"
+AI Action: Remove or update relevant memory entries
+```
+
+## 🎨 Memory Retrieval Best Practices
+
+### Cite Memory When Using It
+
+Always reference memory when applying stored knowledge:
+
+```
+"Based on your preference for Wayland [memory: MEMORY_ID], I'll configure..."
+```
+
+### Validate Before Major Decisions
+
+Before using critical stored information:
+
+```
+"I remember you have an Arc A770 [memory: MEMORY_ID]. Is this still accurate?"
+```
+
+### Offer Context from Memory
+
+Proactively use memory to provide better assistance:
+
+```
+"Since you're using NixOS [memory: MIGRATION_PLAN], I'll suggest Nix packages..."
+```
+
+## 🔗 Integration with Other MCP Servers
+
+### Memory + Filesystem MCP
+
+```
+Store: Common file locations and directory structures
+Use: Quickly navigate to frequently accessed paths
+```
+
+### Memory + GitHub MCP
+
+```
+Store: Repository conventions, branch naming patterns
+Use: Maintain consistency in commits and PRs
+```
+
+### Memory + NixOS MCP
+
+```
+Store: Preferred package versions, known working configurations
+Use: Suggest compatible packages and options
+```
+
+### Memory + D2MCP
+
+```
+Store: Diagram style preferences, color schemes
+Use: Generate consistent visual documentation
+```
+
+## 🎯 Custom Memory Triggers
+
+### Suggested Cursor Commands
+
+Create custom commands in Cursor to interact with Memory MCP:
+
+**`.remember`** - Explicitly store current context
+**`.recall [topic]`** - Retrieve stored knowledge about topic
+**`.forget [topic]`** - Remove outdated memory
+**`.memories`** - List all stored knowledge
+
+### Conversation Patterns That Should Trigger Storage
+
+**Pattern:** User corrects a repeated assumption
+
+```
+User: "No, I use KDE not GNOME"
+AI Action: Store desktop environment preference
+```
+
+**Pattern:** User explains a constraint
+
+```
+User: "I can't use Docker on this device due to kernel version"
+AI Action: Store device limitation
+```
+
+**Pattern:** User shares a successful solution
+
+```
+User: "Rebooting fixed the GPU passthrough issue"
+AI Action: Store troubleshooting solution
+```
+
+## 📊 Memory Health Indicators
+
+### Good Memory Usage
+
+- ✅ Rarely asking user to repeat information
+- ✅ Automatically applying stored preferences
+- ✅ Referencing past decisions appropriately
+- ✅ Building on previous conversations naturally
+
+### Poor Memory Usage
+
+- ❌ Storing too much transient information
+- ❌ Never citing memory sources
+- ❌ Contradicting stored knowledge
+- ❌ Forgetting to update outdated info
+
+## 🚀 Advanced Memory Patterns
+
+### Cross-Session Project Tracking
+
+```
+Session 1: Store "NixOS migration - neon-laptop complete"
+Session 2: Recall migration status, suggest next device
+Session 3: Update with "Framework laptop migrated"
+```
+
+### Preference Learning
+
+```
+Observation: User always chooses systemd over cron
+Action: Store preference, apply automatically
+Result: Suggest systemd services by default
+```
+
+### Problem History Tracking
+
+```
+Issue: Hyprland login loop on neon-laptop
+Solution: Fixed with greetd configuration
+Storage: Link problem + solution for future reference
+```
+
+## 📚 Documentation References
+
+- **[MCP Memory Server Guide](mdc:docs/MCP_MEMORY_SERVER_GUIDE.md)** - Complete usage guide
+- **[MCP Servers Documentation](mdc:docs/MCP_SERVERS_DOCUMENTATION.md)** - General MCP info
+
+---
+
+**Memory Principle:** The Memory MCP server is your persistent knowledge base. Use it to eliminate repetition, maintain continuity, and provide increasingly personalized assistance across all sessions.
+
+**Always:** Store what matters long-term, cite sources when using memories, and keep information current.
+# Memory MCP Server Usage Patterns
+
+This rule defines how to effectively use the Memory MCP server for persistent context and knowledge retention across sessions.
+
+## 🧠 What Memory MCP Does
+
+The Memory MCP server provides persistent knowledge storage that survives:
+
+- Session restarts
+- Cursor application restarts
+- Context window resets
+- Multi-day gaps in conversations
+
+## 📝 When to Use Memory MCP
+
+### ALWAYS Store
+
+- ✅ **System Specifications** - Hardware details (GPUs, CPUs, RAM)
+- ✅ **User Preferences** - Wayland vs X11, systemd vs cron, coding styles
+- ✅ **Project Decisions** - Why certain architectures were chosen
+- ✅ **Device Configurations** - Special hardware setups, quirks
+- ✅ **Recurring Patterns** - Common workflows, debugging approaches
+- ✅ **Important Constraints** - Security requirements, compatibility needs
+- ✅ **Long-term Goals** - Migration plans, deployment roadmaps
+
+### NEVER Store
+
+- ❌ Temporary task-specific information
+- ❌ One-time debugging steps
+- ❌ Session-specific file paths
+- ❌ Sensitive tokens or passwords
+- ❌ Transient state information
+
+## 🎯 Memory Storage Patterns
+
+### Pattern 1: Explicit Storage Requests
+
+When user says "Remember [something]":
+
+```
+User: "Remember that Obsidian has Intel Arc A770 16GB + RTX 2080 8GB"
+AI Action: Store in Memory MCP as hardware configuration fact
+```
+
+### Pattern 2: Implicit Learning
+
+Store automatically when discovering important facts:
+
+```
+During conversation: User mentions preferring Wayland over X11
+AI Action: Create memory entry about display server preference
+```
+
+### Pattern 3: Decision Documentation
+
+After making significant choices:
+
+```
+After: Choosing to use NixOS flakes over channels
+AI Action: Store rationale and decision in memory
+```
+
+### Pattern 4: Problem-Solution Pairs
+
+When solving recurring issues:
+
+```
+After: Fixing Hyprland login loop issue
+AI Action: Store problem + solution for future reference
+```
+
+## 💡 Memory Organization Strategy
+
+### Categorize by Type
+
+**Hardware & Devices:**
+
+- Device specifications
+- GPU configurations
+- Network setup
+
+**Preferences & Conventions:**
+
+- Coding style preferences
+- Tool choices (e.g., systemd over cron)
+- Documentation format preferences
+
+**Project Knowledge:**
+
+- Architecture decisions
+- Migration status
+- Service dependencies
+
+**Troubleshooting:**
+
+- Known issues and fixes
+- Configuration quirks
+- Workarounds
+
+## 🔄 Memory Maintenance
+
+### Regular Review
+
+Periodically ask:
+
+- "What do you remember about my homelab setup?"
+- "Show me your stored knowledge about NixOS configuration"
+- "What hardware specs do you have stored?"
+
+### Update When Things Change
+
+```
+User: "I upgraded the Arc A770 to 32GB model"
+AI Action: Update existing memory entry with new spec
+```
+
+### Delete Outdated Information
+
+```
+User: "I no longer use the RTX 2080 in Obsidian"
+AI Action: Remove or update relevant memory entries
+```
+
+## 🎨 Memory Retrieval Best Practices
+
+### Cite Memory When Using It
+
+Always reference memory when applying stored knowledge:
+
+```
+"Based on your preference for Wayland [memory: MEMORY_ID], I'll configure..."
+```
+
+### Validate Before Major Decisions
+
+Before using critical stored information:
+
+```
+"I remember you have an Arc A770 [memory: MEMORY_ID]. Is this still accurate?"
+```
+
+### Offer Context from Memory
+
+Proactively use memory to provide better assistance:
+
+```
+"Since you're using NixOS [memory: MIGRATION_PLAN], I'll suggest Nix packages..."
+```
+
+## 🔗 Integration with Other MCP Servers
+
+### Memory + Filesystem MCP
+
+```
+Store: Common file locations and directory structures
+Use: Quickly navigate to frequently accessed paths
+```
+
+### Memory + GitHub MCP
+
+```
+Store: Repository conventions, branch naming patterns
+Use: Maintain consistency in commits and PRs
+```
+
+### Memory + NixOS MCP
+
+```
+Store: Preferred package versions, known working configurations
+Use: Suggest compatible packages and options
+```
+
+### Memory + D2MCP
+
+```
+Store: Diagram style preferences, color schemes
+Use: Generate consistent visual documentation
+```
+
+## 🎯 Custom Memory Triggers
+
+### Suggested Cursor Commands
+
+Create custom commands in Cursor to interact with Memory MCP:
+
+**`.remember`** - Explicitly store current context
+**`.recall [topic]`** - Retrieve stored knowledge about topic
+**`.forget [topic]`** - Remove outdated memory
+**`.memories`** - List all stored knowledge
+
+### Conversation Patterns That Should Trigger Storage
+
+**Pattern:** User corrects a repeated assumption
+
+```
+User: "No, I use KDE not GNOME"
+AI Action: Store desktop environment preference
+```
+
+**Pattern:** User explains a constraint
+
+```
+User: "I can't use Docker on this device due to kernel version"
+AI Action: Store device limitation
+```
+
+**Pattern:** User shares a successful solution
+
+```
+User: "Rebooting fixed the GPU passthrough issue"
+AI Action: Store troubleshooting solution
+```
+
+## 📊 Memory Health Indicators
+
+### Good Memory Usage
+
+- ✅ Rarely asking user to repeat information
+- ✅ Automatically applying stored preferences
+- ✅ Referencing past decisions appropriately
+- ✅ Building on previous conversations naturally
+
+### Poor Memory Usage
+
+- ❌ Storing too much transient information
+- ❌ Never citing memory sources
+- ❌ Contradicting stored knowledge
+- ❌ Forgetting to update outdated info
+
+## 🚀 Advanced Memory Patterns
+
+### Cross-Session Project Tracking
+
+```
+Session 1: Store "NixOS migration - neon-laptop complete"
+Session 2: Recall migration status, suggest next device
+Session 3: Update with "Framework laptop migrated"
+```
+
+### Preference Learning
+
+```
+Observation: User always chooses systemd over cron
+Action: Store preference, apply automatically
+Result: Suggest systemd services by default
+```
+
+### Problem History Tracking
+
+```
+Issue: Hyprland login loop on neon-laptop
+Solution: Fixed with greetd configuration
+Storage: Link problem + solution for future reference
+```
+
+## 📚 Documentation References
+
+- **[MCP Memory Server Guide](mdc:docs/MCP_MEMORY_SERVER_GUIDE.md)** - Complete usage guide
+- **[MCP Servers Documentation](mdc:docs/MCP_SERVERS_DOCUMENTATION.md)** - General MCP info
+
+---
+
+**Memory Principle:** The Memory MCP server is your persistent knowledge base. Use it to eliminate repetition, maintain continuity, and provide increasingly personalized assistance across all sessions.
+
+**Always:** Store what matters long-term, cite sources when using memories, and keep information current.

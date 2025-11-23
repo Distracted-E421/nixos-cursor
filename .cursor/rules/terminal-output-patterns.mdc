@@ -1,0 +1,310 @@
+---
+globs: *.py,*.sh
+description: Terminal output patterns and progress feedback design for request-based optimization
+---
+
+# Terminal Output Patterns for Request-Based Workflow
+
+## 🎯 Core Understanding
+
+**The user operates on request-based pricing, not token-based:**
+
+- Each interaction = 1 request (regardless of tokens used)
+- **Goal:** Maximize work per request, not minimize tokens
+- More tokens per request = better value
+- Terminal cancellation without message wastes a request
+
+**Terminal Visibility Context:**
+
+- ❌ AI cannot see real-time output (only after completion or cancellation)
+- ✅ User sees output in real-time
+- ✅ AI can see all output after user cancels
+- ⚠️ Ambiguous cancellation wastes requests (AI doesn't know why)
+
+---
+
+## 📏 Output Pattern Rules
+
+### Rule 1: Use Newlines, Not Carriage Returns
+
+**Problem:** Carriage returns (`\r`) flash/don't update properly in user's terminal
+
+```python
+# ❌ BAD - Uses carriage return (flashes, hard to read)
+for i, item in enumerate(items):
+    print(f"Processing {i}/{total}...", end='\r')
+```
+
+```python
+# ✅ GOOD - Uses newlines (clear progress every N items)
+for i, item in enumerate(items):
+    if i % 50 == 0 or i == total - 1:
+        print(f"  [{i}/{total}] Processing...")
+```
+
+```bash
+# ❌ BAD - Overwrites same line
+echo -ne "\r[$current/$total] Processing..."
+```
+
+```bash
+# ✅ GOOD - New line for progress updates
+if (( current % 10 == 0 )); then
+    echo "  [$current/$total] Processing..."
+fi
+```
+
+### Rule 2: Checkpoint-Style Output
+
+Print status **AFTER** completing each major stage, not during:
+
+```python
+# ✅ GOOD - Checkpoint pattern
+print("🔍 Stage 1: Scanning files...")
+files = scan_files()  # Long operation
+print(f"  ✅ Found {len(files)} files")
+
+print("🔨 Stage 2: Processing files...")
+process_files(files)  # Long operation  
+print(f"  ✅ Processed {len(files)} files")
+
+print("💾 Stage 3: Saving results...")
+save()  # Long operation
+print("  ✅ Results saved")
+```
+
+### Rule 3: Diagnostic Output Before Long Operations
+
+Always print BEFORE starting anything that might take >5 seconds:
+
+```python
+print("🔄 Comparing documents (this may take a moment)...")
+print(f"  Total comparisons to perform: {total_comparisons}")
+# Now do the long operation
+```
+
+```bash
+echo "🔄 Running database migration (may take 2-3 minutes)..."
+echo "  Tables to migrate: $table_count"
+# Now run migration
+```
+
+**Why:** If it hangs/stalls, user knows what it was trying to do
+
+### Rule 4: Progress Milestones for Long Operations
+
+For operations >1000 iterations, print milestones:
+
+```python
+# ✅ GOOD - Milestone updates
+total = 35000
+for i, item in enumerate(items, 1):
+    process(item)
+    # Update every 500 items or at end
+    if i % 500 == 0 or i == total:
+        print(f"  [{i}/{total}] comparisons...")
+```
+
+---
+
+## 🛑 Handling Terminal Cancellation
+
+### Design for Diagnosis from Partial Output
+
+When user cancels terminal, AI sees all output up to that point. Design scripts so partial output is diagnostic:
+
+```python
+#!/usr/bin/env python3
+"""Script designed for cancellation diagnosis"""
+
+def main():
+    print("🚀 Starting operation...")
+    print(f"📁 Working directory: {Path.cwd()}")
+    print(f"⚙️  Configuration: {config}")
+    print()
+    
+    # Stage markers help locate where it stopped
+    print("=" * 50)
+    print("STAGE 1: Initialization")
+    print("=" * 50)
+    init()
+    print("✅ Stage 1 complete\n")
+    
+    print("=" * 50)
+    print("STAGE 2: Data Processing")  
+    print("=" * 50)
+    process_data()
+    print("✅ Stage 2 complete\n")
+    
+    # If cancelled, AI sees which stage it was in
+```
+
+### Error Context in Output
+
+When something fails, print enough context:
+
+```python
+try:
+    result = risky_operation(param)
+except Exception as e:
+    print(f"\n❌ Operation failed in stage: {current_stage}")
+    print(f"   Parameter: {param}")
+    print(f"   Error: {e}")
+    print(f"   Working on: {current_item}")
+    raise
+```
+
+---
+
+## 📊 Progress Update Intervals
+
+| Operation Size | Update Frequency |
+|----------------|------------------|
+| < 100 items | Every 10 or at end |
+| 100-1000 items | Every 50 |
+| 1000-10000 items | Every 500 |
+| > 10000 items | Every 1000 or skip (too slow) |
+
+**Rationale:** Balance between feedback and output spam
+
+---
+
+## 🎨 Output Templates
+
+### Python Long-Running Script
+
+```python
+#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+def main():
+    print("🚀 Starting operation...")
+    print(f"📁 Directory: {Path.cwd()}")
+    print()
+    
+    # Stage 1
+    print("🔍 Stage 1: Scanning...")
+    items = scan()
+    print(f"  ✅ Found {len(items)} items")
+    print()
+    
+    # Stage 2 with progress
+    print("🔨 Stage 2: Processing...")
+    total = len(items)
+    for i, item in enumerate(items, 1):
+        process(item)
+        # Milestone updates
+        if i % 50 == 0:
+            print(f"  [{i}/{total}] processed...")
+    print(f"  ✅ Processed {total} items")
+    print()
+    
+    # Stage 3
+    print("💾 Stage 3: Saving...")
+    save()
+    print("  ✅ Saved")
+    print()
+    
+    print("✅ Operation complete!")
+    print(f"📊 Summary: {total} items processed")
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Print where we stopped
+        print("\n⚠️  Cancelled by user")
+        print(f"   Progress: {current_stage}")
+        sys.exit(130)
+    except Exception as e:
+        print(f"\n❌ Failed: {e}")
+        print(f"   Stage: {current_stage}")
+        sys.exit(1)
+```
+
+### Bash Long-Running Script
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+echo "🚀 Starting operation..."
+echo "📁 Directory: $(pwd)"
+echo ""
+
+# Stage 1
+echo "🔍 Stage 1: Finding files..."
+files=($(find . -type f -name "*.txt"))
+echo "  ✅ Found ${#files[@]} files"
+echo ""
+
+# Stage 2 with progress
+echo "🔨 Stage 2: Processing..."
+total=${#files[@]}
+current=0
+for file in "${files[@]}"; do
+    process_file "$file"
+    ((current++))
+    # Update every 10 files
+    if (( current % 10 == 0 )); then
+        echo "  [$current/$total] processed..."
+    fi
+done
+echo "  ✅ Processed $total files"
+echo ""
+
+# Stage 3
+echo "💾 Stage 3: Cleanup..."
+cleanup
+echo "  ✅ Cleanup complete"
+echo ""
+
+echo "✅ Operation complete!"
+echo "📊 Summary: $total files processed"
+```
+
+---
+
+## 🔍 Cancellation Diagnosis Rule
+
+**If terminal cancelled with no accompanying user message:**
+
+1. **Check terminal output** for last completed stage
+2. **Look for stage markers** to identify where it stopped
+3. **Check for error messages** in output
+4. **Note progress numbers** to understand if stuck or slow
+5. **Infer issue** from context (e.g., stopped at "comparing 35000 items" = too slow)
+
+**Then respond appropriately:**
+
+- If slow operation: Offer to optimize or skip
+- If error visible: Fix the error
+- If stalled: Add timeout or break into smaller operations
+- If unclear: Ask user what happened
+
+---
+
+## ✅ Testing Checklist
+
+Before deploying any long-running script:
+
+- [ ] Prints purpose and configuration at start
+- [ ] Uses newlines (`\n`) not carriage returns (`\r`)
+- [ ] Shows progress at reasonable intervals
+- [ ] Prints stage completion confirmations
+- [ ] Announces before each long operation
+- [ ] Includes stage markers for diagnosis
+- [ ] Handles Ctrl+C gracefully with context
+- [ ] Final summary shows what was accomplished
+
+---
+
+## 🔗 Related
+
+- [script-progress-feedback.mdc](mdc:.cursor/rules/script-progress-feedback.mdc) - General progress feedback rules
+- [scripts/README.md](mdc:scripts/README.md) - Script templates
+
+---
+
+**Remember:** User can't tell you mid-execution if something is wrong. Design output so they know it's working, and you can diagnose from partial output if they cancel! 🎯

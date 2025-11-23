@@ -1,0 +1,167 @@
+---
+alwaysApply: true
+---
+# SSH Efficiency and Remote Operations
+
+## 🔗 **SSH Capabilities**
+
+This homelab has **passwordless SSH** configured across all devices, enabling efficient remote operations without interactive authentication.
+
+## **⚡ SSH Usage Philosophy**
+
+### **When to Use SSH**
+
+- **Efficiency First**: Use SSH to avoid wasteful back-and-forth token exchanges
+- **Multi-step Operations**: When remote tasks require multiple commands in sequence
+- **Device-specific Tasks**: Operations that must run on specific hardware
+- **Testing and Validation**: Verifying deployments and configurations remotely
+- **Resource Management**: Checking status, installing dependencies, managing services
+
+### **SSH Over Manual Steps**
+
+Rather than:
+
+1. Ask user to run command
+2. Wait for output  
+3. Analyze result
+4. Ask user to run another command
+5. Repeat...
+
+**Use SSH directly to**:
+
+1. Connect to target device
+2. Execute complete workflow  
+3. Report final results
+
+## **🎯 Device SSH Configuration**
+
+### **Available Connections**
+
+**Always specify the user explicitly in SSH commands:**
+
+- `ssh e421@neon-laptop` - Primary testing environment (**user: e421**)
+- `ssh evie@Evie-Desktop` - Secondary testing environment (**user: evie**) ⚠️ **Different user!**
+- `ssh e421@pi-server` - Production services (**user: e421**)
+- `ssh e421@framework` - Mobile workstation (**user: e421**, when available)
+
+⚠️ **Note**: neon-laptop SSH is currently **not working** (Tailscale reachable but SSH times out). Needs debugging.
+
+### **Standard Remote Patterns**
+
+#### **Python Environment Setup**
+
+```bash
+# Always specify user (e421)
+ssh e421@neon-laptop "cd /home/e421/homelab/devices/neon-laptop/python-env && source venv/bin/activate && python -m lib.homelab_scheduler status"
+```
+
+#### **Service Management**
+
+```bash  
+# Always specify user (e421)
+ssh e421@pi-server "systemctl --user status homelab-scheduler"
+```
+
+#### **Dependency Installation**
+
+```bash
+# Note different user (evie) for Evie-Desktop
+ssh evie@Evie-Desktop "cd /home/evie/homelab/devices/Evie-Desktop/python-env && source venv/bin/activate && pip install APScheduler==3.10.4"
+```
+
+## 🐛 **SSH Troubleshooting**
+
+### **Current Known Issues**
+
+#### **neon-laptop SSH Not Working**
+
+**Symptoms**:
+- Hostname resolves via Tailscale: `neon-laptop.darter-fujita.ts.net` → `100.125.197.86`
+- Ping fails: `100% packet loss`
+- SSH connection times out on port 22
+
+**Possible Causes**:
+1. SSH daemon not running on neon-laptop
+2. Tailscale not active on neon-laptop
+3. Firewall blocking port 22
+4. neon-laptop powered off/sleeping
+
+**Diagnostic Steps**:
+```bash
+# Check Tailscale status
+tailscale status | grep neon-laptop
+
+# Try direct IP if hostname fails
+ssh e421@100.125.197.86
+
+# Check if other Tailscale services work
+ping -c 2 100.125.197.86
+```
+
+**Resolution**: Requires physical access to neon-laptop or user intervention to start SSH/Tailscale services.
+
+## **🤖 Human-in-the-Loop Considerations**
+
+### **When to Use SSH Autonomously**
+
+- ✅ Status checks and information gathering
+- ✅ Installing known dependencies
+- ✅ Running automation scripts
+- ✅ Configuration validation
+- ✅ Log analysis and troubleshooting
+- ✅ Service management (start/stop/restart)
+
+### **When to Involve Human**
+
+- ⚠️ System modifications that could affect stability  
+- ⚠️ Security-related changes (firewall, permissions)
+- ⚠️ Breaking changes to critical services
+- ⚠️ Operations on production data without backups
+- ⚠️ Hardware-specific operations (GPU, storage)
+
+### **Default Approach**
+
+- **Be proactive**: Use SSH for routine operations
+- **Think ahead**: Consider if human intervention might be needed
+- **Communicate clearly**: Explain what you're doing via SSH
+- **Error gracefully**: If SSH operations fail, report clearly and suggest alternatives
+
+## **💡 Efficiency Examples**
+
+### **Instead of asking user to check status**
+
+```
+❌ "Can you SSH to neon-laptop and check if the scheduler is running?"
+✅ Direct SSH: ssh e421@neon-laptop "python -m lib.homelab_scheduler status"
+```
+
+**Always specify user**: `e421` for most devices, `evie` for Evie-Desktop
+
+### **Instead of multiple manual steps**
+
+```
+❌ "Please install APScheduler, then test the import, then run the status command"
+✅ Single SSH workflow combining all steps with proper error handling
+```
+
+### **Instead of back-and-forth debugging**
+
+```
+❌ Multiple rounds of "try this command, what do you see?"
+✅ SSH to gather comprehensive diagnostics in one operation
+```
+
+## **🎲 Decision Framework**
+
+**For any remote operation, ask:**
+
+1. **Can I do this safely via SSH?** (Usually yes for standard operations)
+2. **Would this save multiple back-and-forth exchanges?** (If yes, use SSH)
+3. **Could this impact system stability?** (If major impact, consider involving human)
+4. **Do I have enough context to handle errors?** (If no, communicate the plan first)
+
+**Default**: Use SSH efficiently, communicate what you're doing, handle errors gracefully.
+
+This approach maximizes productivity while maintaining appropriate caution for system safety.
+
+---

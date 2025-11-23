@@ -1,0 +1,337 @@
+---
+globs: *.py,*.sh
+description: Script development standards requiring user feedback and progress indicators
+---
+
+# Script Progress Feedback and User Experience Standards
+
+## 🎯 Core Principle
+
+**All scripts MUST provide clear, real-time feedback to the user about what's happening.**
+
+Users should never wonder:
+
+- ❓ Is it running or frozen?
+- ❓ How long will this take?
+- ❓ What is it doing right now?
+- ❓ Did it crash or is it just slow?
+
+---
+
+## 📋 Required Elements
+
+### 1. **Startup Feedback** (Required)
+
+Every script must print:
+
+- Script name/purpose
+- What it's about to do
+- Any important parameters
+
+```python
+# Python Example
+print("🚀 Starting tech debt scan...")
+print(f"📁 Scanning: {repo_root}")
+print(f"⚙️  Mode: {'full' if args.full else 'quick'}\n")
+```
+
+```bash
+# Bash Example
+echo "🚀 Starting system backup..."
+echo "📁 Source: $SOURCE_DIR"
+echo "💾 Destination: $BACKUP_DIR"
+echo ""
+```
+
+### 2. **Progress Indicators** (Required)
+
+#### For Known-Length Operations
+
+Use progress bars or percentage completion:
+
+```python
+# Python with progress bar
+from tqdm import tqdm
+
+for item in tqdm(items, desc="Processing files"):
+    process(item)
+```
+
+```bash
+# Bash with counter
+total=${#files[@]}
+current=0
+for file in "${files[@]}"; do
+    ((current++))
+    echo "[$current/$total] Processing $file..."
+    process_file "$file"
+done
+```
+
+#### For Unknown-Length Operations
+
+Use spinner or activity indicator:
+
+```python
+# Python spinner
+import sys
+import time
+
+def long_operation():
+    spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    idx = 0
+    while processing:
+        sys.stdout.write(f'\r{spinner[idx % len(spinner)]} Processing...')
+        sys.stdout.flush()
+        idx += 1
+        time.sleep(0.1)
+    sys.stdout.write('\r✅ Complete!     \n')
+```
+
+```bash
+# Bash spinner
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    while kill -0 $pid 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf " [%c] " "$spinstr"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# Usage:
+long_running_command &
+spinner $!
+echo "✅ Complete!"
+```
+
+### 3. **Stage Announcements** (Required)
+
+Print what stage the script is in:
+
+```python
+print("🔍 Scanning for hardcoded paths...")
+# ... do work ...
+print(f"  ✅ Found {count} hardcoded path references")
+
+print("🔍 Scanning for TODO/FIXME comments...")
+# ... do work ...
+print(f"  ✅ Found {count} TODO/FIXME comments")
+```
+
+### 4. **Completion Status** (Required)
+
+Always indicate final status:
+
+```python
+# Success
+print("\n✅ Scan complete!")
+print(f"📊 Processed {total} files in {duration:.2f}s")
+
+# Failure
+print("\n❌ Scan failed!")
+print(f"⚠️  Error: {error_message}")
+sys.exit(1)
+```
+
+### 5. **Verbose/Debug Mode** (Recommended)
+
+Provide optional verbose output:
+
+```python
+parser.add_argument('-v', '--verbose', action='store_true', 
+                    help='Show detailed progress')
+
+if args.verbose:
+    print(f"  Processing {filename}...")
+```
+
+---
+
+## 🚫 Anti-Patterns to Avoid
+
+### ❌ Silent Operation
+
+```python
+# BAD - no feedback
+for file in files:
+    process(file)
+```
+
+### ❌ Only Error Output
+
+```python
+# BAD - only shows when it fails
+try:
+    risky_operation()
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+### ❌ Unclear Status
+
+```python
+# BAD - is it done or still running?
+print("Processing...")
+long_operation()  # No feedback during this
+```
+
+---
+
+## ✅ Complete Examples
+
+### Python Script Template with Progress
+
+```python
+#!/usr/bin/env python3
+"""
+Script with proper progress feedback
+"""
+import sys
+import time
+from pathlib import Path
+
+def main():
+    print("🚀 Starting operation...")
+    print(f"📁 Working directory: {Path.cwd()}")
+    print()
+    
+    # Stage 1
+    print("🔍 Stage 1: Scanning files...")
+    files = scan_files()
+    print(f"  ✅ Found {len(files)} files")
+    
+    # Stage 2 with progress
+    print("🔨 Stage 2: Processing files...")
+    for i, file in enumerate(files, 1):
+        print(f"  [{i}/{len(files)}] {file.name}...", end='\r')
+        process_file(file)
+    print(f"  ✅ Processed {len(files)} files" + " " * 30)
+    
+    # Stage 3
+    print("💾 Stage 3: Saving results...")
+    save_results()
+    print("  ✅ Results saved")
+    
+    # Complete
+    print("\n✅ Operation complete!")
+    print(f"📊 Summary: {len(files)} files processed successfully")
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n⚠️  Operation cancelled by user")
+        sys.exit(130)
+    except Exception as e:
+        print(f"\n❌ Operation failed: {e}")
+        sys.exit(1)
+```
+
+### Bash Script Template with Progress
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Colors for better visibility
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}🚀 Starting operation...${NC}"
+echo "📁 Working directory: $(pwd)"
+echo ""
+
+# Stage 1
+echo -e "${BLUE}🔍 Stage 1: Finding files...${NC}"
+files=($(find . -name "*.txt"))
+echo -e "  ${GREEN}✅ Found ${#files[@]} files${NC}"
+
+# Stage 2 with progress
+echo -e "${BLUE}🔨 Stage 2: Processing files...${NC}"
+total=${#files[@]}
+current=0
+for file in "${files[@]}"; do
+    ((current++))
+    echo -ne "  [$current/$total] Processing $(basename "$file")...\r"
+    # Do work here
+    sleep 0.1
+done
+echo -e "  ${GREEN}✅ Processed $total files${NC}          "
+
+# Complete
+echo ""
+echo -e "${GREEN}✅ Operation complete!${NC}"
+echo "📊 Summary: $total files processed successfully"
+```
+
+---
+
+## 🎨 Progress Indicators Reference
+
+### Emoji Indicators
+
+- 🚀 Starting/Launching
+- 🔍 Scanning/Searching
+- 🔨 Processing/Building
+- 💾 Saving/Writing
+- ✅ Success/Complete
+- ❌ Error/Failure
+- ⚠️  Warning
+- 📊 Results/Summary
+- 📁 Directory/Files
+- ⏳ Waiting/Long operation
+- 🔄 Syncing/Updating
+
+### Spinners (Unicode)
+
+- `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` - Braille dots
+- `◐◓◑◒` - Circles
+- `←↖↑↗→↘↓↙` - Arrows
+- `⣾⣽⣻⢿⡿⣟⣯⣷` - Growing dots
+
+---
+
+## 📏 Best Practices
+
+1. **Start immediately** - Print startup message before any delay
+2. **Update regularly** - At least every 2-3 seconds for long operations
+3. **Use color sparingly** - Don't rely on it (some terminals don't support it)
+4. **Clear line endings** - Use `\r` for updates, `\n` for new lines
+5. **Handle interrupts** - Catch Ctrl+C gracefully
+6. **Show errors clearly** - Make failures obvious with ❌ or ERROR:
+7. **Provide timing** - Show how long operations took
+8. **Log to file** - For automated runs, also log to file
+
+---
+
+## 🧪 Testing Checklist
+
+Before committing any script, verify:
+
+- [ ] Clear startup message appears immediately
+- [ ] User knows what the script is doing at each stage
+- [ ] Progress is visible for operations >3 seconds
+- [ ] Completion status is clearly indicated
+- [ ] Errors are caught and reported clearly
+- [ ] Ctrl+C exits gracefully with message
+- [ ] Works in non-interactive mode (cron, ssh)
+- [ ] No ambiguous states (is it frozen or working?)
+
+---
+
+## 🔗 Related
+
+- [scripts/README.md](mdc:scripts/README.md) - Script templates and standards
+- [core/automation/README.md](mdc:core/automation/README.md) - Automation framework
+
+---
+
+**Remember:** Users should feel confident the script is working, not worried it's frozen! 🎯

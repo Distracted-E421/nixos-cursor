@@ -1,0 +1,237 @@
+---
+description: Emergency development mode for neon-laptop during critical situations
+alwaysApply: false
+---
+
+# Neon-Laptop Emergency Development Mode
+
+## 🚨 **When This Rule Is Active**
+
+This rule should be **manually attached** when development is happening on **neon-laptop** instead of the primary Obsidian workstation. This typically occurs during:
+
+- **Emergency situations** requiring remote development
+- **Critical time-sensitive work** (streaming, production issues)
+- **Obsidian unavailability** (hardware failure, maintenance)
+- **Location-based constraints** (travel, away from main workstation)
+
+## ⚠️ **Heightened Caution Required**
+
+When this rule is active, exercise **extreme care**:
+
+### **System Stability Priority**
+
+- ✅ **Assume production workload** - neon-laptop may be running critical services
+- ✅ **Minimize system changes** - only make absolutely necessary modifications
+- ✅ **Test exhaustively** - verify all changes before deployment
+- ✅ **Document everything** - immediate changelog updates required
+- ✅ **Rollback plan** - always have a way to undo changes
+
+### **Resource Awareness**
+
+neon-laptop has **limited resources** compared to Obsidian:
+
+- **CPU**: Intel i7-1185G7 (4C/8T) - mobile processor
+- **RAM**: 16GB (vs. Obsidian's 32GB)
+- **GPU**: Intel Xe Graphics (integrated, not discrete)
+- **Storage**: Laptop NVMe (smaller, slower)
+
+**Avoid**:
+- ❌ Heavy compilation tasks
+- ❌ Large Docker builds
+- ❌ Resource-intensive AI workloads
+- ❌ Multiple concurrent services
+
+## 🎯 **Development Context**
+
+### **Device Specifications**
+
+- **Hostname**: `neon-laptop`
+- **Model**: Lenovo ThinkPad T14
+- **OS**: NixOS 24.05 (flake-based)
+- **User**: `e421`
+- **Home Directory**: `/home/e421/`
+- **Homelab Repository**: `/home/e421/homelab/`
+
+### **Desktop Environment**
+
+- **Primary**: Hyprland (Wayland tiling WM)
+- **Fallback**: KDE Plasma (Wayland)
+- **Fallback 2**: GNOME (Wayland)
+- **Login Manager**: greetd + tuigreet
+
+### **NixOS Configuration**
+
+- **Config Location**: [nixos/hosts/neon-laptop/configuration.nix](mdc:nixos/hosts/neon-laptop/configuration.nix)
+- **Flake**: [nixos/flake.nix](mdc:nixos/flake.nix)
+- **Rebuild Command**: `sudo nixos-rebuild switch --flake /home/e421/homelab/nixos#neon-laptop`
+
+## 🔍 **Critical Checks Before Actions**
+
+### **1. Check for Streaming Window**
+
+⚠️ **Sunday Streaming Detection**: Before making ANY changes, verify the current time:
+
+```bash
+# Check current time in Central Time
+date '+%Y-%m-%d %A %H:%M %Z'
+```
+
+**If Sunday 7:30 AM - 12:30 PM Central**:
+- 🚨 **CRITICAL**: Streaming may be in progress
+- 🚨 **HALT**: Do NOT make system changes without explicit user confirmation
+- 🚨 **ATTACH RULE**: Automatically attach [streaming-window-awareness.mdc](mdc:.cursor/rules/streaming-window-awareness.mdc)
+
+### **2. Check Running Services**
+
+```bash
+# Check for cluster services (should be stopped during streaming)
+systemctl --user status k3s-agent k0sworker docker
+
+# Check for streaming-related processes
+ps aux | grep -E 'obs|droidcam|streaming'
+```
+
+### **3. Check System Resources**
+
+```bash
+# CPU/Memory usage
+htop
+
+# GPU usage (Intel Xe)
+intel_gpu_top
+
+# Disk space
+df -h /
+```
+
+## 📝 **Required Documentation**
+
+When working on neon-laptop, **always update**:
+
+1. **Device Changelog**: [devices/neon-laptop/notes/device-changelog.md](mdc:devices/neon-laptop/notes/device-changelog.md)
+2. **NixOS Config**: If modifying system configuration
+3. **This Session**: Document what was done and why
+
+### **Changelog Entry Template**
+
+```markdown
+## YYYY-MM-DD HH:MM:SS - [TYPE]
+
+**Context**: Emergency development on neon-laptop (reason: <explain>)
+
+**Description**: <what was done>
+
+**Files**: <modified files>
+
+**Testing**: <verification steps>
+
+**Notes**: <important context, rollback plan, etc.>
+
+---
+```
+
+## 🔄 **Git Workflow During Emergency Dev**
+
+### **Preferred Workflow**
+
+Even when on neon-laptop, **prefer pushing from Obsidian**:
+
+```bash
+# On neon-laptop: commit locally
+git add <files>
+git commit -m "message"
+
+# Then SSH to Obsidian to push
+ssh e421@Obsidian "cd /home/e421/homelab && git pull && git push origin main"
+```
+
+### **Direct Push (If Necessary)**
+
+Only if Obsidian is unavailable:
+
+```bash
+# Verify git config first
+git config user.name   # Should be: e421
+git config user.email  # Should be: distracted.e421@gmail.com
+
+# Push from neon-laptop
+git push origin main
+```
+
+## 🛠️ **Safe Operation Patterns**
+
+### **Before Making Changes**
+
+```bash
+# 1. Check system state
+systemctl --user status
+df -h
+free -h
+
+# 2. Create backup/snapshot point
+sudo nixos-rebuild switch --flake .#neon-laptop --rollback
+
+# 3. Document the plan
+# Add entry to device changelog BEFORE making changes
+```
+
+### **After Making Changes**
+
+```bash
+# 1. Test thoroughly
+# (Run appropriate tests for the change)
+
+# 2. Document completion
+# Update device changelog with results
+
+# 3. Commit immediately
+git add <files>
+git commit -m "descriptive message"
+
+# 4. Verify system still stable
+systemctl --user status
+journalctl -xe --no-pager | tail -50
+```
+
+## 🚦 **Decision Framework**
+
+When this rule is active, ask yourself:
+
+1. **Is this change absolutely necessary right now?**
+   - If no: Postpone until back on Obsidian
+   
+2. **Could this destabilize the system?**
+   - If maybe: Test on Obsidian first, or get user confirmation
+   
+3. **Is this during streaming window (Sun 7:30AM-12:30PM CT)?**
+   - If yes: Halt and get explicit user approval
+   
+4. **Can I easily roll back if something goes wrong?**
+   - If no: Don't proceed without backup plan
+
+5. **Have I documented this change?**
+   - If no: Stop and document first
+
+## 📊 **Success Criteria**
+
+A successful emergency development session on neon-laptop means:
+
+- ✅ System remains stable throughout
+- ✅ No disruption to critical services
+- ✅ All changes documented in device changelog
+- ✅ Changes committed to git with clear messages
+- ✅ System can be rolled back if needed
+- ✅ User is aware of what was done
+
+## 🔚 **Deactivating This Rule**
+
+**Manually detach this rule** when:
+
+- Returning to Obsidian for primary development
+- Emergency situation is resolved
+- Critical time window has passed
+- Work session on neon-laptop is complete
+
+---
+
+**Remember**: neon-laptop is a **production device** with limited resources. When this rule is active, act as if every change could have critical consequences. Be deliberate, be careful, be thorough.

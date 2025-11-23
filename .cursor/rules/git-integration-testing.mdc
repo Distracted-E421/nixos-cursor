@@ -1,0 +1,118 @@
+---
+description: Git integration testing workflow and troubleshooting guide
+globs: devices/*/python-env/lib/homelab_common.py,devices/*/python-env/scripts/*.py
+---
+
+# Git Integration Testing Workflow
+
+## 🎯 **Primary Git Development Environment**
+
+**All git operations should happen on Obsidian** unless specifically testing git integration features on other devices.
+
+- **Primary Dev Machine**: `Obsidian` (e421@Obsidian)
+- **Repository**: `/home/e421/homelab/`
+- **User**: `e421`
+- **Email**: `distracted.e421@gmail.com`
+
+## Testing Location Requirements
+
+### Git Integration Testing: neon-laptop
+
+When testing Python scripts with git integration (homelab_common.py), **MUST** test on neon-laptop:
+
+- **Test Repository**: `/home/e421/homelab/`
+- **Python Environment**: `/home/e421/homelab/devices/neon-laptop/python-env/`
+- **Virtual Environment**: Must be activated with `source venv/bin/activate`
+- **User**: `e421` (always specify: `ssh e421@neon-laptop`)
+
+## Complete Testing Command Pattern
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab/devices/neon-laptop/python-env && source venv/bin/activate && [TEST_COMMAND]"
+```
+
+## Standard Git Integration Tests
+
+### 1. Test Git Integration Class
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab/devices/neon-laptop/python-env && source venv/bin/activate && python test_git_integration.py"
+```
+
+### 2. Test sys_info.py with Git Push
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab/devices/neon-laptop/python-env && source venv/bin/activate && python scripts/sys_info.py --git-push -q"
+```
+
+### 3. Check Git Status
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab && git status"
+```
+
+### 4. Check Git Repository Cleanliness
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab && git status --porcelain"
+```
+
+## Common Issues and Solutions
+
+### Issue: "Repository has uncommitted changes"
+
+**Diagnosis**: Check what files are causing the issue:
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab && git status --porcelain"
+```
+
+**Common Causes**:
+
+- Modified `lib/homelab_common.py` (needs force add due to .gitignore)
+- Untracked files in wrong location  
+- Virtual environment files being tracked
+
+### Issue: Path matching problems in GitIntegration
+
+**Location**: [homelab_common.py](mdc:devices/neon-laptop/python-env/lib/homelab_common.py) - `is_repo_clean` method
+**Symptoms**: "Unexpected tracked changes" for report files
+**Solution**: Test path matching logic with simplified patterns
+
+## File Force-Add Requirements
+
+Some files require `git add -f` due to .gitignore patterns:
+
+```bash
+ssh neon-laptop "cd /home/e421/homelab && git add -f devices/neon-laptop/python-env/lib/homelab_common.py"
+```
+
+## 🔄 **Git Workflow by Device**
+
+### **Obsidian (Primary Development)**
+
+✅ **All regular git operations**:
+```bash
+# Run locally on Obsidian
+cd /home/e421/homelab
+git status
+git add <files>
+git commit -m "message"
+git push origin main
+```
+
+### **neon-laptop (Testing Git Integration)**
+
+⚠️ **Only for testing Python git integration scripts**:
+```bash
+# SSH as e421 user
+ssh e421@neon-laptop "cd /home/e421/homelab/devices/neon-laptop/python-env && source venv/bin/activate && python test_git_integration.py"
+```
+
+## ⚠️ **Critical Reminders**
+
+- 🎯 **Primary git work**: Obsidian (local operations)
+- 🧪 **Git integration testing**: neon-laptop (via SSH as e421)
+- ✅ **Always specify user**: `ssh e421@neon-laptop` or `ssh evie@Evie-Desktop`
+- ❌ **Don't push from neon-laptop** unless Obsidian is unavailable
+- 📝 **Document** any git operations done from non-Obsidian devices

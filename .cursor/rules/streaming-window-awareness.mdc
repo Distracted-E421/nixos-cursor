@@ -1,0 +1,268 @@
+---
+description: Critical awareness for Sunday streaming window on neon-laptop
+alwaysApply: false
+---
+
+# Sunday Streaming Window - Critical Operations
+
+## 🚨 **CRITICAL TIME WINDOW**
+
+This rule is **automatically attached** when:
+- **Device**: neon-laptop
+- **Day**: Sunday
+- **Time**: 7:30 AM - 12:30 PM Central Time (CDT/CST)
+- **Activity**: Church streaming in progress
+
+## ⚠️ **ABSOLUTE PRIORITIES**
+
+### **Streaming is Production-Critical**
+
+During the streaming window, the **ONLY** priority is:
+
+1. ✅ **Keep streaming operational** at all costs
+2. ✅ **Maintain system stability** - zero tolerance for disruption
+3. ✅ **Preserve network bandwidth** - no large downloads/uploads
+4. ✅ **Prevent system changes** - defer all non-emergency modifications
+
+### **What This Means for AI Operations**
+
+🚨 **HALT ALL NON-ESSENTIAL OPERATIONS**
+
+Unless **explicitly** requested by user for streaming support:
+
+- ❌ **NO system rebuilds** (`nixos-rebuild`)
+- ❌ **NO package installations** (apt, nix-shell, etc.)
+- ❌ **NO service restarts** (systemd, docker, etc.)
+- ❌ **NO large file operations** (git pulls, downloads, builds)
+- ❌ **NO experimental changes** to configurations
+- ❌ **NO background processes** that consume CPU/RAM/network
+
+✅ **ONLY ALLOWED**:
+
+- Read-only operations (viewing files, logs, status checks)
+- Streaming troubleshooting (OBS, audio, video issues)
+- Emergency fixes **explicitly requested** by user
+- Documentation (writing notes, changelogs)
+
+## 🎥 **Streaming Context**
+
+### **OBS Streaming Configuration**
+
+See: [docs/chat-history/neon_laptop/cursor_just_a_friendly_hello.md](mdc:docs/chat-history/neon_laptop/cursor_just_a_friendly_hello.md)
+
+**Critical Components**:
+- **OBS Studio**: Screen capture + encoding
+- **XDG Desktop Portals**: Wayland screen capture (xdg-desktop-portal-hyprland)
+- **Hardware Encoding**: Intel Xe Graphics (VAAPI)
+- **Target**: 1080p60 @ 10,000 kbps
+- **Encoder**: FFmpeg VAAPI (Intel Quick Sync)
+- **Audio**: PipeWire routing
+
+### **Known Streaming Issues**
+
+From troubleshooting history:
+
+1. **XDG Portal Services Must Be Running**
+   ```bash
+   systemctl --user status xdg-desktop-portal-hyprland
+   systemctl --user status xdg-desktop-portal
+   ```
+   If stopped: `systemctl --user start xdg-desktop-portal-hyprland xdg-desktop-portal`
+
+2. **Hardware Encoding Configuration**
+   - Location: `~/.config/obs-studio/basic/profiles/Untitled/basic.ini`
+   - Encoder: `ffmpeg_vaapi` (not x264 software)
+   - Device: `/dev/dri/renderD128`
+
+3. **CPU Overload Prevention**
+   - Software x264 encoding causes 80-100% CPU usage
+   - Hardware VAAPI encoding keeps CPU at 20-40%
+   - Monitor with: `htop` or `intel_gpu_top`
+
+## 🔍 **Streaming Window Detection**
+
+### **Automatic Detection Script**
+
+```bash
+#!/bin/bash
+# Check if currently in streaming window
+
+# Get current time in Central Time
+CURRENT_TIME=$(TZ="America/Chicago" date '+%H%M')
+DAY_OF_WEEK=$(TZ="America/Chicago" date '+%u')  # 1-7, 7=Sunday
+
+# Check if Sunday (7) and between 07:30 (0730) and 12:30 (1230)
+if [ "$DAY_OF_WEEK" -eq 7 ] && [ "$CURRENT_TIME" -ge 0730 ] && [ "$CURRENT_TIME" -le 1230 ]; then
+    echo "🚨 STREAMING WINDOW ACTIVE"
+    echo "Time: $(TZ='America/Chicago' date '+%A %I:%M %p %Z')"
+    echo "Status: Church streaming in progress"
+    exit 0
+else
+    echo "✅ Outside streaming window"
+    exit 1
+fi
+```
+
+### **Pre-Operation Check**
+
+Before ANY system operation during development on neon-laptop on Sunday:
+
+```bash
+TZ="America/Chicago" date '+%Y-%m-%d %A %I:%M %p %Z'
+```
+
+**If output shows Sunday between 7:30 AM and 12:30 PM**:
+- 🚨 **HALT** the operation
+- 🚨 **INFORM** the user that streaming window is active
+- 🚨 **REQUEST** explicit confirmation before proceeding
+- 🚨 **DOCUMENT** the user's approval before continuing
+
+## 📊 **System Resource Monitoring**
+
+### **Critical Metrics During Streaming**
+
+```bash
+# CPU usage (should stay under 50%)
+mpstat 1 5
+
+# Memory usage (should have >4GB free)
+free -h
+
+# GPU usage (Intel Xe encoder should be active)
+intel_gpu_top
+
+# Network bandwidth
+iftop -i <interface>
+
+# OBS process stats
+ps aux | grep obs
+```
+
+### **Warning Thresholds**
+
+| Metric | Safe | Warning | Critical |
+|--------|------|---------|----------|
+| CPU Usage | <50% | 50-70% | >70% |
+| Free RAM | >4GB | 2-4GB | <2GB |
+| GPU Encoder | Active | - | Inactive |
+| Network Up | <5Mbps | 5-15Mbps | >15Mbps |
+| Dropped Frames (OBS) | 0 | 1-5 | >5 |
+
+## 🛠️ **Streaming Support Operations**
+
+### **Allowed Troubleshooting**
+
+If user reports streaming issues, you MAY:
+
+✅ **Check Service Status**:
+```bash
+systemctl --user status xdg-desktop-portal-hyprland
+systemctl --user status xdg-desktop-portal
+systemctl --user status pipewire
+```
+
+✅ **Restart Failed Services**:
+```bash
+systemctl --user restart xdg-desktop-portal-hyprland
+```
+
+✅ **Check OBS Configuration**:
+```bash
+cat ~/.config/obs-studio/basic/profiles/Untitled/basic.ini
+```
+
+✅ **Monitor System Resources**:
+```bash
+htop
+intel_gpu_top
+```
+
+✅ **Review OBS Logs**:
+```bash
+tail -100 ~/.config/obs-studio/logs/*.txt
+```
+
+### **Emergency Fixes Only**
+
+If something breaks during streaming, prioritize **minimal-impact fixes**:
+
+1. **Service restart** (if already failed)
+2. **Configuration tweak** (if clearly identified problem)
+3. **Process kill/restart** (if specific process hung)
+
+**Avoid**:
+- ❌ System-wide changes
+- ❌ Kernel/driver updates
+- ❌ Desktop environment restarts
+- ❌ Network configuration changes
+
+## 📝 **Documentation During Streaming**
+
+### **Safe Documentation Activities**
+
+✅ **Always allowed** (zero system impact):
+
+- Taking notes about streaming setup
+- Documenting troubleshooting steps
+- Writing post-stream analysis
+- Creating/updating changelogs
+- Reading documentation files
+
+### **Changelog Entry Template for Streaming Changes**
+
+```markdown
+## YYYY-MM-DD HH:MM:SS - [STREAMING-FIX]
+
+**Context**: Emergency fix during Sunday streaming window
+
+**Issue**: <description of streaming problem>
+
+**Solution**: <what was done to fix it>
+
+**Impact**: <minimal/none - streaming continued>
+
+**Files**: <modified files>
+
+**User Approval**: Explicit confirmation received
+
+---
+```
+
+## 🚦 **Decision Matrix**
+
+| Operation | Outside Window | During Window (No Issues) | During Window (Emergency) |
+|-----------|---------------|--------------------------|---------------------------|
+| Read files | ✅ Always OK | ✅ Always OK | ✅ Always OK |
+| Write docs | ✅ Always OK | ✅ Always OK | ✅ Always OK |
+| Check status | ✅ Always OK | ✅ Always OK | ✅ Always OK |
+| Install packages | ✅ OK | ❌ **HALT** | ⚠️ User confirmation |
+| Restart services | ✅ OK | ❌ **HALT** | ⚠️ If service failed |
+| System rebuild | ✅ OK | ❌ **NEVER** | ❌ **NEVER** |
+| Git operations | ✅ OK | ⚠️ Defer if possible | ⚠️ Read-only OK |
+| Network operations | ✅ OK | ❌ **HALT** | ⚠️ Critical only |
+
+## 🎯 **Success Criteria**
+
+A successful streaming window means:
+
+- ✅ Stream runs continuously without drops
+- ✅ System remains stable throughout
+- ✅ No user-visible disruptions
+- ✅ All troubleshooting (if any) completed without incident
+- ✅ Post-stream system still healthy
+
+## 🔚 **Post-Streaming Window**
+
+After 12:30 PM Central on Sunday:
+
+1. ✅ **Verify streaming stopped** (check OBS, processes)
+2. ✅ **System health check** (CPU, RAM, disk, services)
+3. ✅ **Document any issues** encountered during stream
+4. ✅ **Resume normal operations** (safe to make changes again)
+5. ✅ **Detach this rule** (no longer streaming window)
+
+---
+
+**Remember**: During the streaming window, the stream is **EVERYTHING**. When in doubt, do nothing. Get user confirmation for anything beyond read-only operations.
+
+**The worst outcome is disrupting the stream. Every other concern is secondary.**

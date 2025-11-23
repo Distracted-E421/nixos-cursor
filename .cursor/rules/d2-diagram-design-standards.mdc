@@ -1,0 +1,1064 @@
+---
+alwaysApply: false
+description: D2 diagram design standards and preferences
+globs: *.d2 *.md *.svg *.png *.pdf *.adoc *.txt *.json *.yaml *.yml *.sh *.py *.rb *.php *.html *.css *.js *.ts *.jsx *.tsx *.vue *.svelte *.astro *.mdx *.mdx.js *.mdx.ts *.mdx.tsx *.mdx.vue *.mdx.svelte *.mdx.astro *.mdx.php *.mdx.rb *.mdx.py *.mdx.sh *.mdx.yml *.mdx.yaml *.mdx.json
+
+---
+
+# D2 Diagram Design Standards
+
+This rule defines the design standards and preferences for all D2 diagrams created for the homelab, optimized for the Wallace Corporation theme and vertical/mobile viewing.
+
+## 🎨 Color Palette: Wallace Corporation Theme
+
+### Primary Colors
+```d2
+# Background & Structure
+background: "#0b0c0f"           # Very dark blue-black (editor background)
+container_bg: "#1b1c25"         # Slightly lighter dark (widget background)
+panel_bg: "#2E303E"             # Panel/selection background
+
+# Primary Accent
+primary: "#E95378"              # Bright pink/red (main accent)
+primary_hover: "#E9436D"        # Slightly darker pink
+
+# Secondary Accents
+cyan: "#3FC4DE"                 # Cyan blue (git modified, links)
+orange: "#FAB795"               # Peach/orange (git added, success)
+green: "#27D797"                # Bright green (warnings, info)
+
+# Text & Foreground
+text_primary: "#D5D8DA"         # Light gray (main text)
+text_secondary: "#d5d8da33"     # Dimmed gray (inactive elements)
+text_active: "#d5d8dacb"        # Active gray (highlighted text)
+
+# Status Colors
+error: "#F43E5C"                # Red (errors, deletion)
+success: "#21BFC2"              # Teal (success states)
+warning: "#29D398"              # Green (warnings)
+
+# Structural
+border: "#22252e"               # Border color
+separator: "#6C6F93"            # Separator lines
+highlight: "#6C6F9380"          # Selection highlights
+```
+
+### Color Usage Guidelines
+
+**Container/Group Colors:**
+- System containers: `#1b1c25` (dark widget background)
+- Sub-groups: `#2E303E` (panel background)
+- Highlight groups: `#E95378` with 20% opacity
+
+**Node Colors:**
+- Primary nodes: `#E95378` (pink accent)
+- Secondary nodes: `#3FC4DE` (cyan)
+- Success/active: `#FAB795` (orange)
+- Warning/attention: `#27D797` (green)
+- Error/deprecated: `#F43E5C` (red)
+
+**Connection Colors:**
+- Primary flows: `#E95378` (pink)
+- Secondary flows: `#3FC4DE` (cyan)
+- Success paths: `#FAB795` (orange)
+- Planned/future: `#F43E5C` with dashed lines
+
+**Text Colors:**
+- All labels: `#D5D8DA` (light gray)
+- Important text: `#E95378` (pink accent)
+- Metadata: `#d5d8da33` (dimmed)
+
+## 📱 Vertical & Mobile-Friendly Design
+
+### Layout Direction
+**ALWAYS prefer vertical layouts:**
+```d2
+direction: down  # Top-to-bottom flow
+```
+
+**Why:**
+- Optimized for vertical monitors (portrait orientation)
+- Better mobile phone viewing experience
+- Natural reading flow for tall aspect ratios
+- Easier scrolling on mobile devices
+
+### Exceptions:
+Only use `direction: right` when:
+- Timeline/sequential processes that are inherently horizontal
+- Very wide hierarchies that collapse poorly vertically
+- User explicitly requests horizontal layout
+
+### Component Sizing
+- **Containers:** Prefer tall, narrow containers over wide, short ones
+- **Text blocks:** Keep line length reasonable (60-80 chars max)
+- **Node spacing:** Generous vertical spacing for readability
+- **Labels:** Multi-line labels are preferred over very wide single lines
+
+### Mobile Optimization
+```d2
+# Good: Vertical stack
+┌────────┐
+│ Node A │
+└────────┘
+     ↓
+┌────────┐
+│ Node B │
+└────────┘
+     ↓
+┌────────┐
+│ Node C │
+└────────┘
+
+# Bad: Horizontal spread
+┌────────┐    ┌────────┐    ┌────────┐
+│ Node A │ →  │ Node B │ →  │ Node C │
+└────────┘    └────────┘    └────────┘
+```
+
+## 🎯 Standard Diagram Patterns
+
+### Pattern 1: System Architecture
+```d2
+direction: down
+
+title: System Architecture {
+  style: {
+    font-color: "#E95378"
+    font-size: 24
+    bold: true
+  }
+}
+
+# Top-level container
+infrastructure: Infrastructure {
+  style: {
+    fill: "#1b1c25"
+    stroke: "#E95378"
+    font-color: "#D5D8DA"
+  }
+  
+  # Services stack vertically
+  service1: Service 1 {
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+  }
+  
+  service2: Service 2 {
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+  }
+}
+
+# Connections with theme colors
+infrastructure.service1 -> infrastructure.service2: "data flow" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 2
+  }
+}
+```
+
+### Pattern 2: Network Topology
+```d2
+direction: down
+
+network: Network {
+  style: {
+    fill: "#0b0c0f"
+    stroke: "#27D797"
+  }
+  
+  gateway: Gateway {
+    shape: cloud
+    style: {
+      fill: "#3FC4DE"
+      font-color: "#0b0c0f"
+    }
+  }
+  
+  devices: Devices {
+    style: {
+      fill: "#1b1c25"
+      stroke: "#E95378"
+    }
+    
+    device1: Device 1 {
+      shape: rectangle
+      style.fill: "#2E303E"
+    }
+  }
+}
+```
+
+### Pattern 3: Data Flow
+```d2
+direction: down
+
+input: Input Source {
+  shape: cylinder
+  style: {
+    fill: "#FAB795"
+    stroke: "#E95378"
+    font-color: "#0b0c0f"
+  }
+}
+
+processing: Processing Layer {
+  shape: rectangle
+  style: {
+    fill: "#2E303E"
+    stroke: "#3FC4DE"
+    font-color: "#D5D8DA"
+  }
+}
+
+output: Output Destination {
+  shape: cylinder
+  style: {
+    fill: "#27D797"
+    stroke: "#E95378"
+    font-color: "#0b0c0f"
+  }
+}
+
+input -> processing: "data" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+processing -> output: "results" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 3
+  }
+}
+```
+
+## 📐 Shape Recommendations
+
+### Use Case to Shape Mapping
+
+| Component Type | Recommended Shape | Color |
+|----------------|-------------------|-------|
+| Services/Apps | `rectangle` | `#2E303E` |
+| Databases | `cylinder` | `#3FC4DE` |
+| Users | `person` | `#E95378` |
+| Cloud/External | `cloud` | `#27D797` |
+| Processes | `hexagon` | `#FAB795` |
+| Documents | `document` | `#D5D8DA` |
+| Storage | `stored_data` | `#3FC4DE` |
+| Packages | `package` | `#E95378` |
+
+### Shape Styling
+```d2
+# Standard node styling
+node: Node Label {
+  shape: rectangle
+  style: {
+    fill: "#2E303E"
+    stroke: "#E95378"
+    stroke-width: 2
+    font-color: "#D5D8DA"
+    font-size: 14
+  }
+}
+
+# Emphasized node
+important: Important Node {
+  shape: rectangle
+  style: {
+    fill: "#E95378"
+    stroke: "#E9436D"
+    stroke-width: 3
+    font-color: "#0b0c0f"
+    bold: true
+  }
+}
+
+# Inactive/planned node
+planned: Planned Feature {
+  shape: rectangle
+  style: {
+    fill: "#1b1c25"
+    stroke: "#F43E5C"
+    stroke-width: 2
+    stroke-dash: 5
+    font-color: "#d5d8da33"
+  }
+}
+```
+
+## 🔗 Connection Styling
+
+### Standard Connections
+```d2
+# Active/primary flow
+node1 -> node2: "active" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+# Secondary flow
+node2 -> node3: "secondary" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 2
+  }
+}
+
+# Planned/future
+node3 -> node4: "planned" {
+  style: {
+    stroke: "#F43E5C"
+    stroke-width: 2
+    stroke-dash: 5
+  }
+}
+
+# Bidirectional
+node1 <-> node2: "sync" {
+  style: {
+    stroke: "#FAB795"
+    stroke-width: 2
+  }
+}
+```
+
+## 📝 Text & Labels
+
+### Label Formatting
+```d2
+# Multi-line labels for narrow displays
+service: Service Name {
+  details: "Line 1: Primary info\nLine 2: Secondary info\nLine 3: Metadata" {
+    shape: text
+    style: {
+      font-size: 12
+      font-color: "#D5D8DA"
+    }
+  }
+}
+
+# Tooltips for additional context
+node: Node {
+  tooltip: "Additional information that doesn't clutter the main view"
+}
+
+# Icons can reference URLs or emoji
+gpu: GPU Server {
+  icon: https://icons.example.com/gpu.svg
+}
+```
+
+### Font Sizing
+- **Title:** 24-28pt, `#E95378`
+- **Container labels:** 16-18pt, `#D5D8DA`
+- **Node labels:** 14pt, `#D5D8DA`
+- **Metadata/details:** 12pt, `#d5d8da33`
+- **Tiny annotations:** 10pt, `#d5d8da33`
+
+## 🌓 Dark Mode Considerations
+
+Since Wallace Corp is a dark theme, all diagrams are optimized for dark backgrounds:
+
+**DO:**
+- ✅ Use light text on dark backgrounds
+- ✅ Use bright accent colors for visibility
+- ✅ Ensure sufficient contrast ratios
+- ✅ Test on actual dark backgrounds
+
+**DON'T:**
+- ❌ Use dark text on dark backgrounds
+- ❌ Use muted colors that disappear
+- ❌ Assume diagram will be viewed on white
+
+## 📦 Output Format Standards
+
+### Always Generate:
+1. **SVG** (primary) - For markdown embedding
+2. **PNG** (backup) - For compatibility/sharing
+
+### When to Add PDF:
+- Formal documentation
+- Printable materials
+- Archive purposes
+
+### Generation Commands:
+```bash
+# Standard workflow
+d2 diagram.d2 diagram.svg  # Primary output
+d2 diagram.d2 diagram.png  # Backup/compatibility
+
+# Optional PDF
+d2 diagram.d2 diagram.pdf  # For printing
+```
+
+### File Naming:
+```
+good-naming-pattern.d2        # Source file
+good-naming-pattern.svg       # Web/embed version
+good-naming-pattern.png       # Compatibility version
+good-naming-pattern.pdf       # Printable version
+```
+
+## 🎨 Complete Example
+
+```d2
+# Complete example following all standards
+direction: down
+
+title: Homelab Service Stack {
+  style: {
+    font-color: "#E95378"
+    font-size: 24
+    bold: true
+  }
+}
+
+infrastructure: Infrastructure Layer {
+  style: {
+    fill: "#1b1c25"
+    stroke: "#E95378"
+    font-color: "#D5D8DA"
+  }
+  
+  k0s: Kubernetes (k0s) {
+    shape: package
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+    
+    ha: Home Assistant {
+      shape: rectangle
+      style: {
+        fill: "#27D797"
+        font-color: "#0b0c0f"
+      }
+    }
+    
+    ai: AI Inference {
+      shape: rectangle
+      style: {
+        fill: "#FAB795"
+        font-color: "#0b0c0f"
+      }
+    }
+  }
+  
+  storage: Storage {
+    shape: cylinder
+    style: {
+      fill: "#3FC4DE"
+      stroke: "#E95378"
+      font-color: "#0b0c0f"
+    }
+  }
+}
+
+users: Users {
+  shape: person
+  style: {
+    fill: "#E95378"
+    stroke: "#E9436D"
+    font-color: "#0b0c0f"
+  }
+}
+
+# Connections
+users -> infrastructure.k0s.ha: "control" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+users -> infrastructure.k0s.ai: "queries" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 2
+  }
+}
+
+infrastructure.k0s.ha -> infrastructure.storage: "persist" {
+  style: {
+    stroke: "#FAB795"
+    stroke-width: 2
+  }
+}
+
+# Legend for mobile viewing
+legend: Legend {
+  style: {
+    fill: "#0b0c0f"
+    stroke: "#22252e"
+    font-color: "#D5D8DA"
+  }
+  
+  active: "● Active Service" {
+    style.font-color: "#27D797"
+  }
+  
+  planned: "○ Planned" {
+    style.font-color: "#F43E5C"
+  }
+}
+```
+
+## 📱 Mobile Preview Checklist
+
+Before finalizing any diagram, verify:
+- [ ] Readable on phone screen (5-7" diagonal)
+- [ ] Text not too small (<12pt)
+- [ ] Sufficient contrast in all elements
+- [ ] Vertical layout utilized
+- [ ] No excessive horizontal scrolling needed
+- [ ] Labels not truncated
+- [ ] Colors distinguishable on dark background
+- [ ] SVG scales properly
+
+## 📚 Reference Files
+
+- **[Wallace Corp Theme](mdc:.cursor/extensions/hc.wallace-corporation-0.4.1-universal/themes/wallace-color-theme.json)** - Complete color palette
+- **[NixOS Architecture Example](mdc:nixos/docs/nixos-architecture-diagram.d2)** - Real-world reference
+- **[D2 Official Docs](https://d2lang.com)** - Language reference
+
+---
+
+**Remember:** Every diagram should be beautiful on a vertical monitor and readable on a phone. Wallace Corp theme = dark background, pink/cyan accents, vertical flow.# D2 Diagram Design Standards
+
+This rule defines the design standards and preferences for all D2 diagrams created for the homelab, optimized for the Wallace Corporation theme and vertical/mobile viewing.
+
+## 🎨 Color Palette: Wallace Corporation Theme
+
+### Primary Colors
+```d2
+# Background & Structure
+background: "#0b0c0f"           # Very dark blue-black (editor background)
+container_bg: "#1b1c25"         # Slightly lighter dark (widget background)
+panel_bg: "#2E303E"             # Panel/selection background
+
+# Primary Accent
+primary: "#E95378"              # Bright pink/red (main accent)
+primary_hover: "#E9436D"        # Slightly darker pink
+
+# Secondary Accents
+cyan: "#3FC4DE"                 # Cyan blue (git modified, links)
+orange: "#FAB795"               # Peach/orange (git added, success)
+green: "#27D797"                # Bright green (warnings, info)
+
+# Text & Foreground
+text_primary: "#D5D8DA"         # Light gray (main text)
+text_secondary: "#d5d8da33"     # Dimmed gray (inactive elements)
+text_active: "#d5d8dacb"        # Active gray (highlighted text)
+
+# Status Colors
+error: "#F43E5C"                # Red (errors, deletion)
+success: "#21BFC2"              # Teal (success states)
+warning: "#29D398"              # Green (warnings)
+
+# Structural
+border: "#22252e"               # Border color
+separator: "#6C6F93"            # Separator lines
+highlight: "#6C6F9380"          # Selection highlights
+```
+
+### Color Usage Guidelines
+
+**Container/Group Colors:**
+- System containers: `#1b1c25` (dark widget background)
+- Sub-groups: `#2E303E` (panel background)
+- Highlight groups: `#E95378` with 20% opacity
+
+**Node Colors:**
+- Primary nodes: `#E95378` (pink accent)
+- Secondary nodes: `#3FC4DE` (cyan)
+- Success/active: `#FAB795` (orange)
+- Warning/attention: `#27D797` (green)
+- Error/deprecated: `#F43E5C` (red)
+
+**Connection Colors:**
+- Primary flows: `#E95378` (pink)
+- Secondary flows: `#3FC4DE` (cyan)
+- Success paths: `#FAB795` (orange)
+- Planned/future: `#F43E5C` with dashed lines
+
+**Text Colors:**
+- All labels: `#D5D8DA` (light gray)
+- Important text: `#E95378` (pink accent)
+- Metadata: `#d5d8da33` (dimmed)
+
+## 📱 Vertical & Mobile-Friendly Design
+
+### Layout Direction
+**ALWAYS prefer vertical layouts:**
+```d2
+direction: down  # Top-to-bottom flow
+```
+
+**Why:**
+- Optimized for vertical monitors (portrait orientation)
+- Better mobile phone viewing experience
+- Natural reading flow for tall aspect ratios
+- Easier scrolling on mobile devices
+
+### Exceptions:
+Only use `direction: right` when:
+- Timeline/sequential processes that are inherently horizontal
+- Very wide hierarchies that collapse poorly vertically
+- User explicitly requests horizontal layout
+
+### Component Sizing
+- **Containers:** Prefer tall, narrow containers over wide, short ones
+- **Text blocks:** Keep line length reasonable (60-80 chars max)
+- **Node spacing:** Generous vertical spacing for readability
+- **Labels:** Multi-line labels are preferred over very wide single lines
+
+### Mobile Optimization
+```d2
+# Good: Vertical stack
+┌────────┐
+│ Node A │
+└────────┘
+     ↓
+┌────────┐
+│ Node B │
+└────────┘
+     ↓
+┌────────┐
+│ Node C │
+└────────┘
+
+# Bad: Horizontal spread
+┌────────┐    ┌────────┐    ┌────────┐
+│ Node A │ →  │ Node B │ →  │ Node C │
+└────────┘    └────────┘    └────────┘
+```
+
+## 🎯 Standard Diagram Patterns
+
+### Pattern 1: System Architecture
+```d2
+direction: down
+
+title: System Architecture {
+  style: {
+    font-color: "#E95378"
+    font-size: 24
+    bold: true
+  }
+}
+
+# Top-level container
+infrastructure: Infrastructure {
+  style: {
+    fill: "#1b1c25"
+    stroke: "#E95378"
+    font-color: "#D5D8DA"
+  }
+  
+  # Services stack vertically
+  service1: Service 1 {
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+  }
+  
+  service2: Service 2 {
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+  }
+}
+
+# Connections with theme colors
+infrastructure.service1 -> infrastructure.service2: "data flow" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 2
+  }
+}
+```
+
+### Pattern 2: Network Topology
+```d2
+direction: down
+
+network: Network {
+  style: {
+    fill: "#0b0c0f"
+    stroke: "#27D797"
+  }
+  
+  gateway: Gateway {
+    shape: cloud
+    style: {
+      fill: "#3FC4DE"
+      font-color: "#0b0c0f"
+    }
+  }
+  
+  devices: Devices {
+    style: {
+      fill: "#1b1c25"
+      stroke: "#E95378"
+    }
+    
+    device1: Device 1 {
+      shape: rectangle
+      style.fill: "#2E303E"
+    }
+  }
+}
+```
+
+### Pattern 3: Data Flow
+```d2
+direction: down
+
+input: Input Source {
+  shape: cylinder
+  style: {
+    fill: "#FAB795"
+    stroke: "#E95378"
+    font-color: "#0b0c0f"
+  }
+}
+
+processing: Processing Layer {
+  shape: rectangle
+  style: {
+    fill: "#2E303E"
+    stroke: "#3FC4DE"
+    font-color: "#D5D8DA"
+  }
+}
+
+output: Output Destination {
+  shape: cylinder
+  style: {
+    fill: "#27D797"
+    stroke: "#E95378"
+    font-color: "#0b0c0f"
+  }
+}
+
+input -> processing: "data" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+processing -> output: "results" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 3
+  }
+}
+```
+
+## 📐 Shape Recommendations
+
+### Use Case to Shape Mapping
+
+| Component Type | Recommended Shape | Color |
+|----------------|-------------------|-------|
+| Services/Apps | `rectangle` | `#2E303E` |
+| Databases | `cylinder` | `#3FC4DE` |
+| Users | `person` | `#E95378` |
+| Cloud/External | `cloud` | `#27D797` |
+| Processes | `hexagon` | `#FAB795` |
+| Documents | `document` | `#D5D8DA` |
+| Storage | `stored_data` | `#3FC4DE` |
+| Packages | `package` | `#E95378` |
+
+### Shape Styling
+```d2
+# Standard node styling
+node: Node Label {
+  shape: rectangle
+  style: {
+    fill: "#2E303E"
+    stroke: "#E95378"
+    stroke-width: 2
+    font-color: "#D5D8DA"
+    font-size: 14
+  }
+}
+
+# Emphasized node
+important: Important Node {
+  shape: rectangle
+  style: {
+    fill: "#E95378"
+    stroke: "#E9436D"
+    stroke-width: 3
+    font-color: "#0b0c0f"
+    bold: true
+  }
+}
+
+# Inactive/planned node
+planned: Planned Feature {
+  shape: rectangle
+  style: {
+    fill: "#1b1c25"
+    stroke: "#F43E5C"
+    stroke-width: 2
+    stroke-dash: 5
+    font-color: "#d5d8da33"
+  }
+}
+```
+
+## 🔗 Connection Styling
+
+### Standard Connections
+```d2
+# Active/primary flow
+node1 -> node2: "active" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+# Secondary flow
+node2 -> node3: "secondary" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 2
+  }
+}
+
+# Planned/future
+node3 -> node4: "planned" {
+  style: {
+    stroke: "#F43E5C"
+    stroke-width: 2
+    stroke-dash: 5
+  }
+}
+
+# Bidirectional
+node1 <-> node2: "sync" {
+  style: {
+    stroke: "#FAB795"
+    stroke-width: 2
+  }
+}
+```
+
+## 📝 Text & Labels
+
+### Label Formatting
+```d2
+# Multi-line labels for narrow displays
+service: Service Name {
+  details: "Line 1: Primary info\nLine 2: Secondary info\nLine 3: Metadata" {
+    shape: text
+    style: {
+      font-size: 12
+      font-color: "#D5D8DA"
+    }
+  }
+}
+
+# Tooltips for additional context
+node: Node {
+  tooltip: "Additional information that doesn't clutter the main view"
+}
+
+# Icons can reference URLs or emoji
+gpu: GPU Server {
+  icon: https://icons.example.com/gpu.svg
+}
+```
+
+### Font Sizing
+- **Title:** 24-28pt, `#E95378`
+- **Container labels:** 16-18pt, `#D5D8DA`
+- **Node labels:** 14pt, `#D5D8DA`
+- **Metadata/details:** 12pt, `#d5d8da33`
+- **Tiny annotations:** 10pt, `#d5d8da33`
+
+## 🌓 Dark Mode Considerations
+
+Since Wallace Corp is a dark theme, all diagrams are optimized for dark backgrounds:
+
+**DO:**
+- ✅ Use light text on dark backgrounds
+- ✅ Use bright accent colors for visibility
+- ✅ Ensure sufficient contrast ratios
+- ✅ Test on actual dark backgrounds
+
+**DON'T:**
+- ❌ Use dark text on dark backgrounds
+- ❌ Use muted colors that disappear
+- ❌ Assume diagram will be viewed on white
+
+## 📦 Output Format Standards
+
+### Always Generate:
+1. **SVG** (primary) - For markdown embedding
+2. **PNG** (backup) - For compatibility/sharing
+
+### When to Add PDF:
+- Formal documentation
+- Printable materials
+- Archive purposes
+
+### Generation Commands:
+```bash
+# Standard workflow
+d2 diagram.d2 diagram.svg  # Primary output
+d2 diagram.d2 diagram.png  # Backup/compatibility
+
+# Optional PDF
+d2 diagram.d2 diagram.pdf  # For printing
+```
+
+### File Naming:
+```
+good-naming-pattern.d2        # Source file
+good-naming-pattern.svg       # Web/embed version
+good-naming-pattern.png       # Compatibility version
+good-naming-pattern.pdf       # Printable version
+```
+
+## 🎨 Complete Example
+
+```d2
+# Complete example following all standards
+direction: down
+
+title: Homelab Service Stack {
+  style: {
+    font-color: "#E95378"
+    font-size: 24
+    bold: true
+  }
+}
+
+infrastructure: Infrastructure Layer {
+  style: {
+    fill: "#1b1c25"
+    stroke: "#E95378"
+    font-color: "#D5D8DA"
+  }
+  
+  k0s: Kubernetes (k0s) {
+    shape: package
+    style: {
+      fill: "#2E303E"
+      stroke: "#3FC4DE"
+    }
+    
+    ha: Home Assistant {
+      shape: rectangle
+      style: {
+        fill: "#27D797"
+        font-color: "#0b0c0f"
+      }
+    }
+    
+    ai: AI Inference {
+      shape: rectangle
+      style: {
+        fill: "#FAB795"
+        font-color: "#0b0c0f"
+      }
+    }
+  }
+  
+  storage: Storage {
+    shape: cylinder
+    style: {
+      fill: "#3FC4DE"
+      stroke: "#E95378"
+      font-color: "#0b0c0f"
+    }
+  }
+}
+
+users: Users {
+  shape: person
+  style: {
+    fill: "#E95378"
+    stroke: "#E9436D"
+    font-color: "#0b0c0f"
+  }
+}
+
+# Connections
+users -> infrastructure.k0s.ha: "control" {
+  style: {
+    stroke: "#E95378"
+    stroke-width: 3
+  }
+}
+
+users -> infrastructure.k0s.ai: "queries" {
+  style: {
+    stroke: "#3FC4DE"
+    stroke-width: 2
+  }
+}
+
+infrastructure.k0s.ha -> infrastructure.storage: "persist" {
+  style: {
+    stroke: "#FAB795"
+    stroke-width: 2
+  }
+}
+
+# Legend for mobile viewing
+legend: Legend {
+  style: {
+    fill: "#0b0c0f"
+    stroke: "#22252e"
+    font-color: "#D5D8DA"
+  }
+  
+  active: "● Active Service" {
+    style.font-color: "#27D797"
+  }
+  
+  planned: "○ Planned" {
+    style.font-color: "#F43E5C"
+  }
+}
+```
+
+## 📱 Mobile Preview Checklist
+
+Before finalizing any diagram, verify:
+- [ ] Readable on phone screen (5-7" diagonal)
+- [ ] Text not too small (<12pt)
+- [ ] Sufficient contrast in all elements
+- [ ] Vertical layout utilized
+- [ ] No excessive horizontal scrolling needed
+- [ ] Labels not truncated
+- [ ] Colors distinguishable on dark background
+- [ ] SVG scales properly
+
+## 📚 Reference Files
+
+- **[Wallace Corp Theme](mdc:.cursor/extensions/hc.wallace-corporation-0.4.1-universal/themes/wallace-color-theme.json)** - Complete color palette
+- **[NixOS Architecture Example](mdc:nixos/docs/nixos-architecture-diagram.d2)** - Real-world reference
+- **[D2 Official Docs](https://d2lang.com)** - Language reference
+
+---
+
+**Remember:** Every diagram should be beautiful on a vertical monitor and readable on a phone. Wallace Corp theme = dark background, pink/cyan accents, vertical flow.

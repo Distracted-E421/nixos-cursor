@@ -1,0 +1,174 @@
+---
+alwaysApply: true
+---
+
+# Obsidian Development Environment
+
+## 🖥️ **Primary Development Machine**
+
+**Obsidian** is the **main development workstation** for this homelab. All primary git operations, development work, and repository management should happen here unless explicitly stated otherwise.
+
+## 📍 **System Specifications**
+
+### **Hardware Configuration**
+
+- **Hostname**: `Obsidian` (capital O)
+- **OS**: ✅ **NixOS 25.11 (Xantusia)** - Declarative, reproducible
+- **CPU**: Intel i9-9900KS (8C/16T @ 5.0GHz all-core)
+- **RAM**: 32GB DDR4
+- **Motherboard**: Aorus Z390 Pro WiFi
+- **GPUs**:
+  - **Intel Arc A770**: 16GB VRAM (Primary for display + AI inference)
+  - **NVIDIA RTX 2080**: 8GB VRAM (Secondary AI inference)
+- **Storage**: NVMe SSD
+- **Network**: Gigabit LAN + USB add-in card
+- **Role**: NixOS production workstation + dual-GPU AI powerhouse + primary dev machine
+
+See: [HARDWARE_CONFIGURATION.md](mdc:services/ai-inference/HARDWARE_CONFIGURATION.md)
+
+### **User Information**
+
+- **Primary User**: `e421`
+- **Home Directory**: `/home/e421/`
+- **Homelab Repository**: `/home/e421/homelab/`
+
+## 🚀 **Development Workflows**
+
+### **Git Operations**
+
+All git operations for the homelab repository should be performed **on Obsidian**:
+
+```bash
+# Always run git commands locally on Obsidian
+cd /home/e421/homelab
+git status
+git add <files>
+git commit -m "message"
+git push origin main
+```
+
+⚠️ **Do NOT** run git operations via SSH to other devices unless specifically required for testing.
+
+### **Repository Structure**
+
+The homelab repository is located at `/home/e421/homelab/` and contains:
+
+- **`nixos/`**: Centralized NixOS configuration (flake-based)
+- **`devices/`**: Per-device configurations and scripts
+- **`services/`**: Service deployments (AI inference, discord-alt, cloudflare, etc.)
+- **`docs/`**: Documentation and guides
+- **`.cursor/`**: Cursor rules and hooks
+
+## 🔐 **SSH & Authentication**
+
+### **SSH Keys**
+
+Obsidian has SSH keys configured for passwordless authentication:
+
+```bash
+# Current SSH key (generated Oct 19, 2025 after incident):
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFXEDROSMcI0VapSQODcV6SnjRzkdXajETif0MHm/MWd e421@Obsidian
+```
+
+**Location**: `~/.ssh/id_ed25519.pub`
+
+### **Git Configuration**
+
+```bash
+user.name = e421
+user.email = distracted.e421@gmail.com
+```
+
+## 🎨 **Desktop Environment**
+
+- **DE**: KDE Plasma 6 (primary) + Hyprland (secondary)
+- **Display Server**: Wayland (both KDE and Hyprland)
+- **Terminal**: Konsole (KDE) / Kitty (available)
+- **File Manager**: Dolphin (KDE)
+- **IDE**: Cursor (installed via AppImage)
+
+## 🚨 **Critical Environment Notes**
+
+### **System Status**
+
+✅ **NixOS Migration Complete** - Obsidian successfully migrated to NixOS 25.11 (November 2025)
+
+**Current Configuration**:
+- ✅ NixOS 25.11 (Xantusia)
+- ✅ KDE Plasma 6 + Hyprland
+- ✅ Dual GPU (Intel Arc A770 + NVIDIA RTX 2080)
+- ✅ Declarative flake-based configuration
+- ✅ Passwordless SSH to all homelab machines
+- ✅ Cursor IDE installed and operational
+- ✅ 16 parallel builds with 16GB tmpfs
+
+**Configuration Location**: `~/homelab/nixos/hosts/Obsidian/configuration.nix`
+
+### **Post-Incident Safeguards**
+
+⚠️ **October 18, 2025 Incident**: An AI agent performed an overzealous "deep clean" that caused data loss. See [OBSIDIAN_REPAIR_SUMMARY.md](mdc:OBSIDIAN_REPAIR_SUMMARY.md).
+
+**Absolute Safety Rules**:
+
+1. **Ask for user confirmation** on system modifications
+2. **Test with `dry-build`** before `nixos-rebuild switch`
+3. **Document all changes** immediately in device changelog
+4. **Avoid destructive operations** without explicit user request
+5. **Never assume cleanup scope** - always clarify with user
+6. **No SQLite VACUUM** on user databases (especially Cursor)
+7. **No bulk file deletion** without explicit file-by-file approval
+
+## 📦 **Package Management**
+
+Obsidian uses **NixOS** (declarative, reproducible) package management:
+
+```bash
+# System packages - edit configuration
+vim ~/homelab/nixos/hosts/Obsidian/configuration.nix
+
+# Test configuration
+sudo nixos-rebuild dry-build
+
+# Apply changes
+sudo nixos-rebuild switch
+
+# Temporary package (doesn't persist)
+nix shell nixpkgs#<package>
+
+# Development shell
+nix develop
+```
+
+**Configuration Structure**:
+- System packages: `nixos/hosts/Obsidian/configuration.nix`
+- User packages: `nixos/users/e421/home.nix`
+- Shared modules: `nixos/modules/`
+
+**Best Practices**:
+- Always test with `dry-build` first
+- Keep 2-3 generations for rollback
+- Document changes in device changelog
+- Use flake.lock for reproducibility
+
+## 🔄 **NixOS Fleet Status**
+
+✅ **Fully Deployed NixOS Devices:**
+- ✅ `Obsidian` - i9-9900KS workstation (NixOS 25.11)
+- ✅ `neon-laptop` - ThinkPad T14 (NixOS 24.05)
+- ✅ `framework` - Framework Laptop 13 (NixOS 24.05)
+
+**Planned Migrations:**
+- ⏳ `pi-server` - ARM64 infrastructure (future)
+
+## 🎯 **AI Development**
+
+Obsidian hosts **dual-GPU AI inference** workloads:
+
+- **Port 11434**: Ollama (RTX 2080 - Qwen 7B)
+- **Port 11435**: Ollama (Arc A770 - Qwen 14B)
+
+See [HARDWARE_CONFIGURATION.md](mdc:services/ai-inference/HARDWARE_CONFIGURATION.md) for full AI infrastructure details.
+
+---
+
+**Remember**: Obsidian is the stable, production development environment. Treat it with care and always verify before making system changes.

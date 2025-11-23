@@ -1,0 +1,96 @@
+---
+alwaysApply: true
+description: Device changelog automation and change tracking
+---
+
+# Device Changelog Automation
+
+This rule ensures that all changes to device configurations, scripts, and reports are automatically documented in the appropriate device changelog files.
+
+## Changelog System
+
+Each device directory contains a `notes/device-changelog.md` file that tracks:
+
+- Script modifications and enhancements
+- Configuration changes
+- Hardware updates
+- Bug fixes and optimizations
+- Report generation and analysis
+
+## Automatic Documentation Requirements
+
+When modifying files in any device directory ([devices/*/](mdc:devices/)), the AI assistant MUST:
+
+1. **Add changelog entry** to `devices/[device-name]/notes/device-changelog.md`
+2. **Use structured format**:
+
+   ```markdown
+   ## YYYY-MM-DD HH:MM:SS - [TYPE]
+   
+   **Description**: Clear natural language description
+   
+   **Files**: List of affected files/components
+   
+   **Notes**: Additional context, deprecation info, or migration notes
+   
+   ---
+   ```
+
+3. **Change Types**:
+   - `SCRIPT`: New scripts, script enhancements, bug fixes
+   - `CONFIG`: Configuration file changes
+   - `HARDWARE`: Hardware additions, changes, driver updates  
+   - `UPDATE`: Software updates, package installations
+   - `FIX`: Bug fixes, performance improvements
+   - `DEPRECATION`: Script retirement, file archival
+   - `REPORT`: Benchmark results, analysis reports
+
+4. **Commit Integration**: Always include changelog updates in git commits
+
+## Device-Specific Files to Track
+
+### Scripts Directory (`devices/*/scripts/`)
+
+- Benchmark suites and performance testing tools
+- System maintenance and configuration scripts
+- Hardware-specific utilities and drivers
+- Automation and monitoring scripts
+
+### Configuration Directory (`devices/*/config/`)
+
+- System configuration files
+- Service definitions and systemd units
+- Network and security configurations
+- Application-specific settings
+
+### Reports Directory (`devices/*/reports/`)
+
+- Benchmark results and performance analysis
+- System health reports
+- Hardware testing outcomes
+- Maintenance logs and diagnostics
+
+## Example Usage
+
+When creating or modifying [benchmark-suite-enhanced.sh](mdc:devices/neon-laptop/scripts/benchmark-suite-enhanced.sh):
+
+```markdown
+## 2025-09-22 15:30:00 - [SCRIPT]
+
+**Description**: Enhanced benchmark suite with thermal monitoring and iGPU testing
+
+**Files**: benchmark-suite-enhanced.sh, device-changelog.md
+
+**Notes**: Added 5-minute thermal saturation testing, H.264 hardware encoding/decoding performance tests, GPU utilization monitoring. Original safe-mode script preserved for compatibility.
+```
+
+## Archive and Deprecation Tracking
+
+When deprecating scripts or configurations:
+
+1. Move to `devices/*/archive/` directory
+2. Add DEPRECATION entry explaining why and what replaced it
+3. Include migration instructions if applicable
+4. Preserve all historical context for future reference
+
+This ensures no knowledge is lost and provides clear historical tracking of system evolution.
