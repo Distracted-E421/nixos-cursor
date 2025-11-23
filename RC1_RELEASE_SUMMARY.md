@@ -1,75 +1,245 @@
-# RC1 Release Summary
+# RC1 Release Summary - nixos-cursor v2.1.20-rc1
 
+**Date**: 2025-11-22  
+**Status**: Ready for Community Testing  
 **Version**: v2.1.20-rc1
-**Branch**: pre-release
-**Date**: 2025-11-23
-**Status**: READY TO TAG AND PUSH
 
 ---
 
-## What's Ready
+## 🎯 What's Ready
 
-### **Core Package**
+### Core Functionality ✅
 
-- Cursor 2.1.20 builds successfully
-- `nix flake check` passes
-- Native NixOS packaging (not FHS)
-- Wayland + X11 support
-- GPU acceleration enabled
-- Auto-update system (disabled, documented)
+1. **Native Cursor Packaging**
+   - Cursor IDE 2.1.20 AppImage properly patched for NixOS
+   - GPU acceleration (libGL, libxkbfile fixes)
+   - Wayland + X11 support
+   - Both x86_64 and aarch64 architectures
 
-### **Installation Methods**
+2. **Auto-Update System** ✅ **NEW**
+   - **Daily update notifications** via systemd timer
+   - **One-command updates**: `cursor-update`
+   - **Manual check**: `cursor-check-update`
+   - Auto-detects flake directory or uses `$NIXOS_CURSOR_FLAKE_DIR`
+   - Maintains Nix reproducibility while providing convenience
+   - Built-in updater disabled (`--update=false`) to prevent errors
 
-1. **Direct Run** (no install):
+3. **MCP Integration Framework**
+   - Filesystem MCP (enabled by default)
+   - Memory MCP (persistent knowledge)
+   - NixOS MCP (package/option search)
+   - GitHub MCP (full Git workflow)
+   - Playwright MCP (browser automation)
 
-   ```bash
-   nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
-   ```
+4. **Home Manager Module**
+   - Declarative configuration
+   - Automatic MCP server management
+   - Browser integration (Chromium/Chrome/Firefox/WebKit)
+   - Update notification configuration
+   - Flake directory setting
 
-2. **Temporary Shell**:
+5. **Test Instance**
+   - `cursor-test` package with isolated profile
+   - Safe testing without affecting main installation
 
-   ```bash
-   nix shell github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
-   cursor
-   ```
+---
 
-3. **Home Manager** (permanent):
+## 📦 Installation Methods
 
-   ```nix
-   inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
-   ```
+### Method 1: Try Without Installing (Recommended for Testing)
 
-4. **Isolated Testing** (safe profile):
+```bash
+# Run directly from GitHub
+nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
+```
 
-   ```bash
-   nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor-test
-   ```
+### Method 2: Home Manager (Full Installation)
 
-### **Documentation**
+```nix
+{
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
+  
+  outputs = { nixos-cursor, ... }: {
+    homeConfigurations.youruser = {
+      modules = [
+        nixos-cursor.homeManagerModules.default
+        {
+          programs.cursor = {
+            enable = true;
+            
+            # Update system (enabled by default)
+            updateCheck.enable = true;
+            updateCheck.interval = "daily";
+            flakeDir = "/path/to/your/flake";  # Optional
+            
+            # MCP servers (optional)
+            mcp.enable = false;
+          };
+        }
+      ];
+    };
+  };
+}
+```
 
-- ✅ **[TESTING_RC.md](TESTING_RC.md)** - Comprehensive RC1 testing guide
-- ✅ **[README.md](README.md)** - Updated with RC1 banner and links
-- ✅ **[INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md)** - MCP setup guide
-- ✅ **[LICENSE](LICENSE)** - MIT license
-- ✅ **[.github/ISSUE_TEMPLATE/bug_report.md](.github/ISSUE_TEMPLATE/bug_report.md)** - Bug report template
-- ✅ **[examples/](examples/)** - 4 working examples
-- ✅ **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)** - Update system docs
+### Method 3: NixOS System Package
 
-### **Embedded Links**
+```nix
+{
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
+  
+  environment.systemPackages = [
+    nixos-cursor.packages.${system}.cursor
+  ];
+}
+```
 
-All documentation now has proper cross-links:
+### Method 4: Overlay
 
-- ✅ README → TESTING_RC.md (prominent)
-- ✅ README → LICENSE, INTEGRATION_GUIDE, examples
-- ✅ TESTING_RC → All relevant docs
-- ✅ Issue template references docs
-- ✅ Inline license preview in README
+```nix
+{
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/v2.1.20-rc1";
+  
+  nixpkgs.overlays = [ nixos-cursor.overlays.default ];
+  environment.systemPackages = [ pkgs.cursor ];
+}
+```
+
+---
+
+## 🔄 Using the Update System
+
+### Automatic Notifications (Default)
+
+After installation, Cursor will check for updates daily:
+
+```bash
+# Check systemd timer status
+systemctl --user status cursor-update-check.timer
+
+# View when next check will run
+systemctl --user list-timers cursor-update-check
+
+# Force a check now
+systemctl --user start cursor-update-check.service
+```
+
+### Manual Updates
+
+```bash
+# Check if update available
+cursor-check-update
+
+# Update Cursor (one command does everything)
+cursor-update
+
+# Traditional Nix way (also works)
+cd ~/.config/home-manager
+nix flake update nixos-cursor
+home-manager switch
+```
+
+### Configuration
+
+```nix
+programs.cursor = {
+  enable = true;
+  
+  # Disable automatic checks (not recommended)
+  updateCheck.enable = false;
+  
+  # Change check frequency
+  updateCheck.interval = "weekly";  # or "Mon 09:00", etc.
+  
+  # Set flake directory (helps cursor-update find your config)
+  flakeDir = "/home/user/.config/home-manager";
+};
+```
+
+**Why this system?** Cursor can't self-update on NixOS because it lives in the read-only `/nix/store` and requires `autoPatchelfHook` re-patching. Our system provides the convenience of auto-updates while maintaining Nix's reproducibility guarantees.
+
+See [docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md) for technical details.
+
+---
+
+## 📚 Documentation
+
+All essential docs are in place:
+
+- **[README.md](README.md)** - Main entry point with quick start
+- **[TESTING_RC.md](TESTING_RC.md)** - Comprehensive testing guide
+- **[docs/AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md)** - Update system details
+- **[KNOWN_ISSUES.md](KNOWN_ISSUES.md)** - Known limitations
+- **[cursor/README.md](cursor/README.md)** - Package technical docs
+- **[.github/ISSUE_TEMPLATE/bug_report.md](.github/ISSUE_TEMPLATE/bug_report.md)** - Bug reporting template
+- **[examples/](examples/)** - Configuration examples
+
+---
+
+## ⚠️ Known Caveats for RC1
+
+### 1. MCP Server Configuration
+
+**Issue**: MCP server setup requires some manual steps (installing Node.js, uvx, etc.).
+
+**Status**: Documented in INTEGRATION_GUIDE.md but not fully automated.
+
+**Workaround**: Follow the integration guide step-by-step.
+
+**For RC2**: Consider adding automatic dependency installation to Home Manager module.
+
+---
+
+### 2. ARM64 Testing
+
+**Issue**: ARM64 build is untested (maintainer has x86_64 hardware only).
+
+**Status**: Package builds successfully via CI, but runtime untested.
+
+**Need**: ARM64 users to test and report issues.
+
+---
+
+### 3. Update Flake Detection
+
+**Issue**: `cursor-update` tries to auto-detect flake location, may fail in non-standard setups.
+
+**Workaround**: Set `programs.cursor.flakeDir` or export `NIXOS_CURSOR_FLAKE_DIR`.
+
+**For RC2**: Improve detection heuristics, add more common paths.
+
+---
+
+### 4. Desktop Integration
+
+**Issue**: `.desktop` file may not show proper icon on first install.
+
+**Workaround**: Logout/login or run `update-desktop-database ~/.local/share/applications/`.
+
+**For RC2**: Investigate automatic desktop database update via Home Manager.
+
+---
+
+## ✅ Pre-Release Checklist
+
+- [x] Core package builds on x86_64
+- [x] Core package builds on aarch64 (CI verified, runtime untested)
+- [x] Home Manager module works
+- [x] Test instance (`cursor-test`) builds
+- [x] Update system implemented (notifications + commands)
+- [x] Update documentation complete
+- [x] Examples provided
+- [x] Bug report template created
+- [x] LICENSE file present and correct
+- [x] README prominently features RC status and testing instructions
+- [x] `nix flake check` passes
+- [x] Testing guide (TESTING_RC.md) comprehensive
 
 ---
 
 ## 🚀 Next Steps to Release
 
-### **1. Tag the Release**
+**1. Tag the Release**
 
 ```bash
 # Create the RC1 tag
@@ -79,14 +249,15 @@ Features:
 - Native NixOS packaging of Cursor IDE 2.1.20
 - Wayland/X11 support with GPU acceleration
 - MCP server integration framework
-- Auto-update system (documented)
+- Automated update system with daily notifications
+- One-command updates (cursor-update)
 - Comprehensive testing documentation
 
 This is a release candidate for community testing.
 See TESTING_RC.md for testing instructions."
 ```
 
-### **2. Push to GitHub**
+**2. Push to GitHub**
 
 ```bash
 # Push the branch
@@ -96,128 +267,77 @@ git push origin pre-release
 git push origin v2.1.20-rc1
 ```
 
-### **3. Create GitHub Release**
+**3. Create GitHub Release**
 
-Go to: <https://github.com/Distracted-E421/nixos-cursor/releases/new>
+Go to: https://github.com/Distracted-E421/nixos-cursor/releases/new
 
-**Tag**: `v2.1.20-rc1`  
-**Title**: `nixos-cursor v2.1.20-rc1 - Release Candidate`  
-**Description**:
+- Tag: `v2.1.20-rc1`
+- Title: `v2.1.20-rc1 - Release Candidate 1`
+- Description:
 
 ```markdown
-# nixos-cursor v2.1.20-rc1
+# 🚀 Release Candidate 1
 
-**Status**: Release Candidate - Community Testing Phase
+This is the first release candidate of nixos-cursor. We're looking for community testing before the stable v2.1.20 release.
 
-## 🎯 What's in RC1
+## ✨ What's New
 
-- Native NixOS packaging of Cursor IDE 2.1.20
-- Wayland and X11 support with hardware acceleration
-- MCP (Model Context Protocol) server integration framework
-- Automated update system (NixOS-compatible)
-- Home Manager module for declarative configuration
+- **Automated Update System**: Daily notifications + one-command updates
+- **Native NixOS Packaging**: Cursor IDE 2.1.20 with full GPU support
+- **MCP Server Integration**: Framework for 5+ MCP servers
+- **Comprehensive Documentation**: Testing guides, examples, troubleshooting
 
-## 🚀 Quick Start
+## 🧪 Testing
 
-### Try Without Installing
+See **[TESTING_RC.md](TESTING_RC.md)** for full instructions.
 
-```bash
+Quick start:
+\`\`\`bash
 nix run github:Distracted-E421/nixos-cursor/v2.1.20-rc1#cursor
-```
-
-### Full Testing Instructions
-
-See **[TESTING_RC.md](TESTING_RC.md)** for comprehensive testing guide.
-
-## 📚 Documentation
-
-- [Testing Guide](TESTING_RC.md) - How to test RC1
-- [Integration Guide](INTEGRATION_GUIDE.md) - MCP server setup
-- [Examples](examples/) - Example configurations
-- [License](LICENSE) - MIT License
+\`\`\`
 
 ## 🐛 Reporting Issues
 
-Found a bug? Please [open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new/choose) with:
+Found a bug? Please report it: https://github.com/Distracted-E421/nixos-cursor/issues
 
-- System information (see [TESTING_RC.md](TESTING_RC.md#-system-information))
-- Steps to reproduce
-- Expected vs actual behavior
+## 📚 Documentation
 
-## 🙏 Help Us Test
-
-This is a **Release Candidate** - we need your help testing before stable release!
-
-**What to test**:
-
-- Package builds on your system
-- Cursor launches and works
-- Keyboard shortcuts function
-- Extensions can be installed
-- Multi-monitor setup (if applicable)
-
-## ⚠️ Known Limitations
-
-- MCP server setup is manual (requires configuration)
-- ARM64 build untested (experimental)
-- Extension management is mutable by default
-
-See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
-
----
-
-**License**: MIT | **Maintainer**: e421
-
+- [README.md](README.md) - Quick start
+- [TESTING_RC.md](TESTING_RC.md) - Testing guide
+- [AUTO_UPDATE_IMPLEMENTATION.md](docs/AUTO_UPDATE_IMPLEMENTATION.md) - Update system
+- [examples/](examples/) - Configuration examples
 ```
 
-**Check**: ✅ Mark as "pre-release"
+---
+
+## 📊 Post-Release Checklist
+
+After tagging and creating GitHub Release:
+
+- [ ] Announce in NixOS Discourse
+- [ ] Share in relevant Reddit communities (r/NixOS)
+- [ ] Monitor GitHub issues for bug reports
+- [ ] Collect feedback on update system
+- [ ] Address critical bugs with RC2 if needed
+- [ ] Plan timeline for stable v2.1.20 release
 
 ---
 
-## 📋 Post-Release Checklist
+## 🎯 Success Criteria for Stable Release
 
-After pushing RC1:
+RC1 graduates to stable v2.1.20 when:
 
-- [ ] Verify GitHub release is visible
-- [ ] Test the `nix run` command works from GitHub
-- [ ] Share RC1 announcement (Discord/Matrix/Forum)
-- [ ] Monitor GitHub issues for feedback
-- [ ] Document any recurring questions in FAQ
-- [ ] Plan RC2 or stable based on feedback
+1. ✅ At least 5 users test successfully on x86_64
+2. ✅ At least 1 user tests successfully on aarch64
+3. ✅ No critical bugs reported
+4. ✅ Update system works reliably
+5. ✅ MCP integration functional (even if setup manual)
+6. ✅ Documentation complete and clear
 
----
-
-## 🎯 Success Criteria for Moving to Stable
-
-**Required**:
-- No critical bugs reported
-- Package builds on multiple systems
-- At least 3 successful test reports
-- Documentation questions answered
-
-**Timeline**:
-- RC1 testing: 1-2 weeks
-- Fix any bugs → RC2 if needed
-- Stable (v2.1.20): When testing confirms ready
+Timeline: **1-2 weeks of testing** → stable release
 
 ---
 
-## 📊 Current State
-
-**Branch**: pre-release  
-**Commits**: 3 total
-- `aa2ff95` - RC1 documentation
-- `a7125c2` - Initial setup
-- `c330a7d` - Repo init
-
-**Files Changed**: 5 files, +402/-311 lines
-- Added: TESTING_RC.md, bug report template
-- Updated: README.md
-- Removed: RUST_NIX_BEST_PRACTICES.md
-
-**Ready**: ✅ YES - All documentation in place, package builds, ready to tag
-
----
-
-**Last Updated**: 2025-11-23  
-**Next Action**: Tag as v2.1.20-rc1 and push to GitHub 🚀
+**Prepared by**: AI Agent (Maxim)  
+**Reviewed by**: e421  
+**Status**: Ready for Tag & Push ✅
