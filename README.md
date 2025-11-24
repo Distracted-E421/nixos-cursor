@@ -4,9 +4,12 @@
 **License**: MIT  
 **Maintained by**: e421 (distracted.e421@gmail.com)  
 
-A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers** and automated updates.
+A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** for maintaining workflow stability.
 
-> **Note on Version 2.0.77**: This package targets Cursor 2.0.77, which is the latest stable version confirmed to support custom agent modes properly. We also provide legacy support for 1.7.54 and 2.0.64. See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for details.
+> **Why Release Candidate 3?**
+> We are targeting **Cursor 2.0.77** as our primary stable release. With the depreciation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a dedicated **Version Manager** that allows you to run specific, pinned versions of Cursor (like 2.0.77 and 1.7.54) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+
+See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manifest.
 
 ---
 
