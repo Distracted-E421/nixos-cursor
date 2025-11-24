@@ -1,14 +1,14 @@
 # nixos-cursor
 
-**Status**: Release Candidate 3.2 (v2.0.77) - **37 Versions Available**  
+**Status**: Release Candidate 3.3 (v2.0.77) - **37 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
 
 A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **37 historical versions** spanning three eras for ultimate workflow stability.
 
-> **Why Release Candidate 3.2?**
-> We are targeting **Cursor 2.0.77** as our primary stable release. With the deprecation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a comprehensive **Version Manager** that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+> **Why Release Candidate 3.3?**
+> We are targeting **Cursor 2.0.77** as our primary stable release. With the deprecation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
 
 **Version Coverage:**
 - **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
@@ -41,7 +41,7 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 Choose from **37 historical Cursor versions** spanning three major eras!
 
 ```bash
-# Launch the version manager GUI (dropdown menus)
+# Launch the version manager GUI (dropdown menus with persistent settings)
 nix run github:Distracted-E421/nixos-cursor#cursor-manager
 
 # Or run specific versions directly:
@@ -59,8 +59,14 @@ nix run github:Distracted-E421/nixos-cursor#cursor-2_0_11
 nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
 
 # Run multiple versions concurrently:
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77 --impure &
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 --impure &
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77 &
+nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
+```
+
+**For Local Development:**
+```bash
+# Set CURSOR_FLAKE_URI to use local flake
+CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 ```
 
 **Full Version List** (replace dots with underscores):
@@ -110,20 +116,17 @@ Cursor includes an automated update system that:
 
 ## 🌿 Development & Contributing
 
-This project uses a **public/private branching strategy**:
+This is a personal project maintained by e421. If you'd like to contribute or have suggestions, feel free to open an issue or reach out!
 
-- **`main`**: Stable releases (public)
-- **`pre-release`**: Release candidates for testing (public)
-- **`dev`**: Active development (private)
+**Branch Strategy:**
+- **`main`**: Stable releases
+- **`pre-release`**: Release candidates for testing (currently RC3.3)
 
-See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for full details.
+### Documentation
 
-### Quick Links
-
-- [Branching Strategy](BRANCHING_STRATEGY.md) - Development workflow
-- [Scripts Documentation](scripts/README.md) - Automation tools
-- [Release Strategy](RELEASE_STRATEGY.md) - Versioning and releases
-- [Version Manager Guide](VERSION_MANAGER_GUIDE.md) - Managing multiple versions
+- [Version Manager Guide](VERSION_MANAGER_GUIDE.md) - Complete guide to managing 37 versions
+- [Test Suite](tests/multi-version-test.sh) - Automated testing for all versions
+- [Integration Success](INTEGRATION_SUCCESS_RC3.2.md) - User-facing quick start
 
 ---
 

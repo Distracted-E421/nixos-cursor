@@ -1,20 +1,21 @@
-# RC3.2 Release Summary
+# RC3.3 Release Summary
 
 **Status**: Complete - Ready for Community Release  
 **Date**: 2025-11-24  
-**Version**: RC3.2 (37-Version Multi-Era System)
+**Version**: RC3.3 (37-Version Multi-Era System with Polished GUI)
 
 ---
 
-## 🎉 **What's New in RC3.2**
+## 🎉 **What's New in RC3.3**
 
-RC3.2 represents a **3x expansion** of the multi-version system, bringing comprehensive historical coverage of Cursor IDE across three major eras.
+RC3.3 is the polished, production-ready release with **UX improvements** and **comprehensive documentation cleanup**.
 
-### **Version Expansion: 12 → 37**
+### **Version Evolution**
 
-- **RC3.1**: 12 versions (4 eras)
-- **RC3.2**: 37 versions (3 eras unified)
-- **Growth**: +25 versions (~3x expansion, 12x since RC3)
+- **RC3**: 3 versions (initial)
+- **RC3.1**: 12 versions (4x growth)
+- **RC3.2**: 37 versions (3x growth)
+- **RC3.3**: 37 versions + **Polished GUI** + **Persistent Settings**
 
 ### **Version Breakdown**
 
@@ -30,21 +31,25 @@ RC3.2 represents a **3x expansion** of the multi-version system, bringing compre
 
 ## ✨ **Major Features**
 
-###  1. Dropdown GUI (Complete Refactor)**
+### **1. Polished GUI (RC3.3)**
 
-**Old (RC3.1)**:
-- 12 individual buttons in scrolling list
-- No organization
-- Cluttered with 37 versions
+**New in RC3.3:**
+- ✅ **Larger window** (550x500) - No button cutoff
+- ✅ **Bigger checkboxes** (10pt font, better padding)
+- ✅ **Better dropdown contrast** - Matches dark/light themes
+- ✅ **Persistent settings** - Saved to `~/.config/cursor-manager.json`
+  - Settings sync preference remembered
+  - Global docs/auth preference remembered
+  - Auto-saves on toggle
 
-**New (RC3.2)**:
+**GUI Design (RC3.2 → RC3.3):**
 - Two-tier dropdown menus
   1. Era selection (2.0.x, 1.7.x, 1.6.x, System Default)
   2. Version selection (filtered by era)
 - Emoji status indicators (✓✗⚠ℹ🚀)
-- Compact layout (500x400 window)
 - Keyboard navigation support
 - Recommended versions highlighted
+- Theme-aware styling
 
 ### **2. Comprehensive Test Suite**
 
@@ -57,14 +62,21 @@ New automated testing (`tests/multi-version-test.sh`):
 
 **Results**: ✅ All tests passing
 
-### **3. Complete Documentation Overhaul**
+### **3. Documentation Cleanup (RC3.3)**
 
-Updated files:
-- `README.md` - RC3.2 features, 37-version Quick Start
-- `VERSION_MANAGER_GUIDE.md` - Dropdown GUI guide, all 37 versions documented
-- `RC3.2_INTEGRATION_COMPLETE.md` - Technical completion report
-- `INTEGRATION_SUCCESS_RC3.2.md` - User-facing success guide
-- `.cursor/version-urls.txt` - Full integration status
+**Streamlined documentation:**
+- ✅ Removed 17 outdated/redundant files
+- ✅ Updated `README.md` for RC3.3
+- ✅ Simplified development section
+- ✅ Removed branching/release strategy docs
+- ✅ Added local development examples
+
+**Kept only essential docs:**
+- `README.md` - Main project documentation
+- `VERSION_MANAGER_GUIDE.md` - Complete user guide
+- `INTEGRATION_SUCCESS_RC3.2.md` - Quick start guide
+- `RC3.3_RELEASE_SUMMARY.md` - This file
+- `.cursor/version-urls.txt` - Integration status
 
 ### **4. Stable S3 URL Infrastructure**
 
