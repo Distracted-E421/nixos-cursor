@@ -38,12 +38,13 @@ let
     else if dataStrategy == "isolated" then
       # Complete isolation - safest
       # We pass path components separately to avoid quoting issues
-      # Use \$HOME literal to ensure it's expanded by the shell script wrapper at runtime
-      [ "--user-data-dir" "\$HOME/.cursor-${version}" "--extensions-dir" "\$HOME/.cursor-${version}/extensions" ]
+      # Use \\$HOME literal to ensure it's expanded by the shell script wrapper at runtime
+      # Note: In Nix string, "\\" becomes "\", so "\\$HOME" becomes "\$HOME" in the generated script
+      [ "--user-data-dir" "\\$HOME/.cursor-${version}" "--extensions-dir" "\\$HOME/.cursor-${version}/extensions" ]
     else if dataStrategy == "sync" then
       # Hybrid: base config shared, version-specific overrides
       # TODO: Implement sync mechanism
-      [ "--user-data-dir" "\$HOME/.cursor-${version}" "--extensions-dir" "\$HOME/.config/Cursor/extensions" ]
+      [ "--user-data-dir" "\\$HOME/.cursor-${version}" "--extensions-dir" "\\$HOME/.config/Cursor/extensions" ]
     else
       throw "Invalid dataStrategy: ${dataStrategy}. Use: shared, isolated, or sync";
 
