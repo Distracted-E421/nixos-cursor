@@ -375,10 +375,10 @@ class CursorManager(tk.Tk):
                 pkg_name = cmd.replace(".", "_")
 
                 # Use configured flake URI or default to GitHub
-                flake_uri = os.environ.get(
-                    "CURSOR_FLAKE_URI",
-                    "github:Distracted-E421/nixos-cursor"
-                )
+                # Check CURSOR_FLAKE_URI env var first (highest priority)
+                flake_uri = os.environ.get("CURSOR_FLAKE_URI")
+                if not flake_uri:
+                    flake_uri = "github:Distracted-E421/nixos-cursor"
 
                 print(f"🚀 Launching via Nix: {flake_uri}#{pkg_name}")
                 subprocess.Popen([
