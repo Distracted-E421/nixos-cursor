@@ -40,10 +40,10 @@
   libxkbcommon,
   alsa-lib,
   udev,
-  version ? "2.0.64", # Cursor version to build
-  hash ? "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=", # AppImage hash for x86_64
+  version ? "2.0.77", # Cursor version to build
+  hash ? "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=", # AppImage hash for x86_64
   hashAarch64 ? "sha256-PLACEHOLDER_NEEDS_VERIFICATION", # AppImage hash for aarch64
-  srcUrl ? null, # Specific download URL (overrides default downloader.cursor.sh)
+  srcUrl ? "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage", # Specific download URL (overrides default downloader.cursor.sh)
   localAppImage ? null, # Path to local AppImage file (for offline builds or DNS issues)
   commandLineArgs ? "", # Command-line arguments (string or list)
   postInstall ? "", # Additional postInstall steps (for version-specific customization)
