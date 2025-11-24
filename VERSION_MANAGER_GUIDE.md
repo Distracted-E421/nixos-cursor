@@ -12,14 +12,15 @@ We have implemented a **robust, community-ready solution** for managing multiple
     *   **2.0.64**: Reliable fallback.
 
 2.  **Pure, Reproducible Builds**:
-    *   Uses direct S3 URLs (bypassing DNS issues with `downloader.cursor.sh`).
+    *   Uses direct S3 URLs (bypassing DNS issues).
     *   Verified SRI hashes for security.
     *   No more manual downloading or local AppImages required!
 
-3.  **Cursor Manager GUI**:
-    *   A sidecar "launcher" window to easily switch between versions.
-    *   Launch specific versions alongside each other.
-    *   Isolated user data for each version (safe concurrency).
+3.  **Cursor Manager GUI (Themed)**:
+    *   A Python-based GUI that **matches your editor theme** (Dark/Light).
+    *   Launches specific versions alongside each other.
+    *   **Smart Data Sync**: Automatically copies your `settings.json`, `keybindings.json`, and snippets to isolated versions.
+    *   **Global State Sync**: Optional experimental support for sharing Docs and Auth state via symlinking.
 
 ---
 
@@ -42,17 +43,12 @@ This opens a window "alongside" your editor where you can spawn instances of:
 *   **Classic (1.7.54)**: For legacy stability.
 *   **System Default**: Whatever `cursor` maps to.
 
-### 2. Running Specific Versions Directly
+### 2. Data Persistence & Docs
 
-You can also run specific versions directly from the terminal:
+The Manager now handles data migration for you!
 
-```bash
-# Run 2.0.77 (Recommended)
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
-
-# Run 1.7.54
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54
-```
+*   **Settings Sync**: When launching a version for the first time, it checks for your main configuration and offers to sync `settings.json` and `keybindings.json`.
+*   **Docs & Auth**: Check the "Sync Global State [Experimental]" box to symlink your `globalStorage`. This allows your indexed Docs to be shared between versions (use with caution).
 
 ### 3. Installing Permanently
 
@@ -73,35 +69,3 @@ Add to your `configuration.nix` or `home.nix` to have `cursor` (2.0.77), `cursor
   ];
 }
 ```
-
----
-
-## 💡 Technical Details
-
-### Pure Builds
-We updated the flake to use **direct download URLs** from `downloads.cursor.com` instead of the flaky `downloader.cursor.sh` redirector. This ensures:
-*   **Reliability**: Builds won't fail due to DNS/Redirector issues.
-*   **Reproducibility**: We use strict SRI hashes (`sha256-...`) so everyone gets the exact same bits.
-*   **No Impurity**: `localAppImage` is no longer required for these targeted versions.
-
-### Data Isolation
-To prevent configuration corruption when running multiple versions:
-*   **2.0.77** uses `~/.cursor-2.0.77/`
-*   **1.7.54** uses `~/.cursor-1.7.54/`
-*   **Default** uses `~/.config/Cursor/`
-
-This allows you to run **1.7.54** and **2.0.77** at the exact same time without them fighting over SQLite databases.
-
-### Extending
-To add more versions, edit `cursor-versions.nix`. Just add a new block with the `srcUrl` and `hash`:
-
-```nix
-  cursor-NEW_VER = mkCursorVersion {
-    version = "X.Y.Z";
-    hash = "sha256-SRI_HASH...";
-    srcUrl = "https://downloads.cursor.com/...";
-    binaryName = "cursor-X.Y.Z";
-    dataStrategy = "isolated";
-  };
-```
-
