@@ -163,6 +163,9 @@ See [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md) for full details.
 
 ---
 
-## 📄 License
+## ⚖️ License & Proprietary Note
 
-MIT License - See [LICENSE](LICENSE) file.
+**Packaging Code**: MIT License - See [LICENSE](LICENSE) file.
+
+**Cursor Binary**: Proprietary (Unfree).
+This flake downloads the official AppImage from Cursor's servers (`downloader.cursor.sh` or `downloads.cursor.com`) and wraps it for NixOS compatibility. We do not redistribute the binary itself. You must comply with Cursor's Terms of Service when using this software.
