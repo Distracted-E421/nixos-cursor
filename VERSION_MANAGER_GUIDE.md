@@ -1,38 +1,45 @@
 # Cursor Version Manager & Community Solution
 
-## 🚀 The Complete Solution
+## 🚀 RC3.2 - The Complete Multi-Version Solution
 
-We have implemented a **robust, community-ready solution** for managing multiple Cursor versions on NixOS. This system addresses the deprecation of custom modes by allowing you to run specific, stable versions of Cursor that preserve this functionality.
+We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 
 ### Key Features
 
-1. **Targeted Stable Versions**:
-    * **2.0.77**: Latest 2.0.x version with working custom modes.
-    * **1.7.54**: Classic pre-2.0 version preferred by many.
-    * **2.0.64**: Reliable fallback.
+1. **37 Available Versions Across 3 Eras**:
+    * **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
+    * **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
+    * **1.6.x Legacy Era**: 1 version (1.6.45)
 
-2. **Pure, Reproducible Builds**:
-    * Uses direct S3 URLs (bypassing DNS issues).
-    * Verified SRI hashes for security.
-    * No more manual downloading or local AppImages required!
+2. **Modern Dropdown GUI**:
+    * Two-tier selection: Choose era → Choose specific version
+    * Themed to match your Cursor editor (Dark/Light)
+    * Organized, scalable interface for 37 versions
+    * Emoji status indicators (✓✗⚠ℹ🚀)
 
-3. **Cursor Manager GUI (Themed)**:
-    * A Python-based GUI that **matches your editor theme** (Dark/Light).
-    * Launches specific versions alongside each other.
-    * **Smart Data Sync**: Automatically copies your `settings.json`, `keybindings.json`, and snippets to isolated versions.
-    * **Global State Sync**: Optional experimental support for sharing Docs and Auth state via symlinking.
+3. **Pure, Reproducible Builds**:
+    * Uses stable S3 URLs (no DNS dependency)
+    * Verified SRI hashes for all 37 versions
+    * No manual downloading required!
+    * Builds via Nix for reproducibility
+
+4. **Data Management**:
+    * **Isolated User Data**: Each version in `~/.cursor-VERSION/`
+    * **Settings Sync**: Auto-copy `settings.json`, `keybindings.json`, snippets
+    * **Global State Sync**: Optional experimental Docs/Auth sharing via symlink
+    * **Concurrent Launches**: Run multiple versions simultaneously
 
 ## 🙏 Credits
 
-Special thanks to [@oslook](https://github.com/oslook) for providing the direct download links and hash verification for the specific Cursor versions (1.7.54, 2.0.77) that made this multi-version manager possible. [cursor-ai-downloads](https://github.com/oslook/cursor-ai-downloads)
+**Massive thanks** to [@oslook](https://github.com/oslook) for maintaining comprehensive version tracking and stable download links for all 37 Cursor versions. Their meticulous work cataloging S3 URLs made this multi-version system possible. [cursor-ai-downloads](https://github.com/oslook/cursor-ai-downloads)
 
 ---
 
 ## 🛠️ Usage Guide
 
-### 1. Launching the Cursor Manager
+### 1. Launching the Cursor Manager (GUI)
 
-You can launch the graphical manager to select your version:
+The graphical manager provides dropdown menus for all 37 versions:
 
 ```bash
 # If installed in your system packages:
@@ -42,11 +49,40 @@ cursor-manager
 nix run github:Distracted-E421/nixos-cursor#cursor-manager
 ```
 
-This opens a window "alongside" your editor where you can spawn instances of:
+**GUI Features:**
+- **Era Dropdown**: Select from 2.0.x, 1.7.x, 1.6.x, or System Default
+- **Version Dropdown**: Lists all versions for selected era
+- **Options**: Settings sync + optional Docs/Auth sharing
+- **Launch Button**: Starts selected version with configured options
 
-* **Stable (2.0.77)**: Your daily driver with custom modes.
-* **Classic (1.7.54)**: For legacy stability.
-* **System Default**: Whatever `cursor` maps to.
+**Example Workflow:**
+1. Select "2.0.x - Custom Modes Era" from first dropdown
+2. Select "2.0.77 (Stable - Recommended)" from second dropdown
+3. Check "Sync Settings & Keybindings" (recommended)
+4. Optionally check "Share Docs & Auth" (experimental)
+5. Click "🚀 Launch Selected Version"
+
+### 2. Direct CLI Launch (Without GUI)
+
+Run any version directly via command line:
+
+```bash
+# Latest stable (2.0.77) - Default
+nix run github:Distracted-E421/nixos-cursor#cursor
+
+# Specific 2.0.x version
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_11  # First custom modes
+
+# Specific 1.7.x version
+nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54  # Latest pre-2.0
+nix run github:Distracted-E421/nixos-cursor#cursor-1_7_28
+
+# Legacy 1.6.x
+nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
+```
+
+**Note**: Replace dots with underscores in version numbers (`2.0.77` → `cursor-2_0_77`).
 
 ### 2. Data Persistence & Docs
 
