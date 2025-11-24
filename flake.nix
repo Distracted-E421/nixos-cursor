@@ -34,15 +34,23 @@
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
           
-          # Version-specific packages for running multiple instances
-          # Custom Modes Era (2.0.x)
+          # Version-specific packages for running multiple instances (37 total)
+          # Custom Modes Era - 2.0.x (17 versions)
           inherit (cursorVersions) 
             cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 
-            cursor-2_0_69 cursor-2_0_64 cursor-2_0_63 cursor-2_0_60;
+            cursor-2_0_69 cursor-2_0_64 cursor-2_0_63 cursor-2_0_60
+            cursor-2_0_57 cursor-2_0_54 cursor-2_0_52 cursor-2_0_43
+            cursor-2_0_40 cursor-2_0_38 cursor-2_0_34 cursor-2_0_32 cursor-2_0_11;
           
-          # Classic Era (Pre-2.0)
+          # Classic Era - 1.7.x (19 versions)
           inherit (cursorVersions) 
-            cursor-1_7_54 cursor-1_7_53 cursor-1_7_52 cursor-1_7_46;
+            cursor-1_7_54 cursor-1_7_53 cursor-1_7_52 cursor-1_7_46
+            cursor-1_7_44 cursor-1_7_43 cursor-1_7_40 cursor-1_7_39 cursor-1_7_38
+            cursor-1_7_36 cursor-1_7_33 cursor-1_7_28 cursor-1_7_25 cursor-1_7_23
+            cursor-1_7_22 cursor-1_7_17 cursor-1_7_16 cursor-1_7_12 cursor-1_7_11;
+          
+          # Legacy Era - 1.6.x (1 version)
+          inherit (cursorVersions) cursor-1_6_45;
           
           # Isolated test instance (separate profile for testing)
           cursor-test = (pkgs.callPackage ./cursor {

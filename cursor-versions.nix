@@ -1,18 +1,23 @@
-# Multi-Version Cursor System
+# Multi-Version Cursor System (RC3.2)
 # Allows running different Cursor versions simultaneously with different binary names
 #
-# Usage:
+# Total Versions: 37 (1.6.45 through 2.0.77)
+#   - 2.0.x Custom Modes Era: 17 versions (2.0.11 - 2.0.77)
+#   - 1.7.x Classic Era: 19 versions (1.7.11 - 1.7.54)
+#   - 1.6.x Legacy: 1 version (1.6.45)
+#
+# Usage Examples:
 #   cursor         # Main version (2.0.77 - Latest targeted stable)
-#   cursor-2.0.77  # Explicit 2.0.77
-#   cursor-1.7.54  # Classic 1.7.54 (Pre-2.0)
-#   cursor-2.0.64  # Last with old custom modes (fallback)
+#   cursor-2.0.77  # Explicit latest
+#   cursor-1.7.54  # Latest pre-2.0
+#   cursor-1.6.45  # Legacy version
 #
 # User Data Strategy:
 #   - Each version can have isolated data: ~/.cursor-VERSION/
 #   - Or share base data with sync: ~/.config/Cursor/ + version-specific overrides
-#   - Controlled via CURSOR_DATA_STRATEGY environment variable:
-#     * "shared" - All versions share ~/.config/Cursor (default, careful!)
-#     * "isolated" - Each version gets ~/.cursor-VERSION/ (safest)
+#   - Controlled via dataStrategy parameter:
+#     * "shared" - All versions share ~/.config/Cursor (use with caution!)
+#     * "isolated" - Each version gets ~/.cursor-VERSION/ (safest, default)
 #     * "sync" - Base shared + version-specific overrides (balanced)
 
 {
@@ -210,6 +215,212 @@ in
     hash = "sha256-XDKDZYCagr7bEL4HzQFkhdUhPiL5MaRzZTPNrLDPZDM=";
     srcUrl = "https://downloads.cursor.com/production/b9e5948c1ad20443a5cecba6b84a3c9b99d62582/linux/x64/Cursor-1.7.46-x86_64.AppImage";
     binaryName = "cursor-1.7.46";
+    dataStrategy = "isolated";
+  };
+
+  # ===== Additional 2.0.x Versions (9 new - Early Custom Modes) =====
+  
+  cursor-2_0_57 = mkCursorVersion {
+    version = "2.0.57";
+    hash = "sha256-RZ7BzmtbmdiAuXoCyllR+HgBbvQcGwhN/kIvJVxg6vo=";
+    srcUrl = "https://downloads.cursor.com/production/eb037ef2bfba33ac568b0da614cb1c7b738455d6/linux/x64/Cursor-2.0.57-x86_64.AppImage";
+    binaryName = "cursor-2.0.57";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_54 = mkCursorVersion {
+    version = "2.0.54";
+    hash = "sha256-ndss1uOAHk04Y6KnPWGqm+dTyGCrVOR1uJW/8nD/T/s=";
+    srcUrl = "https://downloads.cursor.com/production/7a31bffd467aa2d9adfda69076eb924e9062cb27/linux/x64/Cursor-2.0.54-x86_64.AppImage";
+    binaryName = "cursor-2.0.54";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_52 = mkCursorVersion {
+    version = "2.0.52";
+    hash = "sha256-+rH+ubUx7FDyK+EoqNgnMpjR1yvp6J2Hymgl/xQWvxw=";
+    srcUrl = "https://downloads.cursor.com/production/2125c48207a2a9aa55bce3d0af552912c84175d9/linux/x64/Cursor-2.0.52-x86_64.AppImage";
+    binaryName = "cursor-2.0.52";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_43 = mkCursorVersion {
+    version = "2.0.43";
+    hash = "sha256-ok+7uBlI9d3a5R5FvMaWlbPM6tX2eCse7jZ7bmlPExY=";
+    srcUrl = "https://downloads.cursor.com/production/8e4da76ad196925accaa169efcae28c45454cce3/linux/x64/Cursor-2.0.43-x86_64.AppImage";
+    binaryName = "cursor-2.0.43";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_40 = mkCursorVersion {
+    version = "2.0.40";
+    hash = "sha256-BwKprsZ4V5IPp0W7eef7ZPrr3K4DlQoKKwIJeJQxnC4=";
+    srcUrl = "https://downloads.cursor.com/production/a9b73428ca6aeb2d24623da2841a271543735562/linux/x64/Cursor-2.0.40-x86_64.AppImage";
+    binaryName = "cursor-2.0.40";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_38 = mkCursorVersion {
+    version = "2.0.38";
+    hash = "sha256-HD+8OytWJrWgMy8PVo2+X7b5UdL6fBQpw7XRH+lvzDA=";
+    srcUrl = "https://downloads.cursor.com/production/3fa438a81d579067162dd8767025b788454e6f93/linux/x64/Cursor-2.0.38-x86_64.AppImage";
+    binaryName = "cursor-2.0.38";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_34 = mkCursorVersion {
+    version = "2.0.34";
+    hash = "sha256-x51N2BttMkfKwH4/Uxn/ZNFVPZbaNdsZm8BFFIMmxBM=";
+    srcUrl = "https://downloads.cursor.com/production/45fd70f3fe72037444ba35c9e51ce86a1977ac11/linux/x64/Cursor-2.0.34-x86_64.AppImage";
+    binaryName = "cursor-2.0.34";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_32 = mkCursorVersion {
+    version = "2.0.32";
+    hash = "sha256-Qe7C4wW5TjnpiwanOgmK56Gk6i0ORp2p89ld1NZrBb0=";
+    srcUrl = "https://downloads.cursor.com/production/9a5dd36e54f13fb9c0e74490ec44d080dbc5df53/linux/x64/Cursor-2.0.32-x86_64.AppImage";
+    binaryName = "cursor-2.0.32";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_0_11 = mkCursorVersion {
+    version = "2.0.11";
+    hash = "sha256-p5rEvlEt02iV+/sz9FahA3lim1V5lw8IPO5B0hUBj2g=";
+    srcUrl = "https://downloads.cursor.com/production/4aa02949dc5065af49f2f6f72e3278386a3f7116/linux/x64/Cursor-2.0.11-x86_64.AppImage";
+    binaryName = "cursor-2.0.11";
+    dataStrategy = "isolated";
+  };
+
+  # ===== Additional 1.7.x Versions (15 new - Extended Classic Era) =====
+
+  cursor-1_7_44 = mkCursorVersion {
+    version = "1.7.44";
+    hash = "sha256-/eLb6+ECxFmpzgtRIgfO2PPn28kFbA3Xmq8ZjPrDQ5g=";
+    srcUrl = "https://downloads.cursor.com/production/9d178a4a5589981b62546448bb32920a8219a5de/linux/x64/Cursor-1.7.44-x86_64.AppImage";
+    binaryName = "cursor-1.7.44";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_43 = mkCursorVersion {
+    version = "1.7.43";
+    hash = "sha256-StY0yYqIuDCf6hbXJHERnRXqwVBnzKX2pxfretaUHo8=";
+    srcUrl = "https://downloads.cursor.com/production/df279210b53cf4686036054b15400aa2fe06d6dd/linux/x64/Cursor-1.7.43-x86_64.AppImage";
+    binaryName = "cursor-1.7.43";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_40 = mkCursorVersion {
+    version = "1.7.40";
+    hash = "sha256-+NNq6fSEQ9zYnDL13vz4uLOpqk61QLjLIbTcfQhTFe0=";
+    srcUrl = "https://downloads.cursor.com/production/df79b2380cd32922cad03529b0dc0c946c311856/linux/x64/Cursor-1.7.40-x86_64.AppImage";
+    binaryName = "cursor-1.7.40";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_39 = mkCursorVersion {
+    version = "1.7.39";
+    hash = "sha256-QDn1SH1RB6Dod4EJHXynynEpNPhq81dQZnHbVcw3nBs=";
+    srcUrl = "https://downloads.cursor.com/production/a9c77ceae65b77ff772d6adfe05f24d8ebcb2794/linux/x64/Cursor-1.7.39-x86_64.AppImage";
+    binaryName = "cursor-1.7.39";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_38 = mkCursorVersion {
+    version = "1.7.38";
+    hash = "sha256-52QJVbXO3CYeL4vVZ249xabS7AoYFDOxKCQ6m3vB+vE=";
+    srcUrl = "https://downloads.cursor.com/production/fe5d1728063e86edeeda5bebd2c8e14bf4d0f96a/linux/x64/Cursor-1.7.38-x86_64.AppImage";
+    binaryName = "cursor-1.7.38";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_36 = mkCursorVersion {
+    version = "1.7.36";
+    hash = "sha256-zY9kM9td0yKAMxVmad7saN4c6z2p5OFEa7ScCA3Qo3I=";
+    srcUrl = "https://downloads.cursor.com/production/493c403e4a45c5f971d1c76cc74febd0968d57d8/linux/x64/Cursor-1.7.36-x86_64.AppImage";
+    binaryName = "cursor-1.7.36";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_33 = mkCursorVersion {
+    version = "1.7.33";
+    hash = "sha256-bXT/NVqcyR+RrqZdd0TbtcsyLjGb8Wv5S5On9JLElG4=";
+    srcUrl = "https://downloads.cursor.com/production/a84f941711ad680a635c8a3456002833186c484f/linux/x64/Cursor-1.7.33-x86_64.AppImage";
+    binaryName = "cursor-1.7.33";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_28 = mkCursorVersion {
+    version = "1.7.28";
+    hash = "sha256-ZB/xGGKyVnfmNASWtfkmoxvzzkXa2pUlmgY2Bb9f5lU=";
+    srcUrl = "https://downloads.cursor.com/production/adb0f9e3e4f184bba7f3fa6dbfd72ad0ebb8cfd8/linux/x64/Cursor-1.7.28-x86_64.AppImage";
+    binaryName = "cursor-1.7.28";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_25 = mkCursorVersion {
+    version = "1.7.25";
+    hash = "sha256-gUjzdixozoexd67ugeaabtUspnkaie9HXhIvFWY0lyM=";
+    srcUrl = "https://downloads.cursor.com/production/429604585b94ab2b96a4dabff4660f41d5b7fb8f/linux/x64/Cursor-1.7.25-x86_64.AppImage";
+    binaryName = "cursor-1.7.25";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_23 = mkCursorVersion {
+    version = "1.7.23";
+    hash = "sha256-cN6kYGMLNGOjinUIDWdn7mVyDd7TKwLwdqanN6ZRGE0=";
+    srcUrl = "https://downloads.cursor.com/production/5069385c5a69db511722405ab5aeadc01579afd8/linux/x64/Cursor-1.7.23-x86_64.AppImage";
+    binaryName = "cursor-1.7.23";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_22 = mkCursorVersion {
+    version = "1.7.22";
+    hash = "sha256-bidAyiP0we39/87ySCK63tii1BtGVpFsuRC1ayXqsh0=";
+    srcUrl = "https://downloads.cursor.com/production/31b1fbfcec1bf758f7140645f005fc78b5df355b/linux/x64/Cursor-1.7.22-x86_64.AppImage";
+    binaryName = "cursor-1.7.22";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_17 = mkCursorVersion {
+    version = "1.7.17";
+    hash = "sha256-OsZiUXWKNLO8sUqielk0kap0DAkMY8OvWYO0KV3iads=";
+    srcUrl = "https://downloads.cursor.com/production/34881053400013f38e2354f1479c88c9067039a2/linux/x64/Cursor-1.7.17-x86_64.AppImage";
+    binaryName = "cursor-1.7.17";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_16 = mkCursorVersion {
+    version = "1.7.16";
+    hash = "sha256-uWqVzOT9miTPnNZgWLzJ2nddOhZldHKOYaaFO7KK9n8=";
+    srcUrl = "https://downloads.cursor.com/production/39476a6453a2a2903ed6446529255038f81c929f/linux/x64/Cursor-1.7.16-x86_64.AppImage";
+    binaryName = "cursor-1.7.16";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_12 = mkCursorVersion {
+    version = "1.7.12";
+    hash = "sha256-vSvRGVIJCZjodNQ+cFFUd/fkzy1PzAXj5TQ2C7xV9Vc=";
+    srcUrl = "https://downloads.cursor.com/production/b3f1951240d5016648330fab51192dc03e8d705a/linux/x64/Cursor-1.7.12-x86_64.AppImage";
+    binaryName = "cursor-1.7.12";
+    dataStrategy = "isolated";
+  };
+
+  cursor-1_7_11 = mkCursorVersion {
+    version = "1.7.11";
+    hash = "sha256-CrR/KcKkBHBTIc1K/npJSR85I031MSF3mx0nTduKyWE=";
+    srcUrl = "https://downloads.cursor.com/production/867f14c797c14c23a187097ea179bc97d215a7c4/linux/x64/Cursor-1.7.11-x86_64.AppImage";
+    binaryName = "cursor-1.7.11";
+    dataStrategy = "isolated";
+  };
+
+  # ===== 1.6.x Legacy Version (1 new) =====
+
+  cursor-1_6_45 = mkCursorVersion {
+    version = "1.6.45";
+    hash = "sha256-MlrevU26gD6hpZbqbdKQwnzJbm5y9SVSb3d0BGnHtpc=";
+    srcUrl = "https://downloads.cursor.com/production/3ccce8f55d8cca49f6d28b491a844c699b8719a3/linux/x64/Cursor-1.6.45-x86_64.AppImage";
+    binaryName = "cursor-1.6.45";
     dataStrategy = "isolated";
   };
 }
