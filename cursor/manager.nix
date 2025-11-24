@@ -13,6 +13,7 @@ import shutil
 # Configuration
 CONFIG_DIR = os.path.expanduser("~/.config/Cursor")
 ISOLATED_BASE = os.path.expanduser("~/.cursor-")
+MANAGER_CONFIG = os.path.expanduser("~/.config/cursor-manager.json")
 
 # Theme Colors (Default Dark Modern mimic)
 COLORS = {
@@ -98,9 +99,12 @@ class CursorManager(tk.Tk):
         super().__init__()
 
         self.title("Cursor Version Manager - RC3.2")
-        self.geometry("500x400")
+        self.geometry("550x500")  # Larger window to prevent button cutoff
         self.configure(bg=COLORS["bg"])
         self.resizable(True, True)
+
+        # Load persistent settings
+        self.load_settings()
 
         # Style
         style = ttk.Style()
@@ -131,7 +135,7 @@ class CursorManager(tk.Tk):
         )
         style.map("TButton", background=[("active", COLORS["highlight"])])
 
-        # Combobox styling
+        # Combobox styling - better contrast
         style.configure(
             "TCombobox",
             fieldbackground=COLORS["button_bg"],
@@ -139,7 +143,15 @@ class CursorManager(tk.Tk):
             foreground=COLORS["fg"],
             arrowcolor=COLORS["fg"],
             borderwidth=1,
-            relief="solid"
+            relief="solid",
+            selectbackground=COLORS["highlight"],
+            selectforeground=COLORS["fg"]
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", COLORS["button_bg"])],
+            selectbackground=[("readonly", COLORS["button_bg"])],
+            selectforeground=[("readonly", COLORS["fg"])]
         )
 
         # Header
@@ -215,8 +227,8 @@ class CursorManager(tk.Tk):
         )
         options_header.pack(anchor="w", pady=(0, 5))
 
-        # Settings Sync Checkbox
-        self.sync_var = tk.BooleanVar(value=True)
+        # Settings Sync Checkbox (larger, more visible)
+        self.sync_var = tk.BooleanVar(value=self.saved_sync_settings)
         sync_chk = tk.Checkbutton(
             options_frame,
             text="Sync Settings & Keybindings",
@@ -226,12 +238,13 @@ class CursorManager(tk.Tk):
             selectcolor=COLORS["button_bg"],
             activebackground=COLORS["bg"],
             activeforeground=COLORS["fg"],
-            font=("Segoe UI", 9)
+            font=("Segoe UI", 10),
+            command=self.save_settings
         )
-        sync_chk.pack(anchor="w", padx=5)
+        sync_chk.pack(anchor="w", padx=5, pady=3)
 
-        # Global State Sync Checkbox
-        self.global_sync_var = tk.BooleanVar(value=False)
+        # Global State Sync Checkbox (larger, more visible)
+        self.global_sync_var = tk.BooleanVar(value=self.saved_global_sync)
         global_chk = tk.Checkbutton(
             options_frame,
             text="Share Docs & Auth (Experimental)",
@@ -241,9 +254,10 @@ class CursorManager(tk.Tk):
             selectcolor=COLORS["button_bg"],
             activebackground=COLORS["bg"],
             activeforeground=COLORS["fg"],
-            font=("Segoe UI", 9)
+            font=("Segoe UI", 10),
+            command=self.save_settings
         )
-        global_chk.pack(anchor="w", padx=5)
+        global_chk.pack(anchor="w", padx=5, pady=3)
 
         # Launch Button
         launch_btn = ttk.Button(
@@ -285,6 +299,37 @@ class CursorManager(tk.Tk):
             foreground="#666666"
         )
         footer.pack(side="bottom", pady=(10, 0))
+
+    def load_settings(self):
+        """Load persistent settings from config file"""
+        self.saved_sync_settings = True  # Default
+        self.saved_global_sync = False  # Default
+
+        try:
+            if os.path.exists(MANAGER_CONFIG):
+                with open(MANAGER_CONFIG, 'r') as f:
+                    config = json.load(f)
+                    self.saved_sync_settings = config.get(
+                        "sync_settings", True
+                    )
+                    self.saved_global_sync = config.get(
+                        "global_sync", False
+                    )
+        except Exception as e:
+            print(f"⚠️ Could not load settings: {e}")
+
+    def save_settings(self):
+        """Save settings to persistent config file"""
+        try:
+            os.makedirs(os.path.dirname(MANAGER_CONFIG), exist_ok=True)
+            config = {
+                "sync_settings": self.sync_var.get(),
+                "global_sync": self.global_sync_var.get()
+            }
+            with open(MANAGER_CONFIG, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception as e:
+            print(f"⚠️ Could not save settings: {e}")
 
     def update_version_list(self, event=None):
         """Update version dropdown based on selected era"""
