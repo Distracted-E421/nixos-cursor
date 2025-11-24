@@ -244,8 +244,11 @@ class CursorManager(tk.Tk):
                     pkg_name = "cursor"
 
                 # Use configured flake URI or default to GitHub
-                flake_uri = os.environ.get("CURSOR_FLAKE_URI", "github:Distracted-E421/nixos-cursor")
-                
+                flake_uri = os.environ.get(
+                    "CURSOR_FLAKE_URI",
+                    "github:Distracted-E421/nixos-cursor"
+                )
+
                 subprocess.Popen([
                     "nix", "run",
                     f"{flake_uri}#{pkg_name}",
