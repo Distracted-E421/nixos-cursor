@@ -49,14 +49,15 @@ let
   
   # Official Cursor releases - Updated automatically by update.sh
   # To manually update: run ./update.sh
+  # NOTE: Pinned to 2.0.64 (last version before custom agents deprecation in 2.1.0)
   sources = {
     x86_64-linux = fetchurl {
-      url = "https://downloads.cursor.com/production/a8d8905b06c8da1739af6f789efd59c28ac2a680/linux/x64/Cursor-2.1.20-x86_64.AppImage";
-      hash = "sha256-V/5KDAJlXPLMQelnUgnfv2v3skxkb1V/n3Qn0qtwHaA=";
+      url = "https://downloader.cursor.sh/linux/appImage/x64/2.0.64";
+      hash = "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=";
     };
     aarch64-linux = fetchurl {
-      url = "https://downloads.cursor.com/production/a8d8905b06c8da1739af6f789efd59c28ac2a680/linux/arm64/Cursor-2.1.20-aarch64.AppImage";
-      hash = "sha256-0ZRFG69/n7nulZLPerX6aAbPuObFv93pUQqnnMILhoo=";
+      url = "https://downloader.cursor.sh/linux/appImage/arm64/2.0.64";
+      hash = "sha256-PLACEHOLDER_NEEDS_VERIFICATION";  # ARM64 hash not verified yet
     };
   };
 
@@ -68,14 +69,14 @@ let
   # Extract AppImage contents
   cursor-extracted = appimageTools.extractType2 {
     pname = "cursor";
-    version = "2.1.20";  # Updated automatically by update.sh
+    version = "2.0.64";  # RC2: Last version before custom agents deprecation
     src = appImageSrc;
   };
 
 in
 stdenv.mkDerivation rec {
   pname = "cursor";
-  version = "2.1.20";  # Updated automatically by update.sh
+  version = "2.0.64";  # RC2: Last version before custom agents deprecation
 
   src = cursor-extracted;
 
