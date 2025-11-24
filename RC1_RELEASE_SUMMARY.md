@@ -1,7 +1,7 @@
 # RC1 Release Summary - nixos-cursor v2.1.20-rc1
 
-**Date**: 2025-11-22  
-**Status**: Ready for Community Testing  
+**Date**: 2025-11-22
+**Status**: Ready for Community Testing
 **Version**: v2.1.20-rc1
 
 ---

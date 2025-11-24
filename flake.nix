@@ -23,9 +23,19 @@
             inherit system;
             config.allowUnfree = true;  # Cursor is proprietary
           };
-        in {
+        in 
+        let
+          # Multi-version cursor system
+          cursorVersions = pkgs.callPackage ./cursor-versions.nix {};
+        in
+        {
           default = self.packages.${system}.cursor;
-          cursor = pkgs.callPackage ./cursor {};
+          
+          # Main cursor package (2.0.64 - last with custom modes)
+          inherit (cursorVersions) cursor;
+          
+          # Version-specific packages for running multiple instances
+          inherit (cursorVersions) cursor-2_0_64 cursor-2_0_77 cursor-1_7_54;
           
           # Isolated test instance (separate profile for testing)
           cursor-test = (pkgs.callPackage ./cursor {
@@ -34,8 +44,12 @@
             pname = "cursor-test";
             postInstall = (old.postInstall or "") + ''
               mv $out/bin/cursor $out/bin/cursor-test
-              mv $out/bin/cursor-update $out/bin/cursor-test-update
-              mv $out/bin/cursor-check-update $out/bin/cursor-test-check-update
+              if [ -f "$out/bin/cursor-update" ]; then
+                mv $out/bin/cursor-update $out/bin/cursor-test-update
+              fi
+              if [ -f "$out/bin/cursor-check-update" ]; then
+                mv $out/bin/cursor-check-update $out/bin/cursor-test-check-update
+              fi
               substituteInPlace $out/share/applications/cursor.desktop \
                 --replace-fail "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
                 --replace-fail "Name=Cursor" "Name=Cursor (Test)"
