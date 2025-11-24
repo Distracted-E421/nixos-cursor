@@ -39,7 +39,7 @@
           
           # Isolated test instance (separate profile for testing)
           cursor-test = (pkgs.callPackage ./cursor {
-            commandLineArgs = "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions";
+            commandLineArgs = [ "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions" ];
           }).overrideAttrs (old: {
             pname = "cursor-test";
             postInstall = (old.postInstall or "") + ''
