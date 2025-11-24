@@ -45,7 +45,7 @@ The other thing I'm trying to gauge is whether the MCP integration is useful to 
 
 In terms of keeping this project going long-term, I've tried to make everything as maintainable as possible. The update checker uses Cursor's official API, so as long as they don't completely restructure their release system, it should keep working. The binary patching uses nixpkgs' standard `autoPatchelfHook`, which is battle-tested and used by tons of other packages. The Home Manager module follows all the standard patterns, so it should be easy for other people to understand and contribute to if they want. And critically, the update system means users can get new Cursor versions without waiting for me to manually update the package every single time. The hash update script still needs to be run when new versions come out, but that's a 30-second operation, not a "rebuild the entire packaging from scratch" situation.
 
-The goal here is to make this something that can get upstreamed to nixpkgs eventually, or at minimum become the de facto way NixOS users install Cursor. But I need to know it actually works for people first, hence the RC period. So if you're on NixOS and use Cursor, please give this a shot and let me know what breaks. Bug reports welcome, feature requests welcome, pull requests extremely welcome.
+
 
 ## Get Involved
 
