@@ -48,11 +48,24 @@ https://downloads.cursor.com/production/9675251a06b1314d50ff34b0cbe5109b78f848cd
 https://downloads.cursor.com/production/b9e5948c1ad20443a5cecba6b84a3c9b99d62582/linux/x64/Cursor-1.7.46-x86_64.AppImage
 
 --------------------------------
-INTEGRATION STATUS (2025-11-24):
+INTEGRATION STATUS (Updated 2025-11-24):
 --------------------------------
-✅ 2.0.77 - Integrated in cursor-versions.nix (sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=)
-✅ 2.0.64 - Integrated in cursor-versions.nix (sha256-zT9GhdwGDWZJQl+WpV2txbmp3/tJRtL6ds1UZQoKNzA=)
-✅ 1.7.54 - Integrated in cursor-versions.nix (sha256-BKxFrfKFMWmJhed+lB5MjYHbCR9qZM3yRcs7zWClYJE=)
+✅ Custom Modes Era (2.0.x) - ALL INTEGRATED:
+  • 2.0.77 - sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=
+  • 2.0.75 - sha256-e/FNGAN+AErgEv4GaMQLPhV0LmSuHF9RNQ+SJEiP2z4=
+  • 2.0.74 - sha256-fXcdWBXyD6V6oXm9w/wqhLkK+mlqJouE/VmuKcfaaPQ=
+  • 2.0.73 - sha256-361RG5msRvohsgLs4fUWxExSylcPBkq2zfEB3IiQ3Ho=
+  • 2.0.69 - sha256-dwhYqX3/VtutxDSDPoHicM8D/sUvkWRnOjrSOBPiV+s=
+  • 2.0.64 - sha256-zT9GhdwGDWZJQl+WpV2txbmp3/tJRtL6ds1UZQoKNzA=
+  • 2.0.63 - sha256-7wA1R0GeUSXSViviXAK+mc14CSE2aTgFrbcBKj5dTbI=
+  • 2.0.60 - sha256-g/FMqKk/FapbRTQ5+IG1R2LHVlDXDNDc3uN9lJMMcaI=
 
-All three versions use direct S3 URLs and verified SRI hashes.
-DNS issues with downloader.cursor.sh are resolved.
+✅ Classic Era (Pre-2.0) - ALL INTEGRATED:
+  • 1.7.54 - sha256-BKxFrfKFMWmJhed+lB5MjYHbCR9qZM3yRcs7zWClYJE=
+  • 1.7.53 - sha256-zg5hpGRw0YL5XMpSn9ts4i4toT/fumj8rDJixGh1Hvc=
+  • 1.7.52 - sha256-nhDDdXE5/m9uASiQUJ4GHfApkzkf9ju5b8s0h6BhpjQ=
+  • 1.7.46 - sha256-XDKDZYCagr7bEL4HzQFkhdUhPiL5MaRzZTPNrLDPZDM=
+
+📦 Total: 12 versions fully integrated with verified S3 URLs and SRI hashes
+🔒 All URLs are stable (direct S3 links - no DNS dependency)
+🎯 All versions preserve custom agent modes

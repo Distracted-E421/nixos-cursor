@@ -122,27 +122,86 @@ class CursorManager(tk.Tk):
         )
         chk_global.pack(pady=(0, 20), anchor="w")
 
-        # Versions
-        self.add_version_btn(
+        # Versions - Custom Modes Era (2.0.x)
+        versions_label = ttk.Label(
             content,
-            "Launch 2.0.77 (Stable)",
-            "Latest stable with custom modes",
-            "cursor-2.0.77",
-            "2.0.77"
+            text="Custom Modes Era (2.0.x)",
+            font=("Segoe UI", 9, "bold"),
+            foreground=COLORS["fg"]
+        )
+        versions_label.pack(anchor="w", pady=(5, 5))
+        
+        self.add_version_btn(
+            content, "2.0.77 (Stable)", "Latest stable with custom modes",
+            "cursor-2.0.77", "2.0.77"
         )
         self.add_version_btn(
-            content,
-            "Launch 1.7.54 (Classic)",
-            "Pre-2.0 legacy version",
-            "cursor-1.7.54",
-            "1.7.54"
+            content, "2.0.75", "Custom modes stable",
+            "cursor-2.0.75", "2.0.75"
         )
         self.add_version_btn(
+            content, "2.0.74", "Custom modes stable",
+            "cursor-2.0.74", "2.0.74"
+        )
+        self.add_version_btn(
+            content, "2.0.73", "Custom modes stable",
+            "cursor-2.0.73", "2.0.73"
+        )
+        self.add_version_btn(
+            content, "2.0.69", "Custom modes stable",
+            "cursor-2.0.69", "2.0.69"
+        )
+        self.add_version_btn(
+            content, "2.0.64", "Custom modes stable",
+            "cursor-2.0.64", "2.0.64"
+        )
+        self.add_version_btn(
+            content, "2.0.63", "Custom modes stable",
+            "cursor-2.0.63", "2.0.63"
+        )
+        self.add_version_btn(
+            content, "2.0.60", "Custom modes stable",
+            "cursor-2.0.60", "2.0.60"
+        )
+        
+        # Pre-2.0 Era
+        classic_label = ttk.Label(
             content,
-            "Launch System Default",
-            "Default installed version",
-            "cursor",
-            "default"
+            text="Classic Era (Pre-2.0)",
+            font=("Segoe UI", 9, "bold"),
+            foreground=COLORS["fg"]
+        )
+        classic_label.pack(anchor="w", pady=(10, 5))
+        
+        self.add_version_btn(
+            content, "1.7.54", "Classic pre-2.0",
+            "cursor-1.7.54", "1.7.54"
+        )
+        self.add_version_btn(
+            content, "1.7.53", "Classic pre-2.0",
+            "cursor-1.7.53", "1.7.53"
+        )
+        self.add_version_btn(
+            content, "1.7.52", "Classic pre-2.0",
+            "cursor-1.7.52", "1.7.52"
+        )
+        self.add_version_btn(
+            content, "1.7.46", "Classic pre-2.0",
+            "cursor-1.7.46", "1.7.46"
+        )
+        
+        # System Default
+        default_label = ttk.Label(
+            content,
+            text="System Default",
+            font=("Segoe UI", 9, "bold"),
+            foreground=COLORS["fg"]
+        )
+        default_label.pack(anchor="w", pady=(10, 5))
+        
+        self.add_version_btn(
+            content, "Default Install", "System-wide cursor",
+            "cursor", "default"
         )
 
         # Footer

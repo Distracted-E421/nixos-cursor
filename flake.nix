@@ -31,11 +31,18 @@
         {
           default = self.packages.${system}.cursor;
           
-          # Main cursor package (2.0.64 - last with custom modes)
+          # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
           
           # Version-specific packages for running multiple instances
-          inherit (cursorVersions) cursor-2_0_64 cursor-2_0_77 cursor-1_7_54;
+          # Custom Modes Era (2.0.x)
+          inherit (cursorVersions) 
+            cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 
+            cursor-2_0_69 cursor-2_0_64 cursor-2_0_63 cursor-2_0_60;
+          
+          # Classic Era (Pre-2.0)
+          inherit (cursorVersions) 
+            cursor-1_7_54 cursor-1_7_53 cursor-1_7_52 cursor-1_7_46;
           
           # Isolated test instance (separate profile for testing)
           cursor-test = (pkgs.callPackage ./cursor {
