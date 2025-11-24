@@ -1,0 +1,58 @@
+Cursor versions, Latest to Oldest:
+
+--------------------------------
+# Cursor 2.1.26 (not of concern for now)
+https://downloads.cursor.com/production/f628a4761be40b8869ca61a6189cafd14756dff4/linux/x64/Cursor-2.1.26-x86_64.AppImage
+
+Pre-2.1.x Custom Mode Removal Versions:
+--------------------------------
+# Cursor 2.0.77
+https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage
+
+# Cursor 2.0.75
+https://downloads.cursor.com/production/9e7a27b76730ca7fe4aecaeafc58bac1e2c82121/linux/x64/Cursor-2.0.75-x86_64.AppImage
+
+# Cursor 2.0.74
+https://downloads.cursor.com/production/a965544b869cfb53b46806974091f97565545e48/linux/x64/Cursor-2.0.74-x86_64.AppImage
+
+# Cursor 2.0.73
+https://downloads.cursor.com/production/55b873ebecb5923d3b947d7e67e841d3ac781886/linux/x64/Cursor-2.0.73-x86_64.AppImage
+
+# Cursor 2.0.69
+https://downloads.cursor.com/production/63fcac100bd5d5749f2a98aa47d65f6eca61db39/linux/x64/Cursor-2.0.69-x86_64.AppImage
+
+# Cursor 2.0.64
+https://downloads.cursor.com/production/25412918da7e74b2686b25d62da1f01cfcd27683/linux/x64/Cursor-2.0.64-x86_64.AppImage
+
+# Cursor 2.0.63
+https://downloads.cursor.com/production/505046dcfad2acda3d066e32b7cd8b6e2dc1fdcd/linux/x64/Cursor-2.0.63-x86_64.AppImage
+
+# Cursor 2.0.60
+https://downloads.cursor.com/production/c6d93c13f57509f77eb65783b28e75a857b74c03/linux/x64/Cursor-2.0.60-x86_64.AppImage
+--------------------------------
+
+--------------------------------
+Pre-2.0 Changes in Cursor:
+--------------------------------
+
+# Cursor 1.7.54
+https://downloads.cursor.com/production/5c17eb2968a37f66bc6662f48d6356a100b67be8/linux/x64/Cursor-1.7.54-x86_64.AppImage
+
+# Cursor 1.7.53
+https://downloads.cursor.com/production/ab6b80c19b51fe71d58e69d8ed3802be587b3418/linux/x64/Cursor-1.7.53-x86_64.AppImage
+
+# Cursor 1.7.52
+https://downloads.cursor.com/production/9675251a06b1314d50ff34b0cbe5109b78f848cd/linux/x64/Cursor-1.7.52-x86_64.AppImage
+
+# Cursor 1.7.46
+https://downloads.cursor.com/production/b9e5948c1ad20443a5cecba6b84a3c9b99d62582/linux/x64/Cursor-1.7.46-x86_64.AppImage
+
+--------------------------------
+INTEGRATION STATUS (2025-11-24):
+--------------------------------
+✅ 2.0.77 - Integrated in cursor-versions.nix (sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=)
+✅ 2.0.64 - Integrated in cursor-versions.nix (sha256-zT9GhdwGDWZJQl+WpV2txbmp3/tJRtL6ds1UZQoKNzA=)
+✅ 1.7.54 - Integrated in cursor-versions.nix (sha256-BKxFrfKFMWmJhed+lB5MjYHbCR9qZM3yRcs7zWClYJE=)
+
+All three versions use direct S3 URLs and verified SRI hashes.
+DNS issues with downloader.cursor.sh are resolved.
