@@ -24,7 +24,7 @@ We have implemented a **robust, community-ready solution** for managing multiple
 
 ## 🙏 Credits
 
-Special thanks to [@oslook](https://github.com/oslook) for providing the direct download links and hash verification for the specific Cursor versions (1.7.54, 2.0.77) that made this multi-version manager possible.
+Special thanks to [@oslook](https://github.com/oslook) for providing the direct download links and hash verification for the specific Cursor versions (1.7.54, 2.0.77) that made this multi-version manager possible. [cursor-ai-downloads](https://github.com/oslook/cursor-ai-downloads)
 
 ---
 
