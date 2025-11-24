@@ -43,6 +43,7 @@
   version ? "2.0.64", # Cursor version to build
   hash ? "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=", # AppImage hash for x86_64
   hashAarch64 ? "sha256-PLACEHOLDER_NEEDS_VERIFICATION", # AppImage hash for aarch64
+  srcUrl ? null, # Specific download URL (overrides default downloader.cursor.sh)
   localAppImage ? null, # Path to local AppImage file (for offline builds or DNS issues)
   commandLineArgs ? "", # Command-line arguments (--update=false is added automatically)
   postInstall ? "", # Additional postInstall steps (for version-specific customization)
@@ -54,11 +55,17 @@ let
   # Disable Cursor's built-in updater (NixOS incompatible - /nix/store is read-only)
   finalCommandLineArgs = "--update=false " + commandLineArgs;
 
-  # Select source: local file takes precedence over network
+  # Select source: local file > specific URL > standard URL
   appImageSrc =
     if localAppImage != null then
       # Use local AppImage (for DNS issues or offline builds)
       localAppImage
+    else if srcUrl != null then
+      # Use specific provided URL (for version pinning or alternate mirrors)
+      fetchurl {
+        url = srcUrl;
+        inherit hash;
+      }
     else
       # Use network fetch (normal path)
       let
@@ -258,8 +265,8 @@ stdenv.mkDerivation rec {
       AppImage with NixOS-specific fixes.
     '';
     homepage = "https://www.cursor.com/";
-    license = licenses.unfree; # Cursor is proprietary
-    maintainers = with maintainers; [ ]; # Add your GitHub username when upstreaming
+    license = licenses.unfree; # Cursor is proprietary...duh
+    maintainers = with maintainers; [ distracted-e421 ];
     platforms = [
       "x86_64-linux"
       "aarch64-linux"

@@ -55,6 +55,9 @@
                 --replace-fail "Name=Cursor" "Name=Cursor (Test)"
             '';
           });
+          
+          # Cursor Version Manager (GUI Launcher)
+          cursor-manager = pkgs.callPackage ./cursor/manager.nix {};
         }
       );
 

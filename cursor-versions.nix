@@ -2,10 +2,10 @@
 # Allows running different Cursor versions simultaneously with different binary names
 #
 # Usage:
-#   cursor         # Main version (2.0.64 - last with custom modes)
-#   cursor-2.0.64  # Explicit 2.0.64
-#   cursor-2.0.77  # Latest 2.0.x
-#   cursor-1.7.54  # Popular pre-2.0
+#   cursor         # Main version (2.0.77 - Latest targeted stable)
+#   cursor-2.0.77  # Explicit 2.0.77
+#   cursor-1.7.54  # Classic 1.7.54 (Pre-2.0)
+#   cursor-2.0.64  # Last with old custom modes (fallback)
 #
 # User Data Strategy:
 #   - Each version can have isolated data: ~/.cursor-VERSION/
@@ -21,12 +21,9 @@
 }:
 
 let
-  # Local AppImages (for when DNS is broken)
+  # Local AppImages (for when DNS is broken or specific local file needed)
   localAppImages = {
-    "2.0.77" = /home/e421/Downloads/Cursor-2.0.77-x86_64.AppImage;
-    # Add more as you download them:
-    # "2.0.64" = /home/e421/Downloads/Cursor-2.0.64-x86_64.AppImage;
-    # "1.7.54" = /home/e421/Downloads/Cursor-1.7.54-x86_64.AppImage;
+    # "2.0.77" = /home/e421/Downloads/Cursor-2.0.77-x86_64.AppImage;
   };
 
   # User data directory strategies
@@ -55,8 +52,9 @@ let
       version,
       hash,
       hashAarch64 ? "sha256-PLACEHOLDER",
+      srcUrl ? null,
       binaryName ? "cursor",
-      useLocalAppImage ? true, # Prefer local AppImage (for DNS issues)
+      useLocalAppImage ? false,
       dataStrategy ? "isolated", # isolated|shared|sync
     }:
     let
@@ -73,6 +71,7 @@ let
           version
           hash
           hashAarch64
+          srcUrl
           localAppImage
           ;
         commandLineArgs = userDataArgs;
@@ -100,38 +99,38 @@ let
 
 in
 {
-  # Main cursor package (2.0.64 - last with custom modes, DEFAULT)
+  # Main cursor package (Defaults to 2.0.77 as requested)
   cursor = mkCursorVersion {
-    version = "2.0.64";
-    hash = "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=";
-    binaryName = "cursor"; # Main binary keeps standard name
-    useLocalAppImage = false; # Try network first for main version
+    version = "2.0.77";
+    hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
+    srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage";
+    binaryName = "cursor"; 
     dataStrategy = "shared"; # Main version uses standard location
   };
 
-  # Version 2.0.64 - Named variant (isolated data)
+  # Version 2.0.77 - Targeted Version
+  cursor-2_0_77 = mkCursorVersion {
+    version = "2.0.77";
+    hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
+    srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage";
+    binaryName = "cursor-2.0.77";
+    dataStrategy = "isolated";
+  };
+
+  # Version 1.7.54 - Classic Pre-2.0
+  cursor-1_7_54 = mkCursorVersion {
+    version = "1.7.54";
+    hash = "sha256-BKxFrfKFMWmJhed+lB5MjYHbCR9qZM3yRcs7zWClYJE=";
+    srcUrl = "https://downloads.cursor.com/production/5c17eb2968a37f66bc6662f48d6356a100b67be8/linux/x64/Cursor-1.7.54-x86_64.AppImage";
+    binaryName = "cursor-1.7.54";
+    dataStrategy = "isolated";
+  };
+  
+  # Version 2.0.64 - Fallback/Reference
   cursor-2_0_64 = mkCursorVersion {
     version = "2.0.64";
     hash = "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=";
     binaryName = "cursor-2.0.64";
-    dataStrategy = "isolated";
-  };
-
-  # Version 2.0.77 - Latest 2.0.x (FROM LOCAL APPIMAGE!)
-  cursor-2_0_77 = mkCursorVersion {
-    version = "2.0.77";
-    hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
-    binaryName = "cursor-2.0.77";
-    useLocalAppImage = true; # Use local file!
-    dataStrategy = "isolated";
-  };
-
-  # Version 1.7.54 - Popular pre-2.0 (TODO: get hash and local AppImage)
-  cursor-1_7_54 = mkCursorVersion {
-    version = "1.7.54";
-    hash = "sha256-PLACEHOLDER"; # TODO: Get correct hash
-    binaryName = "cursor-1.7.54";
-    useLocalAppImage = false; # No local file yet
     dataStrategy = "isolated";
   };
 }

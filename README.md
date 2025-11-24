@@ -104,6 +104,20 @@ git commit -m "chore: Update Cursor to $(nix eval .#cursor.version --raw)"
 
 ## 🚀 Quick Start
 
+### **New! Multi-Version Manager**
+We now support running specific stable versions (2.0.77, 1.7.54) side-by-side!
+
+```bash
+# Launch the version manager GUI
+nix run github:Distracted-E421/nixos-cursor#cursor-manager
+
+# Or run specific versions directly
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
+nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54
+```
+
+See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
+
 ### 1. Add to Flake
 ```nix
 {
