@@ -131,7 +131,8 @@ in
   # Version 2.0.64 - Fallback/Reference
   cursor-2_0_64 = mkCursorVersion {
     version = "2.0.64";
-    hash = "sha256-FP3tl/BDl9FFR/DujbaTKT80tyCNHTzEqCTQ/6bXaaU=";
+    hash = "sha256-zT9GhdwGDWZJQl+WpV2txbmp3/tJRtL6ds1UZQoKNzA=";
+    srcUrl = "https://downloads.cursor.com/production/25412918da7e74b2686b25d62da1f01cfcd27683/linux/x64/Cursor-2.0.64-x86_64.AppImage";
     binaryName = "cursor-2.0.64";
     dataStrategy = "isolated";
   };
