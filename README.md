@@ -1,13 +1,19 @@
 # nixos-cursor
 
-**Status**: Release Candidate 3 (v2.0.77)  
+**Status**: Release Candidate 3.2 (v2.0.77) - **37 Versions Available**  
 **License**: MIT  
-**Maintained by**: e421
+**Maintained by**: e421  
+**Credits**: Version tracking by [oslook](https://github.com/oslook)
 
-A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** for maintaining workflow stability.
+A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **37 historical versions** spanning three eras for ultimate workflow stability.
 
-> **Why Release Candidate 3?**
-> We are targeting **Cursor 2.0.77** as our primary stable release. With the depreciation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a dedicated **Version Manager** that allows you to run specific, pinned versions of Cursor (like 2.0.77 and 1.7.54) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+> **Why Release Candidate 3.2?**
+> We are targeting **Cursor 2.0.77** as our primary stable release. With the deprecation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a comprehensive **Version Manager** that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+
+**Version Coverage:**
+- **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
+- **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
+- **1.6.x Legacy Era**: 1 version (1.6.45)
 
 See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manifest.
 
@@ -16,8 +22,11 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 ## Features
 
 - Native NixOS packaging of Cursor IDE 2.0.77 (Stable)
-- **Multi-Version Manager**: Run 2.0.77, 1.7.54, and 2.0.64 side-by-side
-- **Isolated User Data**: Each version keeps its own settings/extensions to prevent corruption
+- **🎯 Multi-Version Manager**: **37 versions** available (2.0.x, 1.7.x, 1.6.x)
+- **🖥️ Modern GUI**: Dropdown menus organized by era for easy selection
+- **🔒 Isolated User Data**: Each version keeps its own settings/extensions
+- **⚡ Concurrent Launches**: Run multiple versions simultaneously
+- **🔄 Settings Sync**: Optional sync of keybindings and settings
 - Wayland + X11 support with GPU acceleration
 - MCP server integration (filesystem, memory, NixOS, GitHub, Playwright)
 - Automated update system with daily notifications
@@ -28,17 +37,36 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ## 🚀 Quick Start
 
-### **New! Multi-Version Manager**
-We now support running specific stable versions (2.0.77, 1.7.54) side-by-side!
+### **Multi-Version Manager (37 Versions)**
+Choose from **37 historical Cursor versions** spanning three major eras!
 
 ```bash
-# Launch the version manager GUI
+# Launch the version manager GUI (dropdown menus)
 nix run github:Distracted-E421/nixos-cursor#cursor-manager
 
-# Or run specific versions directly
+# Or run specific versions directly:
+
+# Latest stable with custom modes
 nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
+
+# Latest pre-2.0 (community favorite)
 nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54
+
+# First custom modes release
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_11
+
+# Oldest available
+nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
+
+# Run multiple versions concurrently:
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77 --impure &
+nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 --impure &
 ```
+
+**Full Version List** (replace dots with underscores):
+- **2.0.x**: 2.0.77, 2.0.75, 2.0.74, 2.0.73, 2.0.69, 2.0.64, 2.0.63, 2.0.60, 2.0.57, 2.0.54, 2.0.52, 2.0.43, 2.0.40, 2.0.38, 2.0.34, 2.0.32, 2.0.11
+- **1.7.x**: 1.7.54, 1.7.53, 1.7.52, 1.7.46, 1.7.44, 1.7.43, 1.7.40, 1.7.39, 1.7.38, 1.7.36, 1.7.33, 1.7.28, 1.7.25, 1.7.23, 1.7.22, 1.7.17, 1.7.16, 1.7.12, 1.7.11
+- **1.6.x**: 1.6.45
 
 See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
 
