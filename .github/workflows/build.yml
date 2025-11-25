@@ -182,10 +182,10 @@ jobs:
             echo "📦 Evaluating $pkg..."
             if nix build .#$pkg --dry-run 2>/dev/null; then
               echo "✅ $pkg - OK"
-              ((PASSED++))
+              PASSED=$((PASSED + 1))
             else
               echo "❌ $pkg - FAILED"
-              ((FAILED++))
+              FAILED=$((FAILED + 1))
             fi
           done
           
