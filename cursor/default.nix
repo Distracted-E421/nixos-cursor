@@ -147,12 +147,40 @@ stdenv.mkDerivation rec {
     # This allows multiple versions to coexist without path conflicts
     cp -r usr/share/cursor $out/share/${shareDirName}
     
-    # Copy icons and desktop files
+    # Copy icons with version-specific names to avoid conflicts
+    # When installing multiple versions, each needs unique icon filenames
     if [ -d usr/share/icons ]; then
-      cp -r usr/share/icons $out/share/
+      mkdir -p $out/share/icons
+      cp -r usr/share/icons/hicolor $out/share/icons/
+      
+      # Only rename if shareDirName != "cursor" (versioned packages)
+      if [ "${shareDirName}" != "cursor" ]; then
+        # Rename cursor.png to ${shareDirName}.png in all icon sizes
+        for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
+          if [ -f "$out/share/icons/hicolor/$size/apps/cursor.png" ]; then
+            mv "$out/share/icons/hicolor/$size/apps/cursor.png" \
+               "$out/share/icons/hicolor/$size/apps/${shareDirName}.png"
+          fi
+        done
+      fi
     fi
+    
+    # Copy pixmaps with version-specific names
     if [ -d usr/share/pixmaps ]; then
-      cp -r usr/share/pixmaps $out/share/
+      mkdir -p $out/share/pixmaps
+      if [ "${shareDirName}" = "cursor" ]; then
+        # Main package: just copy as-is
+        cp -r usr/share/pixmaps/* $out/share/pixmaps/
+      else
+        # Versioned package: rename files
+        for f in usr/share/pixmaps/*; do
+          if [ -f "$f" ]; then
+            base=$(basename "$f")
+            newname=$(echo "$base" | sed "s/cursor/${shareDirName}/g")
+            cp "$f" "$out/share/pixmaps/$newname"
+          fi
+        done
+      fi
     fi
     
     # Install helper scripts
