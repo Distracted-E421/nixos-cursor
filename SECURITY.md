@@ -107,7 +107,7 @@ With sops-nix or agenix:
 
 ## Quick Setup
 
-### Option 1: sops-nix (Recommended)
+### Option 1: sops-nix (Recommended for Teams/Multi-Machine)
 
 ```nix
 # flake.nix
@@ -165,14 +165,16 @@ programs.cursor.mcp.github = {
    - Generate new token, update sops file, deploy
    - Review git history if token was ever in plaintext
 
+The goal to to make secret management as easy as possible to users default to that rather than save it in plaintext. It is also to make setting up new machines secure, simple, and decalrative. 
+
 ## Reporting Security Issues
 
-If you discover a security vulnerability:
+If you discover a **security** vulnerability:
 1. **DO NOT** open a public GitHub issue
 2. Email: distracted.e421@gmail.com
 3. Include: description, reproduction steps, potential impact
 
-We aim to respond within 48 hours and fix critical issues within 7 days.
+I aim to respond within 48 hours and fix critical issues within 7 days.
 
 ---
 
