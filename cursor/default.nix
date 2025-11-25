@@ -237,17 +237,18 @@ exec "$CURSOR_CHECK_UPDATE" "$@"
 CHECK_EOF
     chmod +x $out/bin/cursor-check-update
     
-    # Create desktop entry
+    # Create desktop entry with version-specific filename to avoid conflicts
+    # shareDirName is "cursor" for main package, "cursor-VERSION" for versioned packages
     mkdir -p $out/share/applications
-    cat > $out/share/applications/cursor.desktop << DESKTOP_EOF
+    cat > $out/share/applications/${shareDirName}.desktop << DESKTOP_EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Cursor
+Name=Cursor ${version}
 GenericName=AI Code Editor
 Comment=AI-first code editor based on VS Code
 Exec=$out/bin/cursor %F
-Icon=cursor
+Icon=${shareDirName}
 Terminal=false
 Categories=Development;IDE;TextEditor;
 MimeType=text/plain;inode/directory;

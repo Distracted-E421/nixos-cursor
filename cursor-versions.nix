@@ -103,11 +103,10 @@ let
           # Rename binary to version-specific name
           mv $out/bin/cursor $out/bin/${binaryName}
 
-          # Update desktop entry to use version-specific paths
-          substituteInPlace $out/share/applications/cursor.desktop \
-            --replace "Exec=$out/bin/cursor" "Exec=$out/bin/${binaryName}" \
-            --replace "Name=Cursor" "Name=Cursor ${version}" \
-            --replace "Icon=cursor" "Icon=cursor-${version}"
+          # Update desktop entry to use version-specific binary
+          # Note: Desktop file is already named ${shareDirName}.desktop (cursor-VERSION.desktop)
+          substituteInPlace $out/share/applications/${shareDirName}.desktop \
+            --replace "Exec=$out/bin/cursor" "Exec=$out/bin/${binaryName}"
 
           # Rename update commands if they exist
           if [ -f "$out/bin/cursor-update" ]; then
