@@ -25,7 +25,7 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ### 🌟 Unique Capabilities (Not Possible in Base Cursor)
 
-- **🔗 Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do
+- **🔗 Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do to my knowledge (and has lost me a lot of time reindexing to have them again)
 - **⚡ Concurrent Multi-Version Launches**: Run 2.0.77 and 1.7.54 simultaneously in separate windows with separate configs
 - **🔄 Cross-Version Settings Sync**: Automatically copy your settings/keybindings to new version installs
 
