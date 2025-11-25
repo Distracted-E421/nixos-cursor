@@ -109,6 +109,11 @@ stdenv.mkDerivation rec {
     autoPatchelfHook # Critical: patches ELF binaries for NixOS
   ];
 
+  # Prevent wrapGAppsHook3 from wrapping our binaries - we handle wrapping manually
+  # This is critical for multi-version support: wrapGAppsHook3 creates .X-wrapped files
+  # with hardcoded names that conflict when installing multiple versions
+  dontWrapGApps = true;
+
   # Runtime dependencies for autoPatchelfHook and execution
   buildInputs = [
     stdenv.cc.cc.lib
@@ -199,7 +204,10 @@ stdenv.mkDerivation rec {
     chmod +x $out/libexec/${shareDirName}/nix-update
     
     # Create wrapper with proper environment and NixOS-specific fixes
+    # We use dontWrapGApps=true and add GApps args manually to avoid wrapper name conflicts
+    # This creates .cursor-wrapped which will be renamed by postInstall for versioned packages
     makeWrapper $out/share/${shareDirName}/cursor $out/bin/.cursor-wrapped \
+      "''${gappsWrapperArgs[@]}" \
       --prefix LD_LIBRARY_PATH : "${
         lib.makeLibraryPath [
           stdenv.cc.cc.lib
@@ -245,35 +253,36 @@ stdenv.mkDerivation rec {
       --add-flags "--enable-oop-rasterization"
     
     # Create the final binary that handles dynamic arguments (like $HOME)
-    cat > $out/bin/cursor << 'CURSOR_EOF'
+    # For versioned packages, postInstall will rename everything to version-specific names
+    cat > $out/bin/cursor << 'CURSOR_SCRIPT_EOF'
 #!/bin/bash
 exec "$out/bin/.cursor-wrapped" --update=false ${argsString} "$@"
-CURSOR_EOF
+CURSOR_SCRIPT_EOF
     chmod +x $out/bin/cursor
     
-    # Fix the cursor script to have actual paths (not Nix variables)
+    # Fix the script to have actual paths (not Nix variables)
     substituteInPlace $out/bin/cursor \
       --replace '$out' "$out" \
       --replace '${argsString}' "${argsString}"
     
     # Create convenience update command
-    cat > $out/bin/cursor-update << 'UPDATE_EOF'
+    cat > $out/bin/cursor-update << 'UPDATE_SCRIPT_EOF'
 #!/usr/bin/env bash
 exec "$CURSOR_NIX_UPDATE" "$@"
-UPDATE_EOF
+UPDATE_SCRIPT_EOF
     chmod +x $out/bin/cursor-update
     
     # Create update check command  
-    cat > $out/bin/cursor-check-update << 'CHECK_EOF'
+    cat > $out/bin/cursor-check-update << 'CHECK_SCRIPT_EOF'
 #!/usr/bin/env bash
 exec "$CURSOR_CHECK_UPDATE" "$@"
-CHECK_EOF
+CHECK_SCRIPT_EOF
     chmod +x $out/bin/cursor-check-update
     
     # Create desktop entry with version-specific filename to avoid conflicts
     # shareDirName is "cursor" for main package, "cursor-VERSION" for versioned packages
     mkdir -p $out/share/applications
-    cat > $out/share/applications/${shareDirName}.desktop << DESKTOP_EOF
+    cat > $out/share/applications/${shareDirName}.desktop << DESKTOP_ENTRY_EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -287,7 +296,7 @@ Categories=Development;IDE;TextEditor;
 MimeType=text/plain;inode/directory;
 StartupNotify=true
 StartupWMClass=Cursor
-DESKTOP_EOF
+DESKTOP_ENTRY_EOF
 
     # Custom postInstall hook (for version-specific modifications)
     ${postInstall}
