@@ -215,3 +215,22 @@ This is a personal project maintained by e421. If you'd like to contribute or ha
 
 **Cursor Binary**: Proprietary (Unfree).
 This flake downloads the official AppImage from Cursor's servers (`downloader.cursor.sh` or `downloads.cursor.com`) and wraps it for NixOS compatibility. We do not redistribute the binary itself. You must comply with Cursor's Terms of Service when using this software.
+
+## 🔐 Security First
+
+Unlike many AI tools that suggest storing tokens in plaintext, **nixos-cursor enforces secure defaults**:
+
+- ✅ API tokens read at runtime from encrypted files
+- ✅ First-class support for [sops-nix](https://github.com/Mic92/sops-nix) and [agenix](https://github.com/ryantm/agenix)
+- ✅ Tokens never stored in Nix store or mcp.json
+- ✅ Works with any file-based secrets manager
+
+```nix
+# Secure pattern - token from encrypted sops file
+programs.cursor.mcp.github = {
+  enable = true;
+  tokenFile = config.sops.secrets.github-mcp-token.path;
+};
+```
+
+See [SECURITY.md](SECURITY.md) for our full security principles and setup guides.
