@@ -1,6 +1,15 @@
 {
   description = "Cursor IDE with MCP Servers for NixOS";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://nixos-cursor.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nixos-cursor.cachix.org-1:8YAZIsMXbzdSJh6YF71XIVR2OgnRXXZ+7e82dL5yCqI="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     
