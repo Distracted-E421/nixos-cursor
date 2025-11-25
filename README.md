@@ -1,6 +1,6 @@
 # nixos-cursor
 
-**Status**: v0.1.0-rc (Release Candidate) - **37 Versions Available**  
+**Status**: v0.1.0 (Stable) - **37 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
@@ -143,6 +143,50 @@ Cursor includes an automated update system that:
 - Maintains Nix reproducibility guarantees
 
 **Why?** Cursor can't self-update on NixOS (read-only `/nix/store`). Our system provides convenience while respecting Nix principles.
+
+---
+
+## 🗺️ Roadmap
+
+We're committed to making nixos-cursor the definitive way to run Cursor on NixOS. Here's what's planned:
+
+### 🔜 Near-Term (v0.2.x)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Newer Version Support** | Add 2.1.x versions as they release (with caveats documented) | 🔄 Ongoing |
+| **Missing Version Backfill** | Fill gaps in 1.6.x and early 1.7.x coverage | 📋 Planned |
+| **ARM64 Support** | Add aarch64-linux packages for Apple Silicon & ARM devices | 📋 Planned |
+| **Cachix Binary Cache** | Pre-built binaries for faster installation | 📋 Planned |
+
+### 🎯 Mid-Term (v0.3.x - v0.5.x)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Custom Modes Reimplementation** | Bring back custom agent modes for 2.1.x via patching/injection | 🔬 Research |
+| **Community Bug Patches** | Retroactively fix known bugs in popular versions (1.7.54, 2.0.77) | 🔬 Research |
+| **Extension Compatibility Layer** | Ensure Open VSX extensions work across all versions | 📋 Planned |
+| **Declarative MCP Configuration** | Full MCP server management via Nix modules | 📋 Planned |
+
+### 🚀 Long-Term (v1.0+)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **GPUI-based Manager** | Rewrite version manager in Rust/GPUI (Zed-style) | 💭 Exploring |
+| **Electron Bypass Layer** | Native rendering layer to bypass Electron overhead | 💭 Exploring |
+| **Cross-Version Workspace Sync** | Share workspaces and indexed docs between versions | 💭 Exploring |
+| **Community Plugin System** | Allow community-contributed patches and features | 💭 Exploring |
+
+### 🙋 Community-Driven
+
+**Want something? Ask for it!** We prioritize based on community interest:
+
+- 🐛 **Bug Reports**: [Open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new?template=bug_report.md)
+- 💡 **Feature Requests**: [Start a discussion](https://github.com/Distracted-E421/nixos-cursor/discussions)
+- 🔧 **Contributions**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+**Current Community Requests:**
+- *None yet - be the first!*
 
 ---
 
