@@ -103,20 +103,17 @@ let
           # Rename binary to version-specific name
           mv $out/bin/cursor $out/bin/${binaryName}
 
-          # CRITICAL: Also rename the wrapped binaries created by wrapGAppsHook3
+          # CRITICAL: Also rename the wrapped binaries created by makeWrapper
           # These would otherwise conflict when installing multiple versions:
           #   .cursor-wrapped -> .cursor-VERSION-wrapped
-          #   ..cursor-wrapped-wrapped -> ..cursor-VERSION-wrapped-wrapped
           if [ -f "$out/bin/.cursor-wrapped" ]; then
             mv $out/bin/.cursor-wrapped $out/bin/.${binaryName}-wrapped
           fi
-          if [ -f "$out/bin/..cursor-wrapped-wrapped" ]; then
-            mv $out/bin/..cursor-wrapped-wrapped $out/bin/..${binaryName}-wrapped-wrapped
-          fi
-          # Also handle the _ suffix file if it exists
-          if [ -f "$out/bin/.cursor-wrapped_" ]; then
-            mv $out/bin/.cursor-wrapped_ $out/bin/.${binaryName}-wrapped_
-          fi
+
+          # CRITICAL: Update the script to reference the renamed wrapper
+          # The shell script still has ".cursor-wrapped" hardcoded, we need to fix it
+          substituteInPlace $out/bin/${binaryName} \
+            --replace ".cursor-wrapped" ".${binaryName}-wrapped"
 
           # Update desktop entry to use version-specific binary
           # Note: Desktop file is already named ${shareDirName}.desktop (cursor-VERSION.desktop)
