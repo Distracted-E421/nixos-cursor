@@ -3,7 +3,7 @@
 Real-world configuration examples for different use cases.
 
 **Repository**: [github.com/Distracted-E421/nixos-cursor](https://github.com/Distracted-E421/nixos-cursor)  
-**Version**: v0.1.0 - 37 Cursor versions available
+**Version**: v0.1.1 - 37 Cursor versions available, secrets support added
 
 ---
 
@@ -51,7 +51,62 @@ programs.cursor = {
 
 ---
 
-### 3. [Dev Shell](dev-shell/) - Project Dependencies
+### 3. [With agenix](with-agenix/) - Secure Secrets (SSH Keys)
+
+**What**: Cursor + GitHub MCP with agenix-encrypted token
+
+**Use case**: Personal homelab, SSH-based secret encryption
+
+**Complexity**: ⭐⭐⭐ Intermediate
+
+**Features**:
+- Token encrypted with SSH keys
+- Decrypted at NixOS activation
+- Never stored in Nix store
+
+```nix
+# NixOS configuration
+age.secrets.github-mcp-token = {
+  file = ./secrets/github-token.age;
+  owner = "myuser";
+};
+
+# Home Manager configuration
+programs.cursor.mcp.github = {
+  enable = true;
+  tokenFile = "/run/agenix/github-mcp-token";
+};
+```
+
+---
+
+### 4. [With sops-nix](with-sops/) - Secure Secrets (Multi-Machine)
+
+**What**: Cursor + GitHub MCP with sops-nix encrypted token
+
+**Use case**: Multi-machine homelab, team environments
+
+**Complexity**: ⭐⭐⭐ Intermediate
+
+**Features**:
+- Native Home Manager integration
+- Multiple encryption backends (age, GPG, cloud KMS)
+- YAML format for multiple secrets
+
+```nix
+# sops configuration
+sops.secrets.github-mcp-token.key = "github_token";
+
+# Cursor configuration  
+programs.cursor.mcp.github = {
+  enable = true;
+  tokenFile = config.sops.secrets.github-mcp-token.path;
+};
+```
+
+---
+
+### 5. [Dev Shell](dev-shell/) - Project Dependencies
 
 **What**: Cursor with `nix develop` integration
 
@@ -69,7 +124,7 @@ nix develop --command cursor .
 
 ---
 
-### 4. [Declarative Extensions](declarative-extensions/) - Extension Management
+### 6. [Declarative Extensions](declarative-extensions/) - Extension Management
 
 **What**: Semi-declarative extension installation
 

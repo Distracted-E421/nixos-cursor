@@ -288,41 +288,51 @@ programs.cursor = {
 
 ---
 
-## nixos-cursor Module Design (Planned)
+## nixos-cursor Module Design (Implemented in v0.1.1)
 
-We plan to add first-class secrets support to the Home Manager module:
+The Home Manager module now has first-class secrets support via `tokenFile`:
 
 ```nix
-# Proposed API for v0.2.0
+# home.nix - Using the tokenFile option
 programs.cursor = {
   enable = true;
   
   mcp = {
-    servers = {
-      github = {
-        enable = true;
-        # Option 1: Direct path to secret file
-        tokenFile = "/run/agenix/github-mcp-token";
-        
-        # Option 2: sops-nix integration
-        tokenFile = config.sops.secrets.github-mcp-token.path;
-        
-        # Option 3: Plain value (not recommended, but supported)
-        # token = "github_pat_XXX";  # WARNING: Goes in Nix store!
-      };
-      
-      # Other MCP servers with secrets
-      anthropic = {
-        enable = true;
-        tokenFile = config.sops.secrets.anthropic-api-key.path;
-      };
-    };
+    enable = true;
     
-    # Generic secrets injection for custom servers
-    secretsDir = "/run/agenix";  # or config.sops.secrets path
+    github = {
+      enable = true;
+      
+      # Option 1: agenix path
+      tokenFile = "/run/agenix/github-mcp-token";
+      
+      # Option 2: sops-nix path
+      # tokenFile = config.sops.secrets.github-mcp-token.path;
+      
+      # Option 3: Plain file (less secure but works)
+      # tokenFile = "${config.home.homeDirectory}/.config/cursor-secrets/github-token";
+    };
   };
 };
 ```
+
+### How It Works
+
+1. **Build time**: A wrapper script is generated in `/nix/store` that:
+   - Checks if the token file exists
+   - Reads the token from the file
+   - Exports it as `GITHUB_PERSONAL_ACCESS_TOKEN`
+   - Executes the actual MCP server
+
+2. **Runtime**: When Cursor starts the MCP server:
+   - The wrapper reads the **decrypted** secret file
+   - Token never touches the Nix store
+   - Works with any secrets manager that writes to a file
+
+3. **Security**: 
+   - Token is not in `mcp.json` or Nix store
+   - Only readable by your user (via secrets manager permissions)
+   - Wrapper validates file exists and is readable
 
 ### Implementation Strategy
 

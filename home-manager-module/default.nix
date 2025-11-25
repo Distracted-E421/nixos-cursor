@@ -3,6 +3,7 @@
 #
 # Production-ready Home Manager module for Cursor IDE with MCP server integration.
 # No user-specific hardcoded paths - works for any user out of the box.
+# Supports secrets via agenix, sops-nix, or any file-based secret manager.
 
 { config, lib, pkgs, ... }:
 
@@ -51,6 +52,40 @@ let
     else
       throw "Unsupported browser: ${browser}";
 
+  # Generate wrapper script for MCP servers that need secrets
+  # This script reads the token from a file at RUNTIME, not build time
+  mkSecretWrapper = { name, tokenFile, envVar, command, args ? [] }: 
+    pkgs.writeShellScript "mcp-${name}-wrapper" ''
+      #!${pkgs.bash}/bin/bash
+      set -euo pipefail
+      
+      TOKEN_FILE="${tokenFile}"
+      
+      if [[ ! -f "$TOKEN_FILE" ]]; then
+        echo "ERROR: Token file not found: $TOKEN_FILE" >&2
+        echo "Please ensure your secrets manager (agenix/sops-nix) has decrypted the secret." >&2
+        exit 1
+      fi
+      
+      if [[ ! -r "$TOKEN_FILE" ]]; then
+        echo "ERROR: Cannot read token file: $TOKEN_FILE" >&2
+        echo "Check file permissions (should be 0400 or 0600)." >&2
+        exit 1
+      fi
+      
+      export ${envVar}="$(cat "$TOKEN_FILE")"
+      exec ${command} ${lib.escapeShellArgs args}
+    '';
+
+  # GitHub MCP wrapper (only if tokenFile is set)
+  githubMcpWrapper = mkSecretWrapper {
+    name = "github";
+    tokenFile = cfg.mcp.github.tokenFile;
+    envVar = "GITHUB_PERSONAL_ACCESS_TOKEN";
+    command = "${pkgs.nodejs_22}/bin/npx";
+    args = [ "-y" "@modelcontextprotocol/server-github" ];
+  };
+
   # Generate MCP configuration JSON
   mcpConfig = {
     mcpServers = mkMerge [
@@ -80,17 +115,22 @@ let
         };
       })
       
-      # GitHub MCP Server (repository operations)
-      (mkIf (cfg.mcp.enable && cfg.mcp.github.enable) {
+      # GitHub MCP Server - WITH secrets support via tokenFile
+      (mkIf (cfg.mcp.enable && cfg.mcp.github.enable && cfg.mcp.github.tokenFile != null) {
+        github = {
+          command = "${githubMcpWrapper}";
+          # No args needed - wrapper handles everything
+        };
+      })
+      
+      # GitHub MCP Server - WITHOUT authentication (public repos only)
+      (mkIf (cfg.mcp.enable && cfg.mcp.github.enable && cfg.mcp.github.tokenFile == null) {
         github = {
           command = "npx";
           args = [
             "-y"
             "@modelcontextprotocol/server-github"
           ];
-          env = mkIf (cfg.mcp.github.token != null) {
-            GITHUB_PERSONAL_ACCESS_TOKEN = cfg.mcp.github.token;
-          };
         };
       })
       
@@ -217,20 +257,32 @@ in {
       github = {
         enable = mkEnableOption "GitHub MCP server for repository operations";
 
-        token = mkOption {
+        tokenFile = mkOption {
           type = types.nullOr types.str;
           default = null;
-          example = literalExpression ''"ghp_xxxxxxxxxxxxxxxxxxxx"'';
+          example = literalExpression ''
+            # Using agenix:
+            "/run/agenix/github-mcp-token"
+            
+            # Using sops-nix:
+            config.sops.secrets.github-mcp-token.path
+            
+            # Using plain file (less secure):
+            "''${config.home.homeDirectory}/.config/cursor-secrets/github-token"
+          '';
           description = ''
-            GitHub Personal Access Token for authenticated API requests.
+            Path to a file containing the GitHub Personal Access Token.
+            The token is read at runtime, never stored in the Nix store.
             
-            If null, only public repository operations are available.
+            Supports any secrets manager that writes to a file path:
+            - agenix: /run/agenix/<secret-name>
+            - sops-nix: config.sops.secrets.<name>.path
+            - Plain file: ~/.config/cursor-secrets/github-token
             
-            Security: Consider using agenix or sops-nix for secret management
-            instead of storing tokens in plain text.
+            If null, GitHub MCP runs without authentication (public repos only).
             
-            Create token at: https://github.com/settings/tokens
-            Required scopes: repo, read:org
+            Required token permissions: repo, read:org
+            Create at: https://github.com/settings/tokens
           '';
         };
       };
@@ -372,5 +424,9 @@ in {
         mkdir -p ${config.home.homeDirectory}/.local/share/playwright
       ''
     );
+    
+    # Warn if GitHub MCP is enabled without authentication
+    warnings = optional (cfg.mcp.github.enable && cfg.mcp.github.tokenFile == null)
+      "GitHub MCP server is enabled without authentication. Only public repository operations will be available. Set programs.cursor.mcp.github.tokenFile for full access.";
   };
 }
