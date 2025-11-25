@@ -23,12 +23,19 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ## Features
 
-- Native NixOS packaging of Cursor IDE 2.0.77 (Stable)
+### 🌟 Unique Capabilities (Not Possible in Base Cursor)
+
+- **🔗 Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do
+- **⚡ Concurrent Multi-Version Launches**: Run 2.0.77 and 1.7.54 simultaneously in separate windows with separate configs
+- **🔄 Cross-Version Settings Sync**: Automatically copy your settings/keybindings to new version installs
+
+### Core Features
+
 - **🎯 Multi-Version Manager**: **37 versions** available (2.0.x, 1.7.x, 1.6.x)
 - **🖥️ Modern GUI**: Dropdown menus organized by era for easy selection
-- **🔒 Isolated User Data**: Each version keeps its own settings/extensions
-- **⚡ Concurrent Launches**: Run multiple versions simultaneously
-- **🔄 Settings Sync**: Optional sync of keybindings and settings
+- **🔒 Isolated User Data**: Each version keeps its own settings/extensions in `~/.cursor-VERSION/`
+- **🔄 Settings Sync**: Optional sync of keybindings and settings between versions
+- Native NixOS packaging of Cursor IDE 2.0.77 (Stable)
 - Wayland + X11 support with GPU acceleration
 - MCP server integration (filesystem, memory, NixOS, GitHub, Playwright)
 - Automated update system with daily notifications
@@ -74,8 +81,8 @@ home-manager.extraSpecialArgs = { inherit inputs; };
 
 After installation, you'll have:
 - `cursor` → Launches 2.0.77
-- `cursor-2.0.64` → Launches 2.0.64
-- `cursor-1.7.54` → Launches 1.7.54
+- `cursor-2.0.77` → Launches 2.0.77
+- `cursor-1.x.xx` → Launches specified version (assuming it is supported, see below)
 - `cursor-manager` → GUI version picker
 
 ### **Option B: nix run (No Installation)**
@@ -99,10 +106,10 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
 CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 ```
 
-**Available Versions** (replace dots with underscores):
-- **2.0.x**: 2.0.77, 2.0.75, 2.0.74, 2.0.73, 2.0.69, 2.0.64, 2.0.63, 2.0.60, 2.0.57, 2.0.54, 2.0.52, 2.0.43, 2.0.40, 2.0.38, 2.0.34, 2.0.32, 2.0.11
-- **1.7.x**: 1.7.54, 1.7.53, 1.7.52, 1.7.46, 1.7.44, 1.7.43, 1.7.40, 1.7.39, 1.7.38, 1.7.36, 1.7.33, 1.7.28, 1.7.25, 1.7.23, 1.7.22, 1.7.17, 1.7.16, 1.7.12, 1.7.11
-- **1.6.x**: 1.6.45
+**Available Versions**:
+- **2_0_x**: 2_0_77, 2_0_75, 2_0_74, 2_0_73, 2_0_69, 2_0_64, 2_0_63, 2_0_60, 2_0_57, 2_0_54, 2_0_52, 2_0_43, 2_0_40, 2_0_38, 2_0_34, 2_0_32, 2_0_11
+- **1_7_x**: 1_7_54, 1_7_53, 1_7_52, 1_7_46, 1_7_44, 1_7_43, 1_7_40, 1_7_39, 1_7_38, 1_7_36, 1_7_33, 1_7_28, 1_7_25, 1_7_23, 1_7_22, 1_7_17, 1_7_16, 1_7_12, 1_7_11
+- **1_6_x**: 1_6_45
 
 See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
 
@@ -142,13 +149,13 @@ Cursor includes an automated update system that:
 - Provides one-command updates: `cursor-update`
 - Maintains Nix reproducibility guarantees
 
-**Why?** Cursor can't self-update on NixOS (read-only `/nix/store`). Our system provides convenience while respecting Nix principles.
+**Why?** Cursor can't self-update on NixOS (read-only `/nix/store`). This system provides convenience while respecting Nix principles.
 
 ---
 
 ## 🗺️ Roadmap
 
-We're committed to making nixos-cursor the definitive way to run Cursor on NixOS. Here's what's planned:
+I committed to making nixos-cursor the definitive way to run Cursor on NixOS. Here's what's planned:
 
 ### 🔜 Near-Term (v0.2.x)
 

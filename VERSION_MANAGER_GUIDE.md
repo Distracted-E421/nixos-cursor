@@ -1,6 +1,6 @@
 # Cursor Version Manager Guide
 
-## 🚀 v0.1.0-rc - The Complete Multi-Version Solution
+## 🚀 v0.1.0 - The Complete Multi-Version Solution
 
 We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 
@@ -24,11 +24,11 @@ We have implemented a **robust, production-ready solution** for managing **37 hi
     * No manual downloading required!
     * Builds via Nix for reproducibility
 
-4. **Data Management**:
+4. **Data Management** (🌟 *Unique - Not Possible in Base Cursor*):
     * **Isolated User Data**: Each version in `~/.cursor-VERSION/`
     * **Settings Sync**: Auto-copy `settings.json`, `keybindings.json`, snippets
-    * **Global State Sync**: Optional experimental Docs/Auth sharing via symlink
-    * **Concurrent Launches**: Run multiple versions simultaneously
+    * **🔗 Shared Auth & Docs**: Optionally share your Cursor login AND indexed documentation across ALL versions via globalStorage symlink - base Cursor cannot do this!
+    * **Concurrent Launches**: Run multiple versions simultaneously with separate or shared state
 
 5. **Multi-Version Installation**:
     * All versions install to unique paths (no Nix store conflicts)
@@ -95,7 +95,13 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
 The Manager handles data migration for you!
 
 * **Settings Sync**: When launching a version for the first time, it checks for your main configuration and offers to sync `settings.json` and `keybindings.json`.
-* **Docs & Auth**: Check the "Sync Global State [Experimental]" box to symlink your `globalStorage`. This allows your indexed Docs to be shared between versions (use with caution).
+
+* **🔗 Shared Auth & Docs** (🌟 *Unique Feature*): Check the "Share Docs & Auth" box to symlink your `globalStorage` directory. This enables:
+  - **Single Login**: Authenticate once, use across all versions
+  - **Shared Indexed Docs**: Your `@Docs` indexed documentation is available in every version
+  - **Persistent Context**: AI context from one version carries over to others
+  
+  > **Why is this special?** Base Cursor stores auth and docs in the user data directory. Since each Cursor installation has its own data directory, you'd normally need to re-authenticate and re-index docs for each version. Our symlink approach shares this state globally - something the official Cursor doesn't support.
 
 ### 4. Installing Permanently
 
