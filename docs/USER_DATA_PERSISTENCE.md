@@ -1,6 +1,6 @@
 # Cursor User Data Persistence
 
-**Issue**: After updating Cursor, custom agents/settings don't show up.
+**Issue**: After updating Cursor or switching versions, custom agents/settings don't show up.
 
 **Root Cause**: Cursor stores user data in `~/.config/Cursor/` and `~/.cursor/`, but some features (like custom agents) are **workspace-specific**, stored in `.cursor/agents/` within each project.
 
@@ -20,9 +20,19 @@
 - **`.cursorrules`** - Cursor rules file
 - **`.cursor/mcp.json`** - Workspace MCP config (overrides global)
 
-### Version-Specific Data (Changes with Updates)
-- **`~/.config/Cursor/CachedData/`** - Version-specific cache
-- **`~/.config/Cursor/Code Cache/`** - Renderer cache
+### Version-Specific Data (Multi-Version Mode)
+
+With nixos-cursor v0.1.0+, each version can have isolated data:
+- **`~/.cursor-2.0.77/`** - Data for version 2.0.77
+- **`~/.cursor-1.7.54/`** - Data for version 1.7.54
+- **`~/.cursor-VERSION/extensions/`** - Version-specific extensions
+
+### Shared Data (Unique Feature)
+
+The **Share Docs & Auth** feature symlinks `globalStorage` across versions:
+- **Single login** - Authenticate once, use everywhere
+- **Shared indexed docs** - `@Docs` available in all versions
+- This is **not possible in base Cursor**!
 
 ---
 
@@ -37,7 +47,7 @@ alias cursor='cursor ~/homelab'
 # Or create a launcher script
 cat > ~/bin/cursor-homelab << 'EOF'
 #!/usr/bin/env bash
-/nix/store/*/bin/cursor ~/homelab "$@"
+cursor ~/homelab "$@"
 EOF
 chmod +x ~/bin/cursor-homelab
 ```
@@ -171,6 +181,7 @@ programs.cursor-ide.userSettings = {
 | **MCP config (global)** | `~/.cursor/mcp.json` | ✅ Yes (symlinked) |
 | **Workspace agents** | `~/homelab/.cursor/agents/` | ✅ Yes (if workspace opened) |
 | **Workspace rules** | `~/homelab/.cursor/rules/` | ✅ Yes (if workspace opened) |
+| **Auth & Docs (shared)** | `~/.cursor-VERSION/globalStorage/` | ✅ Yes (if sharing enabled) |
 | **Cache** | `~/.config/Cursor/Cache/` | ❌ No (rebuilt per version) |
 | **Code Cache** | `~/.config/Cursor/Code Cache/` | ❌ No (version-specific) |
 
@@ -248,6 +259,6 @@ This would make agents part of your declarative config.
 
 ---
 
-**Last Updated**: 2025-11-22  
+**Last Updated**: 2025-11-25 (v0.1.0)  
 **Status**: Documented  
-**Next**: Implement agent loading verification in update script
+**See Also**: [VERSION_MANAGER_GUIDE.md](../VERSION_MANAGER_GUIDE.md) for multi-version usage

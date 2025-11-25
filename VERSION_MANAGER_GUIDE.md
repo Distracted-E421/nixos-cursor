@@ -1,6 +1,6 @@
 # Cursor Version Manager Guide
 
-## 🚀 v0.1.0 - The Complete Multi-Version Solution
+## v0.1.0 - The Complete Multi-Version Solution
 
 We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 
@@ -24,10 +24,10 @@ We have implemented a **robust, production-ready solution** for managing **37 hi
     * No manual downloading required!
     * Builds via Nix for reproducibility
 
-4. **Data Management** (🌟 *Unique - Not Possible in Base Cursor*):
+4. **Data Management** (*Unique - Not Possible in Base Cursor*):
     * **Isolated User Data**: Each version in `~/.cursor-VERSION/`
     * **Settings Sync**: Auto-copy `settings.json`, `keybindings.json`, snippets
-    * **🔗 Shared Auth & Docs**: Optionally share your Cursor login AND indexed documentation across ALL versions via globalStorage symlink - base Cursor cannot do this!
+    * **Shared Auth & Docs**: Optionally share your Cursor login AND indexed documentation across ALL versions via globalStorage symlink - base Cursor cannot do this!
     * **Concurrent Launches**: Run multiple versions simultaneously with separate or shared state
 
 5. **Multi-Version Installation**:
@@ -66,7 +66,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor-manager
 2. Select "2.0.77 (Stable - Recommended)" from second dropdown
 3. Check "Sync Settings & Keybindings" (recommended)
 4. Optionally check "Share Docs & Auth" (experimental)
-5. Click "🚀 Launch Selected Version"
+5. Click "Launch Selected Version"
 
 ### 2. Direct CLI Launch (Without GUI)
 
@@ -96,7 +96,7 @@ The Manager handles data migration for you!
 
 * **Settings Sync**: When launching a version for the first time, it checks for your main configuration and offers to sync `settings.json` and `keybindings.json`.
 
-* **🔗 Shared Auth & Docs** (🌟 *Unique Feature*): Check the "Share Docs & Auth" box to symlink your `globalStorage` directory. This enables:
+* **Shared Auth & Docs** (*Unique Feature*): Check the "Share Docs & Auth" box to symlink your `globalStorage` directory. This enables:
   - **Single Login**: Authenticate once, use across all versions
   - **Shared Indexed Docs**: Your `@Docs` indexed documentation is available in every version
   - **Persistent Context**: AI context from one version carries over to others

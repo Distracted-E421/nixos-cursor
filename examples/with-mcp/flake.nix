@@ -7,26 +7,24 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Local path for testing (update to github URL when published)
-    # TODO: Change to "github:yourusername/cursor-nixos" after release
-    # NOTE: For development, keep as relative path to test local changes immediately
-    cursor-nixos.url = "path:../../";
+    # nixos-cursor - Multi-version Cursor IDE for NixOS
+    nixos-cursor.url = "github:Distracted-E421/nixos-cursor";
   };
 
-  outputs = { self, nixpkgs, home-manager, cursor-nixos }: 
+  outputs = { self, nixpkgs, home-manager, nixos-cursor }: 
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
-        overlays = [ cursor-nixos.overlays.default ];
+        overlays = [ nixos-cursor.overlays.default ];
       };
     in {
     homeConfigurations."myuser" = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
       
       modules = [
-        cursor-nixos.homeManagerModules.default
+        nixos-cursor.homeManagerModules.default
         {
           home = {
             username = "myuser";

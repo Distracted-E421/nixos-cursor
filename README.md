@@ -23,18 +23,18 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ## Features
 
-### 🌟 Unique Capabilities (Not Possible in Base Cursor)
+### Unique Capabilities (Not Possible in Base Cursor)
 
-- **🔗 Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do to my knowledge (and has lost me a lot of time reindexing to have them again)
-- **⚡ Concurrent Multi-Version Launches**: Run 2.0.77 and 1.7.54 simultaneously in separate windows with separate configs
-- **🔄 Cross-Version Settings Sync**: Automatically copy your settings/keybindings to new version installs
+- **Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do to my knowledge (and has lost me a lot of time reindexing to have them again)
+- **Concurrent Multi-Version Launches**: Run 2.0.77 and 1.7.54 simultaneously in separate windows with separate configs
+- **Cross-Version Settings Sync**: Automatically copy your settings/keybindings to new version installs
 
 ### Core Features
 
-- **🎯 Multi-Version Manager**: **37 versions** available (2.0.x, 1.7.x, 1.6.x)
-- **🖥️ Modern GUI**: Dropdown menus organized by era for easy selection
-- **🔒 Isolated User Data**: Each version keeps its own settings/extensions in `~/.cursor-VERSION/`
-- **🔄 Settings Sync**: Optional sync of keybindings and settings between versions
+- **Multi-Version Manager**: **37 versions** available (2.0.x, 1.7.x, 1.6.x)
+- **Modern GUI**: Dropdown menus organized by era for easy selection
+- **Isolated User Data**: Each version keeps its own settings/extensions in `~/.cursor-VERSION/`
+- **Settings Sync**: Optional sync of keybindings and settings between versions
 - Native NixOS packaging of Cursor IDE 2.0.77 (Stable)
 - Wayland + X11 support with GPU acceleration
 - MCP server integration (filesystem, memory, NixOS, GitHub, Playwright)
@@ -44,7 +44,7 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### **Option A: Direct Package Installation (Recommended)**
 
@@ -153,51 +153,51 @@ Cursor includes an automated update system that:
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 I committed to making nixos-cursor the definitive way to run Cursor on NixOS. Here's what's planned:
 
-### 🔜 Near-Term (v0.2.x)
+### Near-Term (v0.2.x)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Newer Version Support** | Add 2.1.x versions as they release (with caveats documented) | 🔄 Ongoing |
-| **Missing Version Backfill** | Fill gaps in 1.6.x and early 1.7.x coverage | 📋 Planned |
-| **ARM64 Support** | Add aarch64-linux packages for Apple Silicon & ARM devices | 📋 Planned |
-| **Cachix Binary Cache** | Pre-built binaries for faster installation | 📋 Planned |
+| **Newer Version Support** | Add 2.1.x versions as they release (with caveats documented) | Ongoing |
+| **Missing Version Backfill** | Fill gaps in 1.6.x and early 1.7.x coverage | Planned |
+| **ARM64 Support** | Add aarch64-linux packages for Apple Silicon & ARM devices | Planned |
+| **Cachix Binary Cache** | Pre-built binaries for faster installation | Planned |
 
-### 🎯 Mid-Term (v0.3.x - v0.5.x)
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Custom Modes Reimplementation** | Bring back custom agent modes for 2.1.x via patching/injection | 🔬 Research |
-| **Community Bug Patches** | Retroactively fix known bugs in popular versions (1.7.54, 2.0.77) | 🔬 Research |
-| **Extension Compatibility Layer** | Ensure Open VSX extensions work across all versions | 📋 Planned |
-| **Declarative MCP Configuration** | Full MCP server management via Nix modules | 📋 Planned |
-
-### 🚀 Long-Term (v1.0+)
+### Mid-Term (v0.3.x - v0.5.x)
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **GPUI-based Manager** | Rewrite version manager in Rust/GPUI (Zed-style) | 💭 Exploring |
-| **Electron Bypass Layer** | Native rendering layer to bypass Electron overhead | 💭 Exploring |
-| **Cross-Version Workspace Sync** | Share workspaces and indexed docs between versions | 💭 Exploring |
-| **Community Plugin System** | Allow community-contributed patches and features | 💭 Exploring |
+| **Custom Modes Reimplementation** | Bring back custom agent modes for 2.1.x via patching/injection | Research |
+| **Community Bug Patches** | Retroactively fix known bugs in popular versions (1.7.54, 2.0.77) | Research |
+| **Extension Compatibility Layer** | Ensure Open VSX extensions work across all versions | Planned |
+| **Declarative MCP Configuration** | Full MCP server management via Nix modules | Planned |
 
-### 🙋 Community-Driven
+### Long-Term (v1.0+)
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **GPUI-based Manager** | Rewrite version manager in Rust/GPUI (Zed-style) | Exploring |
+| **Electron Bypass Layer** | Native rendering layer to bypass Electron overhead | Exploring |
+| **Cross-Version Workspace Sync** | Share workspaces and indexed docs between versions | Exploring |
+| **Community Plugin System** | Allow community-contributed patches and features | Exploring |
+
+### Community-Driven
 
 **Want something? Ask for it!** We prioritize based on community interest:
 
-- 🐛 **Bug Reports**: [Open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new?template=bug_report.md)
-- 💡 **Feature Requests**: [Start a discussion](https://github.com/Distracted-E421/nixos-cursor/discussions)
-- 🔧 **Contributions**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Bug Reports**: [Open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new?template=bug_report.md)
+- **Feature Requests**: [Start a discussion](https://github.com/Distracted-E421/nixos-cursor/discussions)
+- **Contributions**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 **Current Community Requests:**
 - *None yet - be the first!*
 
 ---
 
-## 🌿 Development & Contributing
+## Development & Contributing
 
 This is a personal project maintained by e421. If you'd like to contribute or have suggestions, feel free to open an issue or reach out!
 
@@ -209,7 +209,7 @@ This is a personal project maintained by e421. If you'd like to contribute or ha
 
 ---
 
-## ⚖️ License & Proprietary Note
+## License & Proprietary Note
 
 **Packaging Code**: MIT License - See [LICENSE](LICENSE) file.
 

@@ -2,6 +2,9 @@
 
 Real-world configuration examples for different use cases.
 
+**Repository**: [github.com/Distracted-E421/nixos-cursor](https://github.com/Distracted-E421/nixos-cursor)  
+**Version**: v0.1.0 - 37 Cursor versions available
+
 ---
 
 ## 📁 Examples
@@ -99,6 +102,20 @@ home.activation.cursorExtensions = /* install script */;
 
 **Want extension management?**
 → [declarative-extensions/](declarative-extensions/)
+
+### Multi-Version Support
+
+All examples support multiple Cursor versions! Add to any config:
+
+```nix
+home.packages = [
+  inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
+  inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic
+  inputs.nixos-cursor.packages.${pkgs.system}.cursor-manager  # GUI picker
+];
+```
+
+**37 versions available** - see main [README](../README.md) for full list.
 
 ---
 
@@ -242,7 +259,8 @@ Each example has detailed documentation - read them!
 ### Documentation
 
 - [Main README](../README.md) - Package overview
-- [LICENSING_AND_FOSS.md](../LICENSING_AND_FOSS.md) - What's open source
+- [VERSION_MANAGER_GUIDE.md](../VERSION_MANAGER_GUIDE.md) - Multi-version usage
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute
 - [cursor/README.md](../cursor/README.md) - Cursor package details
 
 ### External
