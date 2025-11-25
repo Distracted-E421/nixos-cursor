@@ -155,12 +155,17 @@ stdenv.mkDerivation rec {
       
       # Only rename if shareDirName != "cursor" (versioned packages)
       if [ "${shareDirName}" != "cursor" ]; then
-        # Rename cursor.png to ${shareDirName}.png in all icon sizes
-        for size in 16x16 32x32 48x48 64x64 128x128 256x256 512x512; do
-          if [ -f "$out/share/icons/hicolor/$size/apps/cursor.png" ]; then
-            mv "$out/share/icons/hicolor/$size/apps/cursor.png" \
-               "$out/share/icons/hicolor/$size/apps/${shareDirName}.png"
-          fi
+        # Rename cursor.png to ${shareDirName}.png in ALL icon sizes
+        # Use find to catch all sizes (16x16, 22x22, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256, 512x512, etc.)
+        find "$out/share/icons/hicolor" -name "cursor.png" -type f | while read iconfile; do
+          dir=$(dirname "$iconfile")
+          mv "$iconfile" "$dir/${shareDirName}.png"
+        done
+        
+        # Also rename any cursor.svg files if they exist
+        find "$out/share/icons/hicolor" -name "cursor.svg" -type f | while read iconfile; do
+          dir=$(dirname "$iconfile")
+          mv "$iconfile" "$dir/${shareDirName}.svg"
         done
       fi
     fi
