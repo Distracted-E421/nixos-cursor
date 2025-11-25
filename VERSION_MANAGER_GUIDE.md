@@ -1,6 +1,6 @@
-# Cursor Version Manager & Community Solution
+# Cursor Version Manager Guide
 
-## 🚀 RC3.2 - The Complete Multi-Version Solution
+## 🚀 v0.1.0-rc - The Complete Multi-Version Solution
 
 We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 
@@ -16,6 +16,7 @@ We have implemented a **robust, production-ready solution** for managing **37 hi
     * Themed to match your Cursor editor (Dark/Light)
     * Organized, scalable interface for 37 versions
     * Emoji status indicators (✓✗⚠ℹ🚀)
+    * Persistent settings across sessions
 
 3. **Pure, Reproducible Builds**:
     * Uses stable S3 URLs (no DNS dependency)
@@ -28,6 +29,11 @@ We have implemented a **robust, production-ready solution** for managing **37 hi
     * **Settings Sync**: Auto-copy `settings.json`, `keybindings.json`, snippets
     * **Global State Sync**: Optional experimental Docs/Auth sharing via symlink
     * **Concurrent Launches**: Run multiple versions simultaneously
+
+5. **Multi-Version Installation**:
+    * All versions install to unique paths (no Nix store conflicts)
+    * Can install `cursor`, `cursor-2.0.64`, `cursor-1.7.54` simultaneously
+    * Each gets its own binary, desktop entry, and icons
 
 ## 🙏 Credits
 
@@ -52,7 +58,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor-manager
 **GUI Features:**
 - **Era Dropdown**: Select from 2.0.x, 1.7.x, 1.6.x, or System Default
 - **Version Dropdown**: Lists all versions for selected era
-- **Options**: Settings sync + optional Docs/Auth sharing
+- **Options**: Settings sync + optional Docs/Auth sharing (persistent across sessions)
 - **Launch Button**: Starts selected version with configured options
 
 **Example Workflow:**
@@ -84,16 +90,16 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
 
 **Note**: Replace dots with underscores in version numbers (`2.0.77` → `cursor-2_0_77`).
 
-### 2. Data Persistence & Docs
+### 3. Data Persistence & Sync
 
-The Manager now handles data migration for you!
+The Manager handles data migration for you!
 
 * **Settings Sync**: When launching a version for the first time, it checks for your main configuration and offers to sync `settings.json` and `keybindings.json`.
 * **Docs & Auth**: Check the "Sync Global State [Experimental]" box to symlink your `globalStorage`. This allows your indexed Docs to be shared between versions (use with caution).
 
-### 3. Installing Permanently
+### 4. Installing Permanently
 
-Add to your `configuration.nix` or `home.nix` to have `cursor` (2.0.77), `cursor-manager`, and other versions available in PATH:
+Add to your `configuration.nix` or `home.nix` to have multiple versions available in PATH:
 
 ```nix
 {
@@ -103,10 +109,49 @@ Add to your `configuration.nix` or `home.nix` to have `cursor` (2.0.77), `cursor
   
   # ...
   
-  environment.systemPackages = [
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Aliased to 2.0.77
+  home.packages = [
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-manager  # The GUI launcher
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Optional: keep classic available
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_0_64   # Specific version
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic version
   ];
 }
 ```
+
+**After installation, you'll have these commands available:**
+- `cursor` → Launches 2.0.77 (latest)
+- `cursor-2.0.64` → Launches 2.0.64
+- `cursor-1.7.54` → Launches 1.7.54
+- `cursor-manager` → Opens the GUI picker
+
+---
+
+## 🔧 Troubleshooting
+
+### Version won't launch
+- Check that the version was built successfully: `nix build .#cursor-2_0_64`
+- Look for errors in terminal output when launching
+- Ensure isolated data directory exists: `ls -la ~/.cursor-2.0.64/`
+
+### Settings not syncing
+- Settings sync only happens on first launch of a version
+- Delete the version's data directory to trigger re-sync: `rm -rf ~/.cursor-VERSION/`
+- Check that source settings exist: `ls ~/.config/Cursor/User/`
+
+### Multiple versions conflict
+- Each version should have its own binary name and paths
+- Check with: `which cursor-2.0.64` and `which cursor-1.7.54`
+- If you see conflicts, ensure you're using the latest flake version
+
+---
+
+## 📋 Full Version List
+
+**2.0.x Custom Modes Era (17 versions):**
+`2.0.77`, `2.0.75`, `2.0.74`, `2.0.73`, `2.0.69`, `2.0.64`, `2.0.63`, `2.0.60`, `2.0.57`, `2.0.54`, `2.0.52`, `2.0.43`, `2.0.40`, `2.0.38`, `2.0.34`, `2.0.32`, `2.0.11`
+
+**1.7.x Classic Era (19 versions):**
+`1.7.54`, `1.7.53`, `1.7.52`, `1.7.46`, `1.7.44`, `1.7.43`, `1.7.40`, `1.7.39`, `1.7.38`, `1.7.36`, `1.7.33`, `1.7.28`, `1.7.25`, `1.7.23`, `1.7.22`, `1.7.17`, `1.7.16`, `1.7.12`, `1.7.11`
+
+**1.6.x Legacy Era (1 version):**
+`1.6.45`
