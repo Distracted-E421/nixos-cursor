@@ -46,6 +46,7 @@
   srcUrl ? "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage", # Specific download URL (overrides default downloader.cursor.sh)
   localAppImage ? null, # Path to local AppImage file (for offline builds or DNS issues)
   commandLineArgs ? "", # Command-line arguments (string or list)
+  shareDirName ? "cursor", # Directory name under /share/ (cursor or cursor-VERSION for multi-version)
   postInstall ? "", # Additional postInstall steps (for version-specific customization)
 }:
 
@@ -53,8 +54,9 @@ let
   inherit (stdenv) hostPlatform;
 
   # Handle commandLineArgs as list or string
-  argsList = if lib.isList commandLineArgs then commandLineArgs else lib.splitString " " commandLineArgs;
-  
+  argsList =
+    if lib.isList commandLineArgs then commandLineArgs else lib.splitString " " commandLineArgs;
+
   # Helper to quote arguments for the shell script (double quotes allow variable expansion)
   # This ensures that if we pass "$HOME/..." it gets expanded at runtime
   argsString = lib.concatMapStrings (arg: " \"${arg}\"") argsList;
@@ -137,122 +139,126 @@ stdenv.mkDerivation rec {
   ];
 
   installPhase = ''
-                    runHook preInstall
+    runHook preInstall
 
-                    mkdir -p $out/bin $out/share
-                    
-                    # Copy extracted AppImage contents
-                    cp -r usr/share/cursor $out/share/
-                    
-                    # Copy icons and desktop files
-                    if [ -d usr/share/icons ]; then
-                      cp -r usr/share/icons $out/share/
-                    fi
-                    if [ -d usr/share/pixmaps ]; then
-                      cp -r usr/share/pixmaps $out/share/
-                    fi
-                    
-                    # Install helper scripts
-                    mkdir -p $out/libexec/cursor
-                    substitute ${./check-update.sh} $out/libexec/cursor/check-update \
-                      --subst-var-by version "${version}"
-                    chmod +x $out/libexec/cursor/check-update
-                    
-                    substitute ${./nix-update.sh} $out/libexec/cursor/nix-update \
-                      --subst-var-by version "${version}"
-                    chmod +x $out/libexec/cursor/nix-update
-                    
-                    # Create wrapper with proper environment and NixOS-specific fixes
-                    # We wrap to .cursor-wrapped first to allow dynamic argument handling (like $HOME expansion) in the final binary
-                    makeWrapper $out/share/cursor/cursor $out/bin/.cursor-wrapped \
-                      --prefix LD_LIBRARY_PATH : "${
-                        lib.makeLibraryPath [
-                          stdenv.cc.cc.lib
-                          libglvnd # GPU acceleration
-                          glib
-                          nss
-                          nspr
-                          atk
-                          at-spi2-atk
-                          cups
-                          dbus
-                          libdrm
-                          gtk3
-                          pango
-                          cairo
-                          xorg.libX11
-                          xorg.libXcomposite
-                          xorg.libXdamage
-                          xorg.libXext
-                          xorg.libXfixes
-                          xorg.libXrandr
-                          mesa
-                          expat
-                          libxkbcommon
-                          alsa-lib
-                          udev
-                        ]
-                      }" \
-                      --set ELECTRON_OVERRIDE_DIST_PATH "$out/share/cursor" \
-                      --set VSCODE_BUILTIN_EXTENSIONS_DIR "$out/share/cursor/resources/app/extensions" \
-                      --set ELECTRON_NO_SANDBOX "1" \
-                      --set ELECTRON_DISABLE_SECURITY_WARNINGS "1" \
-                      --set CURSOR_CHECK_UPDATE "$out/libexec/cursor/check-update" \
-                      --set CURSOR_NIX_UPDATE "$out/libexec/cursor/nix-update" \
-                      --add-flags "--ozone-platform-hint=auto" \
-                      --add-flags "--enable-features=UseOzonePlatform,WaylandWindowDecorations,VaapiVideoDecoder,WebRTCPipeWireCapturer" \
-                      --add-flags "--disable-gpu-sandbox" \
-                      --add-flags "--enable-gpu-rasterization" \
-                      --add-flags "--enable-zero-copy" \
-                      --add-flags "--ignore-gpu-blocklist" \
-                      --add-flags "--enable-accelerated-2d-canvas" \
-                      --add-flags "--num-raster-threads=4" \
-                      --add-flags "--enable-oop-rasterization"
-                    
-                    # Create the final binary that handles dynamic arguments (like $HOME)
-                    # We use double quotes around argsString elements to allow variable expansion while handling spaces
-                    cat > $out/bin/cursor << EOF
+    mkdir -p $out/bin $out/share
+    
+    # Copy extracted AppImage contents to version-specific directory
+    # This allows multiple versions to coexist without path conflicts
+    cp -r usr/share/cursor $out/share/${shareDirName}
+    
+    # Copy icons and desktop files
+    if [ -d usr/share/icons ]; then
+      cp -r usr/share/icons $out/share/
+    fi
+    if [ -d usr/share/pixmaps ]; then
+      cp -r usr/share/pixmaps $out/share/
+    fi
+    
+    # Install helper scripts
+    mkdir -p $out/libexec/${shareDirName}
+    substitute ${./check-update.sh} $out/libexec/${shareDirName}/check-update \
+      --subst-var-by version "${version}"
+    chmod +x $out/libexec/${shareDirName}/check-update
+    
+    substitute ${./nix-update.sh} $out/libexec/${shareDirName}/nix-update \
+      --subst-var-by version "${version}"
+    chmod +x $out/libexec/${shareDirName}/nix-update
+    
+    # Create wrapper with proper environment and NixOS-specific fixes
+    makeWrapper $out/share/${shareDirName}/cursor $out/bin/.cursor-wrapped \
+      --prefix LD_LIBRARY_PATH : "${
+        lib.makeLibraryPath [
+          stdenv.cc.cc.lib
+          libglvnd
+          glib
+          nss
+          nspr
+          atk
+          at-spi2-atk
+          cups
+          dbus
+          libdrm
+          gtk3
+          pango
+          cairo
+          xorg.libX11
+          xorg.libXcomposite
+          xorg.libXdamage
+          xorg.libXext
+          xorg.libXfixes
+          xorg.libXrandr
+          mesa
+          expat
+          libxkbcommon
+          alsa-lib
+          udev
+        ]
+      }" \
+      --set ELECTRON_OVERRIDE_DIST_PATH "$out/share/${shareDirName}" \
+      --set VSCODE_BUILTIN_EXTENSIONS_DIR "$out/share/${shareDirName}/resources/app/extensions" \
+      --set ELECTRON_NO_SANDBOX "1" \
+      --set ELECTRON_DISABLE_SECURITY_WARNINGS "1" \
+      --set CURSOR_CHECK_UPDATE "$out/libexec/${shareDirName}/check-update" \
+      --set CURSOR_NIX_UPDATE "$out/libexec/${shareDirName}/nix-update" \
+      --add-flags "--ozone-platform-hint=auto" \
+      --add-flags "--enable-features=UseOzonePlatform,WaylandWindowDecorations,VaapiVideoDecoder,WebRTCPipeWireCapturer" \
+      --add-flags "--disable-gpu-sandbox" \
+      --add-flags "--enable-gpu-rasterization" \
+      --add-flags "--enable-zero-copy" \
+      --add-flags "--ignore-gpu-blocklist" \
+      --add-flags "--enable-accelerated-2d-canvas" \
+      --add-flags "--num-raster-threads=4" \
+      --add-flags "--enable-oop-rasterization"
+    
+    # Create the final binary that handles dynamic arguments (like $HOME)
+    cat > $out/bin/cursor << 'CURSOR_EOF'
 #!/bin/bash
-exec "$out/bin/.cursor-wrapped" --update=false ${argsString} "\$@"
-EOF
-                    chmod +x $out/bin/cursor
-                    
-                    # Create convenience update command
-                    cat > $out/bin/cursor-update << 'EOF'
-                #!/usr/bin/env bash
-                exec "$CURSOR_NIX_UPDATE" "$@"
-                EOF
-                    chmod +x $out/bin/cursor-update
-                    
-                    # Create update check command
-                    cat > $out/bin/cursor-check-update << 'EOF'
-                #!/usr/bin/env bash
-                exec "$CURSOR_CHECK_UPDATE" "$@"
-                EOF
-                                chmod +x $out/bin/cursor-check-update
-                
-                # Create desktop entry
-                mkdir -p $out/share/applications
-                cat > $out/share/applications/cursor.desktop <<'DESKTOP_EOF'
-    [Desktop Entry]
-    Version=1.0
-    Type=Application
-    Name=Cursor
-    GenericName=AI Code Editor
-    Comment=AI-first code editor based on VS Code
-    Exec=$out/bin/cursor %F
-    Icon=cursor
-    Terminal=false
-    Categories=Development;IDE;TextEditor;
-    MimeType=text/plain;inode/directory;
-    StartupNotify=true
-    StartupWMClass=Cursor
-    DESKTOP_EOF
+exec "$out/bin/.cursor-wrapped" --update=false ${argsString} "$@"
+CURSOR_EOF
+    chmod +x $out/bin/cursor
+    
+    # Fix the cursor script to have actual paths (not Nix variables)
+    substituteInPlace $out/bin/cursor \
+      --replace '$out' "$out" \
+      --replace '${argsString}' "${argsString}"
+    
+    # Create convenience update command
+    cat > $out/bin/cursor-update << 'UPDATE_EOF'
+#!/usr/bin/env bash
+exec "$CURSOR_NIX_UPDATE" "$@"
+UPDATE_EOF
+    chmod +x $out/bin/cursor-update
+    
+    # Create update check command  
+    cat > $out/bin/cursor-check-update << 'CHECK_EOF'
+#!/usr/bin/env bash
+exec "$CURSOR_CHECK_UPDATE" "$@"
+CHECK_EOF
+    chmod +x $out/bin/cursor-check-update
+    
+    # Create desktop entry
+    mkdir -p $out/share/applications
+    cat > $out/share/applications/cursor.desktop << DESKTOP_EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Cursor
+GenericName=AI Code Editor
+Comment=AI-first code editor based on VS Code
+Exec=$out/bin/cursor %F
+Icon=cursor
+Terminal=false
+Categories=Development;IDE;TextEditor;
+MimeType=text/plain;inode/directory;
+StartupNotify=true
+StartupWMClass=Cursor
+DESKTOP_EOF
 
-                # Custom postInstall hook (for version-specific modifications)
-                ${postInstall}
+    # Custom postInstall hook (for version-specific modifications)
+    ${postInstall}
 
-                runHook postInstall
+    runHook postInstall
   '';
 
   passthru = {

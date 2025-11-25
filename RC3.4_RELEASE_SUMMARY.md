@@ -1,21 +1,38 @@
-# RC3.3 Release Summary
+# RC3.4 Release Summary
 
 **Status**: Complete - Ready for Community Release  
-**Date**: 2025-11-24  
-**Version**: RC3.3 (37-Version Multi-Era System with Polished GUI)
+**Date**: 2025-11-25  
+**Version**: RC3.4 (37-Version Multi-Era System - Path Conflict Fix)
 
 ---
 
-## 🎉 **What's New in RC3.3**
+## 🎉 **What's New in RC3.4**
 
-RC3.3 is the polished, production-ready release with **UX improvements** and **comprehensive documentation cleanup**.
+RC3.4 is the **critical bug fix release** that enables **true multi-version installation** without path conflicts.
+
+### **Critical Fix: Path Conflict Resolution**
+
+**The Problem (RC3.3 and earlier)**:
+```
+pkgs.buildEnv error: two given paths contain a conflicting subpath:
+  `/nix/store/...-cursor-2.0.64/share/cursor/cursor' and
+  `/nix/store/...-cursor-2.0.77/share/cursor/cursor'
+```
+
+**The Solution (RC3.4)**:
+- Each version now installs to **unique paths**:
+  - `/share/cursor-VERSION/` instead of `/share/cursor/`
+  - `/bin/cursor-VERSION` instead of `/bin/cursor`
+- Added `apps` flake output for cleaner `nix run` syntax
+- Fixed installPhase indentation issues
 
 ### **Version Evolution**
 
 - **RC3**: 3 versions (initial)
 - **RC3.1**: 12 versions (4x growth)
 - **RC3.2**: 37 versions (3x growth)
-- **RC3.3**: 37 versions + **Polished GUI** + **Persistent Settings**
+- **RC3.3**: 37 versions + Polished GUI + Persistent Settings
+- **RC3.4**: 37 versions + **Path Conflict Fix** + **apps Output**
 
 ### **Version Breakdown**
 

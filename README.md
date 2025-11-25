@@ -1,14 +1,16 @@
 # nixos-cursor
 
-**Status**: Release Candidate 3.3 (v2.0.77) - **37 Versions Available**  
+**Status**: Release Candidate 3.4 (v2.0.77) - **37 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
 
 A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **37 historical versions** spanning three eras for ultimate workflow stability.
 
-> **Why Release Candidate 3.3?**
-> We are targeting **Cursor 2.0.77** as our primary stable release. With the deprecation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+> **Why Release Candidate 3.4?**
+> We are targeting **Cursor 2.0.77** as our primary stable release. With the deprecation of custom agent modes in Cursor 2.1.x, many users (ourselves included) found their workflows disrupted. This package now includes a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
+>
+> **RC3.4 Critical Fix**: Multi-version packages now install to unique paths (`/share/cursor-VERSION/`, `/bin/cursor-VERSION`), enabling simultaneous installation of multiple versions without path conflicts. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
 
 **Version Coverage:**
 - **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
@@ -37,35 +39,63 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ## 🚀 Quick Start
 
-### **Multi-Version Manager (37 Versions)**
-Choose from **37 historical Cursor versions** spanning three major eras!
+### **Option A: Direct Package Installation (Recommended)**
+
+Add to your `flake.nix` inputs:
+
+```nix
+{
+  inputs.nixos-cursor = {
+    url = "github:Distracted-E421/nixos-cursor/pre-release";
+    inputs.nixpkgs.follows = "nixpkgs";  # Optional
+  };
+}
+```
+
+Then in your Home Manager configuration:
+
+```nix
+{ inputs, pkgs, ... }: {
+  home.packages = [
+    # Install multiple versions simultaneously (no conflicts!)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_0_64   # Specific version
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic version
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-manager  # GUI launcher
+  ];
+}
+```
+
+**Important**: Pass `inputs` to Home Manager:
+
+```nix
+home-manager.extraSpecialArgs = { inherit inputs; };
+```
+
+After installation, you'll have:
+- `cursor` → Launches 2.0.77
+- `cursor-2.0.64` → Launches 2.0.64
+- `cursor-1.7.54` → Launches 1.7.54
+- `cursor-manager` → GUI version picker
+
+### **Option B: nix run (No Installation)**
 
 ```bash
-# Launch the version manager GUI (dropdown menus with persistent settings)
-nix run github:Distracted-E421/nixos-cursor#cursor-manager
+# Launch the version manager GUI
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-manager
 
 # Or run specific versions directly:
-
-# Latest stable with custom modes
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
-
-# Latest pre-2.0 (community favorite)
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54
-
-# First custom modes release
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_11
-
-# Oldest available
-nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-2_0_77
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-1_7_54
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-1_6_45
 
 # Run multiple versions concurrently:
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77 &
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-2_0_77 &
+nix run github:Distracted-E421/nixos-cursor/pre-release#cursor-1_7_54 &
 ```
 
 **For Local Development:**
 ```bash
-# Set CURSOR_FLAKE_URI to use local flake
 CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 ```
 
@@ -76,11 +106,21 @@ CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 
 See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
 
-### Install via Home Manager
+### **Full Version List**
+
+Replace dots with underscores (e.g., `cursor-2_0_77`):
+
+- **2.0.x**: 2.0.77, 2.0.75, 2.0.74, 2.0.73, 2.0.69, 2.0.64, 2.0.63, 2.0.60, 2.0.57, 2.0.54, 2.0.52, 2.0.43, 2.0.40, 2.0.38, 2.0.34, 2.0.32, 2.0.11
+- **1.7.x**: 1.7.54, 1.7.53, 1.7.52, 1.7.46, 1.7.44, 1.7.43, 1.7.40, 1.7.39, 1.7.38, 1.7.36, 1.7.33, 1.7.28, 1.7.25, 1.7.23, 1.7.22, 1.7.17, 1.7.16, 1.7.12, 1.7.11
+- **1.6.x**: 1.6.45
+
+### **Option C: Home Manager Module (Advanced)**
+
+For declarative settings management:
 
 ```nix
 {
-  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor";
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/pre-release";
   
   outputs = { nixos-cursor, home-manager, ... }: {
     homeConfigurations.youruser = home-manager.lib.homeManagerConfiguration {
@@ -89,8 +129,8 @@ See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
         {
           programs.cursor = {
             enable = true;
-            updateCheck.enable = true;  # Daily update notifications
-            mcp.enable = false;  # Optional: MCP servers
+            updateCheck.enable = true;
+            mcp.enable = false;
           };
         }
       ];
@@ -120,13 +160,14 @@ This is a personal project maintained by e421. If you'd like to contribute or ha
 
 **Branch Strategy:**
 - **`main`**: Stable releases
-- **`pre-release`**: Release candidates for testing (currently RC3.3)
+- **`pre-release`**: Release candidates for testing (currently RC3.4)
+
+**Note**: Use `/pre-release` branch for all 37 versions. The `main` branch may be outdated.
 
 ### Documentation
 
 - [Version Manager Guide](VERSION_MANAGER_GUIDE.md) - Complete guide to managing 37 versions
 - [Test Suite](tests/multi-version-test.sh) - Automated testing for all versions
-- [Integration Success](INTEGRATION_SUCCESS_RC3.2.md) - User-facing quick start
 
 ---
 

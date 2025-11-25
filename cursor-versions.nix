@@ -1,5 +1,10 @@
-# Multi-Version Cursor System (RC3.2)
-# Allows running different Cursor versions simultaneously with different binary names
+# Multi-Version Cursor System (RC3.4)
+# Allows running different Cursor versions simultaneously with UNIQUE binary names
+#
+# CRITICAL FIX (RC3.4): Each version now installs to unique paths:
+#   - /share/cursor-VERSION/  (instead of /share/cursor/)
+#   - /bin/cursor-VERSION     (instead of /bin/cursor)
+# This allows multiple versions to coexist in home.packages without conflicts.
 #
 # Total Versions: 37 (1.6.45 through 2.0.77)
 #   - 2.0.x Custom Modes Era: 17 versions (2.0.11 - 2.0.77)
@@ -8,9 +13,16 @@
 #
 # Usage Examples:
 #   cursor         # Main version (2.0.77 - Latest targeted stable)
-#   cursor-2.0.77  # Explicit latest
-#   cursor-1.7.54  # Latest pre-2.0
-#   cursor-1.6.45  # Legacy version
+#   cursor-2.0.77  # Explicit latest (isolated data)
+#   cursor-1.7.54  # Latest pre-2.0 (isolated data)
+#   cursor-1.6.45  # Legacy version (isolated data)
+#
+# Multi-Version Installation (NOW WORKS!):
+#   home.packages = [
+#     cursor           # /bin/cursor, /share/cursor/
+#     cursor-2_0_64    # /bin/cursor-2.0.64, /share/cursor-2.0.64/
+#     cursor-1_7_54    # /bin/cursor-1.7.54, /share/cursor-1.7.54/
+#   ];
 #
 # User Data Strategy:
 #   - Each version can have isolated data: ~/.cursor-VERSION/
@@ -73,6 +85,9 @@ let
 
       userDataArgs = makeUserDataArgs { inherit version dataStrategy; };
 
+      # Compute the share directory name (cursor for main, cursor-VERSION for others)
+      shareDirName = if binaryName == "cursor" then "cursor" else "cursor-${version}";
+      
       basePackage = callPackage ./cursor {
         inherit
           version
@@ -82,11 +97,13 @@ let
           localAppImage
           ;
         commandLineArgs = userDataArgs;
+        # Pass shareDirName to base package for version-specific installation
+        shareDirName = shareDirName;
         postInstall = lib.optionalString (binaryName != "cursor") ''
           # Rename binary to version-specific name
           mv $out/bin/cursor $out/bin/${binaryName}
 
-          # Update desktop entry
+          # Update desktop entry to use version-specific paths
           substituteInPlace $out/share/applications/cursor.desktop \
             --replace "Exec=$out/bin/cursor" "Exec=$out/bin/${binaryName}" \
             --replace "Name=Cursor" "Name=Cursor ${version}" \

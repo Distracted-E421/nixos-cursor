@@ -15,6 +15,12 @@
     let
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
+      
+      # Helper to create app entries from packages
+      mkApp = pkg: mainProgram: {
+        type = "app";
+        program = "${pkg}/bin/${mainProgram}";
+      };
     in {
       # Package outputs
       packages = forAllSystems (system:
@@ -73,6 +79,63 @@
           
           # Cursor Version Manager (GUI Launcher)
           cursor-manager = pkgs.callPackage ./cursor/manager.nix {};
+        }
+      );
+
+      # App outputs - enables clean `nix run github:...#cursor-1_7_54` syntax
+      apps = forAllSystems (system:
+        let
+          pkgs = self.packages.${system};
+        in {
+          default = mkApp pkgs.cursor "cursor";
+          
+          # Main cursor
+          cursor = mkApp pkgs.cursor "cursor";
+          cursor-manager = mkApp pkgs.cursor-manager "cursor-manager";
+          cursor-test = mkApp pkgs.cursor-test "cursor-test";
+          
+          # 2.0.x Custom Modes Era (17 versions)
+          cursor-2_0_77 = mkApp pkgs.cursor-2_0_77 "cursor-2.0.77";
+          cursor-2_0_75 = mkApp pkgs.cursor-2_0_75 "cursor-2.0.75";
+          cursor-2_0_74 = mkApp pkgs.cursor-2_0_74 "cursor-2.0.74";
+          cursor-2_0_73 = mkApp pkgs.cursor-2_0_73 "cursor-2.0.73";
+          cursor-2_0_69 = mkApp pkgs.cursor-2_0_69 "cursor-2.0.69";
+          cursor-2_0_64 = mkApp pkgs.cursor-2_0_64 "cursor-2.0.64";
+          cursor-2_0_63 = mkApp pkgs.cursor-2_0_63 "cursor-2.0.63";
+          cursor-2_0_60 = mkApp pkgs.cursor-2_0_60 "cursor-2.0.60";
+          cursor-2_0_57 = mkApp pkgs.cursor-2_0_57 "cursor-2.0.57";
+          cursor-2_0_54 = mkApp pkgs.cursor-2_0_54 "cursor-2.0.54";
+          cursor-2_0_52 = mkApp pkgs.cursor-2_0_52 "cursor-2.0.52";
+          cursor-2_0_43 = mkApp pkgs.cursor-2_0_43 "cursor-2.0.43";
+          cursor-2_0_40 = mkApp pkgs.cursor-2_0_40 "cursor-2.0.40";
+          cursor-2_0_38 = mkApp pkgs.cursor-2_0_38 "cursor-2.0.38";
+          cursor-2_0_34 = mkApp pkgs.cursor-2_0_34 "cursor-2.0.34";
+          cursor-2_0_32 = mkApp pkgs.cursor-2_0_32 "cursor-2.0.32";
+          cursor-2_0_11 = mkApp pkgs.cursor-2_0_11 "cursor-2.0.11";
+          
+          # 1.7.x Classic Era (19 versions)
+          cursor-1_7_54 = mkApp pkgs.cursor-1_7_54 "cursor-1.7.54";
+          cursor-1_7_53 = mkApp pkgs.cursor-1_7_53 "cursor-1.7.53";
+          cursor-1_7_52 = mkApp pkgs.cursor-1_7_52 "cursor-1.7.52";
+          cursor-1_7_46 = mkApp pkgs.cursor-1_7_46 "cursor-1.7.46";
+          cursor-1_7_44 = mkApp pkgs.cursor-1_7_44 "cursor-1.7.44";
+          cursor-1_7_43 = mkApp pkgs.cursor-1_7_43 "cursor-1.7.43";
+          cursor-1_7_40 = mkApp pkgs.cursor-1_7_40 "cursor-1.7.40";
+          cursor-1_7_39 = mkApp pkgs.cursor-1_7_39 "cursor-1.7.39";
+          cursor-1_7_38 = mkApp pkgs.cursor-1_7_38 "cursor-1.7.38";
+          cursor-1_7_36 = mkApp pkgs.cursor-1_7_36 "cursor-1.7.36";
+          cursor-1_7_33 = mkApp pkgs.cursor-1_7_33 "cursor-1.7.33";
+          cursor-1_7_28 = mkApp pkgs.cursor-1_7_28 "cursor-1.7.28";
+          cursor-1_7_25 = mkApp pkgs.cursor-1_7_25 "cursor-1.7.25";
+          cursor-1_7_23 = mkApp pkgs.cursor-1_7_23 "cursor-1.7.23";
+          cursor-1_7_22 = mkApp pkgs.cursor-1_7_22 "cursor-1.7.22";
+          cursor-1_7_17 = mkApp pkgs.cursor-1_7_17 "cursor-1.7.17";
+          cursor-1_7_16 = mkApp pkgs.cursor-1_7_16 "cursor-1.7.16";
+          cursor-1_7_12 = mkApp pkgs.cursor-1_7_12 "cursor-1.7.12";
+          cursor-1_7_11 = mkApp pkgs.cursor-1_7_11 "cursor-1.7.11";
+          
+          # 1.6.x Legacy Era (1 version)
+          cursor-1_6_45 = mkApp pkgs.cursor-1_6_45 "cursor-1.6.45";
         }
       );
 
