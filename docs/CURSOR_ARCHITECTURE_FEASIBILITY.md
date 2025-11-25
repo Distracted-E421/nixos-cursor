@@ -1,14 +1,12 @@
+> **⚠️ ⚠️ ⚠️ Internal Research Document ⚠️ ⚠️ ⚠️**  
+> This is an ai generated research document about the feasibility of an alternative architecture for Cursor. It is not a complete analysis, but a starting point for a future project, and will not effect the release schedule of nixos-cursor and/or its compatibility.
+
 # Cursor Alternative Architecture: Feasibility Analysis
 
 **Date**: November 25, 2025  
 **Author**: Maxim (AI Agent) + User Research Session  
 **Status**: Initial Research & Analysis
 
----
-
-## Executive Summary
-
-Your vision is **ambitious but feasible** with the right phased approach. The key insight is that **full VS Code extension compatibility is the hardest part** - it's either a multi-year engineering effort OR you design around it with a translation layer for the most popular extensions.
 
 ### Vision Recap
 
