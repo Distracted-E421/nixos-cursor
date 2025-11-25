@@ -1,0 +1,216 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:  # Allow manual triggers
+
+env:
+  # Prevent download timeouts
+  NIX_CONFIG: |
+    experimental-features = nix-command flakes
+    connect-timeout = 30
+    download-attempts = 3
+
+jobs:
+  # Quick validation - runs on every push
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Run flake check
+        run: nix flake check --all-systems
+
+  # Build default package (cursor 2.0.77)
+  build-default:
+    runs-on: ubuntu-latest
+    needs: flake-check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: nixos-cursor
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        continue-on-error: true  # Don't fail if no cache configured
+
+      - name: Build default cursor package
+        run: nix build .#cursor --print-build-logs
+
+      - name: Build cursor-manager
+        run: nix build .#cursor-manager --print-build-logs
+
+      - name: Verify binary structure
+        run: |
+          echo "📦 Checking default package structure..."
+          RESULT=$(nix build .#cursor --print-out-paths --no-link)
+          ls -la $RESULT/bin/
+          ls -la $RESULT/share/applications/
+          
+          # Verify cursor binary exists
+          test -x "$RESULT/bin/cursor" || { echo "❌ Missing cursor binary"; exit 1; }
+          echo "✅ Default package structure verified"
+
+  # Build representative versions from each era
+  build-versions-matrix:
+    runs-on: ubuntu-latest
+    needs: flake-check
+    strategy:
+      fail-fast: false
+      matrix:
+        # Representative versions from each era (not all 37 to save CI time)
+        version:
+          # 2.0.x Custom Modes Era
+          - "cursor-2_0_77"   # Latest
+          - "cursor-2_0_64"   # Popular
+          - "cursor-2_0_11"   # First 2.0.x
+          # 1.7.x Classic Era
+          - "cursor-1_7_54"   # Latest 1.7.x (most wanted)
+          - "cursor-1_7_28"   # Mid-range
+          - "cursor-1_7_11"   # First 1.7.x
+          # 1.6.x Legacy Era
+          - "cursor-1_6_45"   # Only legacy version
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: nixos-cursor
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        continue-on-error: true
+
+      - name: Build ${{ matrix.version }}
+        run: nix build .#${{ matrix.version }} --print-build-logs
+
+      - name: Verify version-specific paths
+        run: |
+          echo "📦 Verifying ${{ matrix.version }} paths..."
+          RESULT=$(nix build .#${{ matrix.version }} --print-out-paths --no-link)
+          
+          # Extract version number from package name
+          VERSION=$(echo "${{ matrix.version }}" | sed 's/cursor-//' | tr '_' '.')
+          
+          # Check for version-specific binary (except default cursor)
+          if [[ "${{ matrix.version }}" != "cursor" ]]; then
+            BINARY="cursor-$VERSION"
+            test -x "$RESULT/bin/$BINARY" || { echo "❌ Missing $BINARY"; exit 1; }
+            
+            # Check desktop file is version-specific
+            DESKTOP="cursor-$VERSION.desktop"
+            test -f "$RESULT/share/applications/$DESKTOP" || { echo "❌ Missing $DESKTOP"; exit 1; }
+          fi
+          
+          echo "✅ ${{ matrix.version }} structure verified"
+
+  # Full build of ALL versions (only on main branch or manual trigger)
+  build-all-versions:
+    runs-on: ubuntu-latest
+    needs: [flake-check, build-default]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: nixos-cursor
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        continue-on-error: true
+
+      - name: Build all 37 versions (evaluation only)
+        run: |
+          echo "🔨 Evaluating all 37 Cursor versions..."
+          
+          # List of all versions
+          VERSIONS=(
+            # 2.0.x Custom Modes Era (17)
+            cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 cursor-2_0_69
+            cursor-2_0_64 cursor-2_0_63 cursor-2_0_60 cursor-2_0_57 cursor-2_0_54
+            cursor-2_0_52 cursor-2_0_43 cursor-2_0_40 cursor-2_0_38 cursor-2_0_34
+            cursor-2_0_32 cursor-2_0_11
+            # 1.7.x Classic Era (19)
+            cursor-1_7_54 cursor-1_7_53 cursor-1_7_52 cursor-1_7_46 cursor-1_7_44
+            cursor-1_7_43 cursor-1_7_40 cursor-1_7_39 cursor-1_7_38 cursor-1_7_36
+            cursor-1_7_33 cursor-1_7_28 cursor-1_7_25 cursor-1_7_23 cursor-1_7_22
+            cursor-1_7_17 cursor-1_7_16 cursor-1_7_12 cursor-1_7_11
+            # 1.6.x Legacy Era (1)
+            cursor-1_6_45
+          )
+          
+          TOTAL=${#VERSIONS[@]}
+          PASSED=0
+          FAILED=0
+          
+          for pkg in "${VERSIONS[@]}"; do
+            echo "📦 Evaluating $pkg..."
+            if nix build .#$pkg --dry-run 2>/dev/null; then
+              echo "✅ $pkg - OK"
+              ((PASSED++))
+            else
+              echo "❌ $pkg - FAILED"
+              ((FAILED++))
+            fi
+          done
+          
+          echo ""
+          echo "========================================="
+          echo "📊 Results: $PASSED/$TOTAL passed, $FAILED failed"
+          echo "========================================="
+          
+          if [[ $FAILED -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✅ All $TOTAL versions validated!"
+
+  # Summary job
+  ci-success:
+    runs-on: ubuntu-latest
+    needs: [flake-check, build-default, build-versions-matrix]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.flake-check.result }}" != "success" ]] || \
+             [[ "${{ needs.build-default.result }}" != "success" ]] || \
+             [[ "${{ needs.build-versions-matrix.result }}" != "success" ]]; then
+            echo "❌ Some jobs failed"
+            exit 1
+          fi
+          echo "✅ All CI checks passed!"

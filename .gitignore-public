@@ -1,0 +1,30 @@
+# Public branches (pre-release, main) - restrictive
+# Excludes entire .cursor/ directory
+
+# Development artifacts
+.cursor/
+
+# Build artifacts
+result
+result-*
+*.AppImage
+
+# Nix build outputs
+.direnv/
+.envrc
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.orig

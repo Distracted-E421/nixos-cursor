@@ -4,14 +4,14 @@ Cursor with all MCP servers enabled - the full AI-powered experience.
 
 ## What This Does
 
-- ✅ Installs Cursor IDE
-- ✅ **filesystem** MCP - Read/write local files
-- ✅ **memory** MCP - Persistent AI context
-- ✅ **nixos** MCP - Package/option search
-- ✅ **github** MCP - Repository operations
-- ✅ **playwright** MCP - Browser automation
+- - Installs Cursor IDE
+- - **filesystem** MCP - Read/write local files
+- - **memory** MCP - Persistent AI context
+- - **nixos** MCP - Package/option search
+- - **github** MCP - Repository operations
+- - **playwright** MCP - Browser automation
 
-**Use case**: Full AI development environment
+**Note:** You may need to disable a few of the tools you are not using per server, as well as ensure the built in cursor browser (currently broken, unknown if fixable for NixOS) is disabled. These are not the only mcp servers that work on NixOS, but these are the only ones I really use in my workflow.
 
 ## Usage
 
@@ -30,35 +30,41 @@ nix run .#homeConfigurations.myuser.activationPackage
 ## What You Get
 
 ### Cursor IDE
+
 - Enhanced with AI features
 - All MCP tools available
 
 ### MCP Tools Available
 
 **File Operations**:
+
 ```typescript
 mcp_filesystem_read_file({ path: "..." })
 mcp_filesystem_write_file({ path: "...", content: "..." })
 ```
 
 **Memory/Context**:
+
 ```typescript
 mcp_memory_create_entities({ entities: [...] })
 mcp_memory_search_nodes({ query: "..." })
 ```
 
 **NixOS**:
+
 ```typescript
 mcp_nixos_nixos_search({ query: "firefox", search_type: "packages" })
 ```
 
 **GitHub**:
+
 ```typescript
 mcp_github_get_file_contents({ owner: "...", repo: "...", path: "..." })
 mcp_github_search_code({ query: "..." })
 ```
 
 **Browser Automation**:
+
 ```typescript
 mcp_playwright_browser_navigate({ url: "https://example.com" })
 mcp_playwright_browser_snapshot()
@@ -135,6 +141,7 @@ cursor
 ```
 
 In Cursor, try:
+
 - Ask AI to read a file
 - Ask AI to search GitHub
 - Ask AI to open a webpage
@@ -144,6 +151,7 @@ In Cursor, try:
 ### "Browser not found"
 
 Check browser installation:
+
 ```bash
 which chromium
 # or
@@ -153,6 +161,7 @@ which google-chrome-stable
 ### MCP servers not starting
 
 Kill and restart:
+
 ```bash
 pkill -f mcp-server
 # Then restart Cursor

@@ -1,0 +1,175 @@
+Cursor versions, Latest to Oldest:
+
+--------------------------------
+# Cursor 2.1.26 (not of concern for now)
+https://downloads.cursor.com/production/f628a4761be40b8869ca61a6189cafd14756dff4/linux/x64/Cursor-2.1.26-x86_64.AppImage
+
+Pre-2.1.x Custom Mode Removal Versions:
+--------------------------------
+# Cursor 2.0.77
+https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage
+
+# Cursor 2.0.75
+https://downloads.cursor.com/production/9e7a27b76730ca7fe4aecaeafc58bac1e2c82121/linux/x64/Cursor-2.0.75-x86_64.AppImage
+
+# Cursor 2.0.74
+https://downloads.cursor.com/production/a965544b869cfb53b46806974091f97565545e48/linux/x64/Cursor-2.0.74-x86_64.AppImage
+
+# Cursor 2.0.73
+https://downloads.cursor.com/production/55b873ebecb5923d3b947d7e67e841d3ac781886/linux/x64/Cursor-2.0.73-x86_64.AppImage
+
+# Cursor 2.0.69
+https://downloads.cursor.com/production/63fcac100bd5d5749f2a98aa47d65f6eca61db39/linux/x64/Cursor-2.0.69-x86_64.AppImage
+
+# Cursor 2.0.64
+https://downloads.cursor.com/production/25412918da7e74b2686b25d62da1f01cfcd27683/linux/x64/Cursor-2.0.64-x86_64.AppImage
+
+# Cursor 2.0.63
+https://downloads.cursor.com/production/505046dcfad2acda3d066e32b7cd8b6e2dc1fdcd/linux/x64/Cursor-2.0.63-x86_64.AppImage
+
+# Cursor 2.0.60
+https://downloads.cursor.com/production/c6d93c13f57509f77eb65783b28e75a857b74c03/linux/x64/Cursor-2.0.60-x86_64.AppImage
+
+# Cursor 2.0.57
+https://downloads.cursor.com/production/eb037ef2bfba33ac568b0da614cb1c7b738455d6/linux/x64/Cursor-2.0.57-x86_64.AppImage
+
+# Cursor 2.0.54
+https://downloads.cursor.com/production/7a31bffd467aa2d9adfda69076eb924e9062cb27/linux/x64/Cursor-2.0.54-x86_64.AppImage
+
+# Cursor 2.0.52
+https://downloads.cursor.com/production/2125c48207a2a9aa55bce3d0af552912c84175d9/linux/x64/Cursor-2.0.52-x86_64.AppImage
+
+# Cursor 2.0.43
+https://downloads.cursor.com/production/8e4da76ad196925accaa169efcae28c45454cce3/linux/x64/Cursor-2.0.43-x86_64.AppImage
+
+# Cursor 2.0.40
+https://downloads.cursor.com/production/a9b73428ca6aeb2d24623da2841a271543735562/linux/x64/Cursor-2.0.40-x86_64.AppImage
+
+# Cursor 2.0.38
+https://downloads.cursor.com/production/3fa438a81d579067162dd8767025b788454e6f93/linux/x64/Cursor-2.0.38-x86_64.AppImage
+
+# Cursor 2.0.34
+https://downloads.cursor.com/production/45fd70f3fe72037444ba35c9e51ce86a1977ac11/linux/x64/Cursor-2.0.34-x86_64.AppImage
+
+# Cursor 2.0.32
+https://downloads.cursor.com/production/9a5dd36e54f13fb9c0e74490ec44d080dbc5df53/linux/x64/Cursor-2.0.32-x86_64.AppImage
+
+# Cursor 2.0.11
+https://downloads.cursor.com/production/4aa02949dc5065af49f2f6f72e3278386a3f7116/linux/x64/Cursor-2.0.11-x86_64.AppImage
+
+--------------------------------
+Pre-2.0 Changes in Cursor:
+--------------------------------
+
+# Cursor 1.7.54
+https://downloads.cursor.com/production/5c17eb2968a37f66bc6662f48d6356a100b67be8/linux/x64/Cursor-1.7.54-x86_64.AppImage
+
+# Cursor 1.7.53
+https://downloads.cursor.com/production/ab6b80c19b51fe71d58e69d8ed3802be587b3418/linux/x64/Cursor-1.7.53-x86_64.AppImage
+
+# Cursor 1.7.52
+https://downloads.cursor.com/production/9675251a06b1314d50ff34b0cbe5109b78f848cd/linux/x64/Cursor-1.7.52-x86_64.AppImage
+
+# Cursor 1.7.46
+https://downloads.cursor.com/production/b9e5948c1ad20443a5cecba6b84a3c9b99d62582/linux/x64/Cursor-1.7.46-x86_64.AppImage
+
+# Cursor 1.7.44
+https://downloads.cursor.com/production/9d178a4a5589981b62546448bb32920a8219a5de/linux/x64/Cursor-1.7.44-x86_64.AppImage
+
+# Cursor 1.7.43
+https://downloads.cursor.com/production/df279210b53cf4686036054b15400aa2fe06d6dd/linux/x64/Cursor-1.7.43-x86_64.AppImage
+
+# Cursor 1.7.40
+https://downloads.cursor.com/production/df79b2380cd32922cad03529b0dc0c946c311856/linux/x64/Cursor-1.7.40-x86_64.AppImage
+
+# Cursor 1.7.39
+https://downloads.cursor.com/production/a9c77ceae65b77ff772d6adfe05f24d8ebcb2794/linux/x64/Cursor-1.7.39-x86_64.AppImage
+
+# Cursor 1.7.38
+https://downloads.cursor.com/production/fe5d1728063e86edeeda5bebd2c8e14bf4d0f96a/linux/x64/Cursor-1.7.38-x86_64.AppImage
+
+# Cursor 1.7.36
+https://downloads.cursor.com/production/493c403e4a45c5f971d1c76cc74febd0968d57d8/linux/x64/Cursor-1.7.36-x86_64.AppImage
+
+# Cursor 1.7.33
+https://downloads.cursor.com/production/a84f941711ad680a635c8a3456002833186c484f/linux/x64/Cursor-1.7.33-x86_64.AppImage
+
+# Cursor 1.7.28
+https://downloads.cursor.com/production/adb0f9e3e4f184bba7f3fa6dbfd72ad0ebb8cfd8/linux/x64/Cursor-1.7.28-x86_64.AppImage
+
+# Cursor 1.7.25
+https://downloads.cursor.com/production/429604585b94ab2b96a4dabff4660f41d5b7fb8f/linux/x64/Cursor-1.7.25-x86_64.AppImage
+
+# Cursor 1.7.23
+https://downloads.cursor.com/production/5069385c5a69db511722405ab5aeadc01579afd8/linux/x64/Cursor-1.7.23-x86_64.AppImage
+
+# Cursor 1.7.22
+https://downloads.cursor.com/production/31b1fbfcec1bf758f7140645f005fc78b5df355b/linux/x64/Cursor-1.7.22-x86_64.AppImage
+
+# Cursor 1.7.17
+https://downloads.cursor.com/production/34881053400013f38e2354f1479c88c9067039a2/linux/x64/Cursor-1.7.17-x86_64.AppImage
+
+# Cursor 1.7.16
+https://downloads.cursor.com/production/39476a6453a2a2903ed6446529255038f81c929f/linux/x64/Cursor-1.7.16-x86_64.AppImage
+
+# Cursor 1.7.12
+https://downloads.cursor.com/production/b3f1951240d5016648330fab51192dc03e8d705a/linux/x64/Cursor-1.7.12-x86_64.AppImage
+
+# Cursor 1.7.11
+https://downloads.cursor.com/production/867f14c797c14c23a187097ea179bc97d215a7c4/linux/x64/Cursor-1.7.11-x86_64.AppImage
+
+# Cursor 1.6.45
+https://downloads.cursor.com/production/3ccce8f55d8cca49f6d28b491a844c699b8719a3/linux/x64/Cursor-1.6.45-x86_64.AppImage
+
+--------------------------------
+INTEGRATION STATUS - RC3.2 (Updated 2025-11-24):
+--------------------------------
+
+📦 **TOTAL: 37 VERSIONS FULLY INTEGRATED**
+
+✅ **Custom Modes Era (2.0.x) - 17 VERSIONS:**
+  • 2.0.77 - sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0= (Default)
+  • 2.0.75 - sha256-e/FNGAN+AErgEv4GaMQLPhV0LmSuHF9RNQ+SJEiP2z4=
+  • 2.0.74 - sha256-fXcdWBXyD6V6oXm9w/wqhLkK+mlqJouE/VmuKcfaaPQ=
+  • 2.0.73 - sha256-361RG5msRvohsgLs4fUWxExSylcPBkq2zfEB3IiQ3Ho=
+  • 2.0.69 - sha256-dwhYqX3/VtutxDSDPoHicM8D/sUvkWRnOjrSOBPiV+s=
+  • 2.0.64 - sha256-zT9GhdwGDWZJQl+WpV2txbmp3/tJRtL6ds1UZQoKNzA=
+  • 2.0.63 - sha256-7wA1R0GeUSXSViviXAK+mc14CSE2aTgFrbcBKj5dTbI=
+  • 2.0.60 - sha256-g/FMqKk/FapbRTQ5+IG1R2LHVlDXDNDc3uN9lJMMcaI=
+  • 2.0.57 - sha256-RZ7BzmtbmdiAuXoCyllR+HgBbvQcGwhN/kIvJVxg6vo=
+  • 2.0.54 - sha256-ndss1uOAHk04Y6KnPWGqm+dTyGCrVOR1uJW/8nD/T/s=
+  • 2.0.52 - sha256-+rH+ubUx7FDyK+EoqNgnMpjR1yvp6J2Hymgl/xQWvxw=
+  • 2.0.43 - sha256-ok+7uBlI9d3a5R5FvMaWlbPM6tX2eCse7jZ7bmlPExY=
+  • 2.0.40 - sha256-BwKprsZ4V5IPp0W7eef7ZPrr3K4DlQoKKwIJeJQxnC4=
+  • 2.0.38 - sha256-HD+8OytWJrWgMy8PVo2+X7b5UdL6fBQpw7XRH+lvzDA=
+  • 2.0.34 - sha256-x51N2BttMkfKwH4/Uxn/ZNFVPZbaNdsZm8BFFIMmxBM=
+  • 2.0.32 - sha256-Qe7C4wW5TjnpiwanOgmK56Gk6i0ORp2p89ld1NZrBb0=
+  • 2.0.11 - sha256-p5rEvlEt02iV+/sz9FahA3lim1V5lw8IPO5B0hUBj2g=
+
+✅ **Classic Era (1.7.x) - 19 VERSIONS:**
+  • 1.7.54 - sha256-BKxFrfKFMWmJhed+lB5MjYHbCR9qZM3yRcs7zWClYJE= (Latest Pre-2.0)
+  • 1.7.53 - sha256-zg5hpGRw0YL5XMpSn9ts4i4toT/fumj8rDJixGh1Hvc=
+  • 1.7.52 - sha256-nhDDdXE5/m9uASiQUJ4GHfApkzkf9ju5b8s0h6BhpjQ=
+  • 1.7.46 - sha256-XDKDZYCagr7bEL4HzQFkhdUhPiL5MaRzZTPNrLDPZDM=
+  • 1.7.44 - sha256-/eLb6+ECxFmpzgtRIgfO2PPn28kFbA3Xmq8ZjPrDQ5g=
+  • 1.7.43 - sha256-StY0yYqIuDCf6hbXJHERnRXqwVBnzKX2pxfretaUHo8=
+  • 1.7.40 - sha256-+NNq6fSEQ9zYnDL13vz4uLOpqk61QLjLIbTcfQhTFe0=
+  • 1.7.39 - sha256-QDn1SH1RB6Dod4EJHXynynEpNPhq81dQZnHbVcw3nBs=
+  • 1.7.38 - sha256-52QJVbXO3CYeL4vVZ249xabS7AoYFDOxKCQ6m3vB+vE=
+  • 1.7.36 - sha256-zY9kM9td0yKAMxVmad7saN4c6z2p5OFEa7ScCA3Qo3I=
+  • 1.7.33 - sha256-bXT/NVqcyR+RrqZdd0TbtcsyLjGb8Wv5S5On9JLElG4=
+  • 1.7.28 - sha256-ZB/xGGKyVnfmNASWtfkmoxvzzkXa2pUlmgY2Bb9f5lU=
+  • 1.7.25 - sha256-gUjzdixozoexd67ugeaabtUspnkaie9HXhIvFWY0lyM=
+  • 1.7.23 - sha256-cN6kYGMLNGOjinUIDWdn7mVyDd7TKwLwdqanN6ZRGE0=
+  • 1.7.22 - sha256-bidAyiP0we39/87ySCK63tii1BtGVpFsuRC1ayXqsh0=
+  • 1.7.17 - sha256-OsZiUXWKNLO8sUqielk0kap0DAkMY8OvWYO0KV3iads=
+  • 1.7.16 - sha256-uWqVzOT9miTPnNZgWLzJ2nddOhZldHKOYaaFO7KK9n8=
+  • 1.7.12 - sha256-vSvRGVIJCZjodNQ+cFFUd/fkzy1PzAXj5TQ2C7xV9Vc=
+  • 1.7.11 - sha256-CrR/KcKkBHBTIc1K/npJSR85I031MSF3mx0nTduKyWE=
+
+✅ **Legacy Era (1.6.x) - 1 VERSION:**
+  • 1.6.45 - sha256-MlrevU26gD6hpZbqbdKQwnzJbm5y9SVSb3d0BGnHtpc=
+
+🔒 **All URLs are stable** (direct S3 links - no DNS dependency)
+🎯 **All versions preserve custom agent modes** (except 1.6.x pre-dates feature)
+🧪 **Tested and verified** builds for 1.6.45, 1.7.28, 2.0.43
