@@ -1,4 +1,4 @@
-# Multi-Version Cursor System (RC3.4)
+# Multi-Version Cursor System (RC4.0)
 # Allows running different Cursor versions simultaneously with UNIQUE binary names
 #
 # CRITICAL FIX (RC3.4): Each version now installs to unique paths:
@@ -6,7 +6,8 @@
 #   - /bin/cursor-VERSION     (instead of /bin/cursor)
 # This allows multiple versions to coexist in home.packages without conflicts.
 #
-# Total Versions: 37 (1.6.45 through 2.0.77)
+# Total Versions: 48 (1.6.45 through 2.1.34)
+#   - 2.1.x Latest Era: 11 versions (2.1.6 - 2.1.34)
 #   - 2.0.x Custom Modes Era: 17 versions (2.0.11 - 2.0.77)
 #   - 1.7.x Classic Era: 19 versions (1.7.11 - 1.7.54)
 #   - 1.6.x Legacy: 1 version (1.6.45)
@@ -57,11 +58,21 @@ let
       # We pass path components separately to avoid quoting issues
       # Use \\$HOME literal to ensure it's expanded by the shell script wrapper at runtime
       # Note: In Nix string, "\\" becomes "\", so "\\$HOME" becomes "\$HOME" in the generated script
-      [ "--user-data-dir" "\\$HOME/.cursor-${version}" "--extensions-dir" "\\$HOME/.cursor-${version}/extensions" ]
+      [
+        "--user-data-dir"
+        "\\$HOME/.cursor-${version}"
+        "--extensions-dir"
+        "\\$HOME/.cursor-${version}/extensions"
+      ]
     else if dataStrategy == "sync" then
       # Hybrid: base config shared, version-specific overrides
       # TODO: Implement sync mechanism
-      [ "--user-data-dir" "\\$HOME/.cursor-${version}" "--extensions-dir" "\\$HOME/.config/Cursor/extensions" ]
+      [
+        "--user-data-dir"
+        "\\$HOME/.cursor-${version}"
+        "--extensions-dir"
+        "\\$HOME/.config/Cursor/extensions"
+      ]
     else
       throw "Invalid dataStrategy: ${dataStrategy}. Use: shared, isolated, or sync";
 
@@ -87,7 +98,7 @@ let
 
       # Compute the share directory name (cursor for main, cursor-VERSION for others)
       shareDirName = if binaryName == "cursor" then "cursor" else "cursor-${version}";
-      
+
       basePackage = callPackage ./cursor {
         inherit
           version
@@ -139,9 +150,101 @@ in
     version = "2.0.77";
     hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
     srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage";
-    binaryName = "cursor"; 
+    binaryName = "cursor";
     dataStrategy = "shared"; # Main version uses standard location
   };
+
+  # ===== 2.1.x Latest Era (11 versions) =====
+
+  cursor-2_1_34 = mkCursorVersion {
+    version = "2.1.34";
+    hash = "sha256-NPs0P+cnPo3KMdezhAkPR4TwpcvIrSuoX+40NsKyfzA=";
+    srcUrl = "https://downloads.cursor.com/production/609c37304ae83141fd217c4ae638bf532185650f/linux/x64/Cursor-2.1.34-x86_64.AppImage";
+    binaryName = "cursor-2.1.34";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_32 = mkCursorVersion {
+    version = "2.1.32";
+    hash = "sha256-jNO4EiJXJEMJ1+gGElgZ2alsQHsceg4YPRdQocY9c6k=";
+    srcUrl = "https://downloads.cursor.com/production/ef979b1b43d85eee2a274c25fd62d5502006e425/linux/x64/Cursor-2.1.32-x86_64.AppImage";
+    binaryName = "cursor-2.1.32";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_26 = mkCursorVersion {
+    version = "2.1.26";
+    hash = "sha256-qw3e/Di5iI5wHbMAJOZiDUsmo46CJhdTWvoWeVDtV/M=";
+    srcUrl = "https://downloads.cursor.com/production/f628a4761be40b8869ca61a6189cafd14756dff4/linux/x64/Cursor-2.1.26-x86_64.AppImage";
+    binaryName = "cursor-2.1.26";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_25 = mkCursorVersion {
+    version = "2.1.25";
+    hash = "sha256-qY+qg0CCRwfZH7PE2YINmANL43l4m5ysXg3L+Q2WGzk=";
+    srcUrl = "https://downloads.cursor.com/production/7584ea888f7eb7bf76c9873a8f71b28f034a982e/linux/x64/Cursor-2.1.25-x86_64.AppImage";
+    binaryName = "cursor-2.1.25";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_24 = mkCursorVersion {
+    version = "2.1.24";
+    hash = "sha256-GFnW4v1/R6AjW2cZyMp65KQZdOwipb5h90ruxN19xxU=";
+    srcUrl = "https://downloads.cursor.com/production/ac32b095dae9b8e0cfede6c5ebc55e589ee50e1b/linux/x64/Cursor-2.1.24-x86_64.AppImage";
+    binaryName = "cursor-2.1.24";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_20 = mkCursorVersion {
+    version = "2.1.20";
+    hash = "sha256-dP61tSPD8DAU2gOruM40Eomwqz8VeTh6iS4V3muCk14=";
+    srcUrl = "https://downloads.cursor.com/production/a8d8905b06c8da1739af6f789efd59c28ac2a680/linux/x64/Cursor-2.1.20-x86_64.AppImage";
+    binaryName = "cursor-2.1.20";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_19 = mkCursorVersion {
+    version = "2.1.19";
+    hash = "sha256-5ReInUdqLRQzDsS+Rr7dwPrmZHH2Q/k9T+xR0EhQJNE=";
+    srcUrl = "https://downloads.cursor.com/production/39a966b4048ef6b8024b27d4812a50d88de29cc3/linux/x64/Cursor-2.1.19-x86_64.AppImage";
+    binaryName = "cursor-2.1.19";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_17 = mkCursorVersion {
+    version = "2.1.17";
+    hash = "sha256-w+nc8sJyzogP0YwHgsJclNI+MpfEPrliW6IlCkLeKoc=";
+    srcUrl = "https://downloads.cursor.com/production/6757269838ae9ac4caaa2be13f396fdfbcf1f9a6/linux/x64/Cursor-2.1.17-x86_64.AppImage";
+    binaryName = "cursor-2.1.17";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_15 = mkCursorVersion {
+    version = "2.1.15";
+    hash = "sha256-KQiFlwaG60yB/PEyUm3HmcrIt2l+s92qhVl02mrrcV0=";
+    srcUrl = "https://downloads.cursor.com/production/a022145cbf8aea0babc3b039a98551c1518de024/linux/x64/Cursor-2.1.15-x86_64.AppImage";
+    binaryName = "cursor-2.1.15";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_7 = mkCursorVersion {
+    version = "2.1.7";
+    hash = "sha256-Bj8TcpYI7bPd3JgRut+AS0NXBnUFeEeHfGCiwCP+4o0=";
+    srcUrl = "https://downloads.cursor.com/production/3d2e45538bcc4fd7ed28cc113c2110b26a824a00/linux/x64/Cursor-2.1.7-x86_64.AppImage";
+    binaryName = "cursor-2.1.7";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_1_6 = mkCursorVersion {
+    version = "2.1.6";
+    hash = "sha256-o3SKiDXkXRKm73EPcSsT7TldCBJWi/fs/7W/B/m5ge4=";
+    srcUrl = "https://downloads.cursor.com/production/92340560ea81cb6168e2027596519d68af6c90a1/linux/x64/Cursor-2.1.6-x86_64.AppImage";
+    binaryName = "cursor-2.1.6";
+    dataStrategy = "isolated";
+  };
+
+  # ===== 2.0.x Custom Modes Era (17 versions) =====
 
   # Version 2.0.77 - Targeted Version
   cursor-2_0_77 = mkCursorVersion {
@@ -160,7 +263,7 @@ in
     binaryName = "cursor-1.7.54";
     dataStrategy = "isolated";
   };
-  
+
   # Version 2.0.64 - Fallback/Reference
   cursor-2_0_64 = mkCursorVersion {
     version = "2.0.64";
@@ -171,7 +274,7 @@ in
   };
 
   # ===== Additional 2.0.x Versions (Custom Modes Era) =====
-  
+
   cursor-2_0_75 = mkCursorVersion {
     version = "2.0.75";
     hash = "sha256-e/FNGAN+AErgEv4GaMQLPhV0LmSuHF9RNQ+SJEiP2z4=";
@@ -247,7 +350,7 @@ in
   };
 
   # ===== Additional 2.0.x Versions (9 new - Early Custom Modes) =====
-  
+
   cursor-2_0_57 = mkCursorVersion {
     version = "2.0.57";
     hash = "sha256-RZ7BzmtbmdiAuXoCyllR+HgBbvQcGwhN/kIvJVxg6vo=";

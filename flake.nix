@@ -49,7 +49,12 @@
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
           
-          # Version-specific packages for running multiple instances (37 total)
+          # Version-specific packages for running multiple instances (48 total)
+          # Latest Era - 2.1.x (11 versions)
+          inherit (cursorVersions)
+            cursor-2_1_34 cursor-2_1_32 cursor-2_1_26 cursor-2_1_25 cursor-2_1_24
+            cursor-2_1_20 cursor-2_1_19 cursor-2_1_17 cursor-2_1_15 cursor-2_1_7 cursor-2_1_6;
+          
           # Custom Modes Era - 2.0.x (17 versions)
           inherit (cursorVersions) 
             cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 
@@ -102,6 +107,19 @@
           cursor = mkApp pkgs.cursor "cursor";
           cursor-manager = mkApp pkgs.cursor-manager "cursor-manager";
           cursor-test = mkApp pkgs.cursor-test "cursor-test";
+          
+          # 2.1.x Latest Era (11 versions)
+          cursor-2_1_34 = mkApp pkgs.cursor-2_1_34 "cursor-2.1.34";
+          cursor-2_1_32 = mkApp pkgs.cursor-2_1_32 "cursor-2.1.32";
+          cursor-2_1_26 = mkApp pkgs.cursor-2_1_26 "cursor-2.1.26";
+          cursor-2_1_25 = mkApp pkgs.cursor-2_1_25 "cursor-2.1.25";
+          cursor-2_1_24 = mkApp pkgs.cursor-2_1_24 "cursor-2.1.24";
+          cursor-2_1_20 = mkApp pkgs.cursor-2_1_20 "cursor-2.1.20";
+          cursor-2_1_19 = mkApp pkgs.cursor-2_1_19 "cursor-2.1.19";
+          cursor-2_1_17 = mkApp pkgs.cursor-2_1_17 "cursor-2.1.17";
+          cursor-2_1_15 = mkApp pkgs.cursor-2_1_15 "cursor-2.1.15";
+          cursor-2_1_7 = mkApp pkgs.cursor-2_1_7 "cursor-2.1.7";
+          cursor-2_1_6 = mkApp pkgs.cursor-2_1_6 "cursor-2.1.6";
           
           # 2.0.x Custom Modes Era (17 versions)
           cursor-2_0_77 = mkApp pkgs.cursor-2_0_77 "cursor-2.0.77";

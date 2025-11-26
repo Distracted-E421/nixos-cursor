@@ -1,0 +1,167 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode (quick, full, build)'
+        required: false
+        default: 'quick'
+
+jobs:
+  # Quick evaluation test - runs on every push
+  eval-test:
+    name: Evaluate All Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+      
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      
+      - name: Evaluate all packages
+        run: |
+          echo "Evaluating all cursor packages..."
+          for pkg in $(nix flake show . --json 2>/dev/null | jq -r '.packages."x86_64-linux" | keys[]' | grep '^cursor'); do
+            echo -n "  $pkg: "
+            if nix eval ".#$pkg.pname" --impure 2>/dev/null >/dev/null; then
+              echo "✓"
+            else
+              echo "✗"
+              exit 1
+            fi
+          done
+          echo "All packages evaluate successfully!"
+
+  # Dry-build test - runs on PRs to main
+  dry-build-test:
+    name: Dry Build Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event.inputs.test_mode == 'full'
+    needs: eval-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+      
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      
+      - name: Dry-build sample versions
+        run: |
+          echo "Dry-building sample versions..."
+          SAMPLE_VERSIONS="cursor cursor-2_0_77 cursor-1_7_54 cursor-1_6_45"
+          for pkg in $SAMPLE_VERSIONS; do
+            echo -n "  $pkg: "
+            if nix build ".#$pkg" --impure --dry-run 2>/dev/null; then
+              echo "✓"
+            else
+              echo "✗"
+              exit 1
+            fi
+          done
+          echo "All dry-builds successful!"
+
+  # Full build test - only on manual trigger or release
+  full-build-test:
+    name: Full Build Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_mode == 'build'
+    needs: dry-build-test
+    strategy:
+      matrix:
+        version:
+          - cursor
+          - cursor-2_0_77
+          - cursor-2_0_64
+          - cursor-1_7_54
+          - cursor-1_6_45
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+      
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+      
+      - name: Build ${{ matrix.version }}
+        run: |
+          echo "Building ${{ matrix.version }}..."
+          nix build ".#${{ matrix.version }}" --impure
+          echo "✓ Build successful!"
+          
+          # Verify the binary exists
+          if [ -f result/bin/cursor* ]; then
+            echo "✓ Binary found"
+            ls -la result/bin/
+          else
+            echo "✗ Binary not found!"
+            exit 1
+          fi
+
+  # URL Validation - weekly or manual
+  url-validation:
+    name: Validate Download URLs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate Linux URLs
+        run: |
+          echo "Validating Linux x64 URLs..."
+          grep -E '^https://downloads\.cursor\.com' ".cursor/linux -x64-version-urls.txt" | head -20 | while read url; do
+            status=$(curl -sI -o /dev/null -w '%{http_code}' --connect-timeout 10 "$url" || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "  ✓ $url"
+            else
+              echo "  ✗ $url (HTTP $status)"
+            fi
+          done
+      
+      - name: Validate Darwin URLs
+        run: |
+          echo "Validating Darwin URLs..."
+          grep -E '^https://downloads\.cursor\.com' ".cursor/darwin-all-urls.txt" | head -20 | while read url; do
+            status=$(curl -sI -o /dev/null -w '%{http_code}' --connect-timeout 10 "$url" || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "  ✓ $url"
+            else
+              echo "  ✗ $url (HTTP $status)"
+            fi
+          done
+
+  # Flake check
+  flake-check:
+    name: Flake Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+      
+      - name: Run flake check
+        run: nix flake check --impure
