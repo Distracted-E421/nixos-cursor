@@ -288,9 +288,53 @@ pkgs.writers.writePython3Bin "cursor-manager"
             )
             info_label.pack(anchor="w")
 
+            # Maintenance Section
+            maint_frame = ttk.LabelFrame(
+                content,
+                text="💾 Disk Management",
+                padding=5
+            )
+            maint_frame.pack(fill="x", pady=(15, 0))
+
+            # Disk usage label
+            self.disk_label = ttk.Label(
+                maint_frame,
+                text="⏳ Calculating disk usage...",
+                font=("Segoe UI", 9)
+            )
+            self.disk_label.pack(anchor="w", padx=5, pady=(0, 5))
+
+            # Maintenance buttons frame
+            maint_btns = ttk.Frame(maint_frame)
+            maint_btns.pack(fill="x", pady=5)
+
+            ttk.Button(
+                maint_btns,
+                text="🔍 Analyze",
+                command=self.analyze_disk,
+                width=12
+            ).pack(side="left", padx=2)
+
+            ttk.Button(
+                maint_btns,
+                text="🧹 Clean Caches",
+                command=self.clean_caches,
+                width=12
+            ).pack(side="left", padx=2)
+
+            ttk.Button(
+                maint_btns,
+                text="🗑️ Clean Orphans",
+                command=self.clean_orphans,
+                width=12
+            ).pack(side="left", padx=2)
+
+            # Update disk usage on start
+            self.after(100, self.analyze_disk)
+
             # Footer
             footer_text = (
-                "Cursor Version Manager v2.0 (RC3.2)\n"
+                "Cursor Version Manager v2.1 (RC4)\n"
                 "NixOS Community Edition • Credits: oslook"
             )
             footer = ttk.Label(
@@ -437,6 +481,173 @@ pkgs.writers.writePython3Bin "cursor-manager"
                 self.destroy()
             except Exception as e:
                 messagebox.showerror("Launch Error", f"Failed to launch: {e}")
+
+
+        def analyze_disk(self):
+            """Analyze Cursor disk usage"""
+            try:
+                total_size = 0
+                cache_size = 0
+                orphan_size = 0
+                cache_count = 0
+                orphan_count = 0
+
+                # Cache directories
+                cache_dirs = [
+                    "Cache", "CachedData", "CachedExtensions",
+                    "GPUCache", "Code Cache", "blob_storage", "Crashpad", "logs"
+                ]
+
+                for cache_dir in cache_dirs:
+                    path = os.path.join(CONFIG_DIR, cache_dir)
+                    if os.path.exists(path):
+                        size = self.get_dir_size(path)
+                        cache_size += size
+                        cache_count += 1
+                        total_size += size
+
+                # Orphaned version directories
+                home = os.path.expanduser("~")
+                for entry in os.listdir(home):
+                    if entry.startswith(".cursor-") and entry != ".cursor":
+                        path = os.path.join(home, entry)
+                        if os.path.isdir(path):
+                            size = self.get_dir_size(path)
+                            orphan_size += size
+                            orphan_count += 1
+                            total_size += size
+
+                # Main config size
+                if os.path.exists(CONFIG_DIR):
+                    config_size = self.get_dir_size(CONFIG_DIR) - cache_size
+                    total_size += config_size
+
+                self.disk_label.config(
+                    text=f"📊 Cache: {self.format_size(cache_size)} "
+                    f"({cache_count} dirs) | "
+                    f"Versions: {self.format_size(orphan_size)} "
+                    f"({orphan_count} dirs)"
+                )
+
+            except Exception as e:
+                self.disk_label.config(text=f"❌ Error: {e}")
+
+        def clean_caches(self):
+            """Clean Cursor cache directories"""
+            cache_dirs = [
+                "Cache", "CachedData", "CachedExtensions",
+                "GPUCache", "Code Cache", "blob_storage", "Crashpad", "logs"
+            ]
+
+            total_cleaned = 0
+            count = 0
+
+            # Calculate what would be cleaned
+            for cache_dir in cache_dirs:
+                path = os.path.join(CONFIG_DIR, cache_dir)
+                if os.path.exists(path):
+                    size = self.get_dir_size(path)
+                    total_cleaned += size
+                    count += 1
+
+            if count == 0:
+                messagebox.showinfo("Clean Caches", "No caches to clean!")
+                return
+
+            result = messagebox.askyesno(
+                "Clean Caches",
+                f"This will clean {count} cache directories\n"
+                f"({self.format_size(total_cleaned)}).\n\n"
+                "Cursor will recreate these as needed.\n"
+                "Continue?"
+            )
+
+            if not result:
+                return
+
+            for cache_dir in cache_dirs:
+                path = os.path.join(CONFIG_DIR, cache_dir)
+                if os.path.exists(path):
+                    try:
+                        shutil.rmtree(path)
+                        print(f"✅ Cleaned: {path}")
+                    except Exception as e:
+                        print(f"❌ Failed to clean {path}: {e}")
+
+            self.analyze_disk()
+            messagebox.showinfo(
+                "Clean Caches",
+                f"Cleaned {self.format_size(total_cleaned)} from caches!"
+            )
+
+        def clean_orphans(self):
+            """Clean orphaned version directories"""
+            home = os.path.expanduser("~")
+            orphans = []
+
+            for entry in os.listdir(home):
+                if entry.startswith(".cursor-") and entry != ".cursor":
+                    path = os.path.join(home, entry)
+                    if os.path.isdir(path):
+                        size = self.get_dir_size(path)
+                        orphans.append((path, entry, size))
+
+            if not orphans:
+                messagebox.showinfo("Clean Orphans", "No orphaned directories found!")
+                return
+
+            total_size = sum(s for _, _, s in orphans)
+            names = "\n".join(f"  • {name}" for _, name, _ in orphans[:5])
+            if len(orphans) > 5:
+                names += f"\n  ... and {len(orphans) - 5} more"
+
+            result = messagebox.askyesno(
+                "Clean Orphans",
+                f"Found {len(orphans)} version directories:\n{names}\n\n"
+                f"Total: {self.format_size(total_size)}\n\n"
+                "⚠️ This will delete settings for old versions.\n"
+                "Continue?"
+            )
+
+            if not result:
+                return
+
+            cleaned = 0
+            for path, name, _ in orphans:
+                try:
+                    shutil.rmtree(path)
+                    print(f"✅ Removed: {path}")
+                    cleaned += 1
+                except Exception as e:
+                    print(f"❌ Failed to remove {path}: {e}")
+
+            self.analyze_disk()
+            messagebox.showinfo(
+                "Clean Orphans",
+                f"Removed {cleaned}/{len(orphans)} directories "
+                f"({self.format_size(total_size)})"
+            )
+
+        def get_dir_size(self, path):
+            """Get total size of a directory in bytes"""
+            total = 0
+            try:
+                for entry in os.scandir(path):
+                    if entry.is_file(follow_symlinks=False):
+                        total += entry.stat().st_size
+                    elif entry.is_dir(follow_symlinks=False):
+                        total += self.get_dir_size(entry.path)
+            except PermissionError:
+                pass
+            return total
+
+        def format_size(self, bytes_size):
+            """Format bytes to human-readable size"""
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if bytes_size < 1024:
+                    return f"{bytes_size:.1f} {unit}"
+                bytes_size /= 1024
+            return f"{bytes_size:.1f} TB"
 
 
     if __name__ == "__main__":
