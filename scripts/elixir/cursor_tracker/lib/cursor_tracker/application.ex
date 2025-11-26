@@ -6,6 +6,7 @@ defmodule CursorTracker.Application do
   - Config server (application configuration)
   - GitBackend server (git operations)
   - DataWatcher server (file system monitoring)
+  - GarbageCollector server (disk space management)
   """
   use Application
   require Logger
@@ -22,7 +23,10 @@ defmodule CursorTracker.Application do
       CursorTracker.GitBackend,
 
       # File watcher (optional, can be enabled later)
-      {CursorTracker.DataWatcher, []}
+      {CursorTracker.DataWatcher, []},
+
+      # Garbage collector for disk space management
+      CursorTracker.GarbageCollector
     ]
 
     opts = [strategy: :one_for_one, name: CursorTracker.Supervisor]

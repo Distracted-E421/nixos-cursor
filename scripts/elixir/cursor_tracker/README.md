@@ -1,6 +1,6 @@
 # CursorTracker
 
-Git-based tracking for Cursor user data with diff, blame, and rollback capabilities.
+Git-based tracking for Cursor user data with diff, blame, rollback, and garbage collection capabilities.
 
 ## Features
 
@@ -9,15 +9,18 @@ Git-based tracking for Cursor user data with diff, blame, and rollback capabilit
 - ⏪ **Rollback** - Restore previous configurations
 - 👀 **Watch Mode** - Automatic snapshots on file changes
 - 📊 **Compare** - Compare configurations between Cursor instances
+- 🧹 **Garbage Collection** - Clean caches, orphaned data, and manage disk space
+- 📈 **Recommendations** - Prioritized cleanup suggestions
 
 ## Architecture
 
 ```
 CursorTracker.Application
 └── CursorTracker.Supervisor
-    ├── CursorTracker.Config      (configuration management)
-    ├── CursorTracker.GitBackend  (git operations)
-    └── CursorTracker.DataWatcher (file system monitoring)
+    ├── CursorTracker.Config           (configuration management)
+    ├── CursorTracker.GitBackend       (git operations)
+    ├── CursorTracker.DataWatcher      (file system monitoring)
+    └── CursorTracker.GarbageCollector (disk space management)
 ```
 
 ## Installation
@@ -61,6 +64,15 @@ MIX_ENV=prod mix release
 
 # Watch for changes (auto-snapshot)
 ./cursor_tracker watch --interval 5
+
+# Garbage Collection
+./cursor_tracker analyze                    # Show disk usage
+./cursor_tracker gc                         # Dry-run cache cleanup
+./cursor_tracker gc --type caches --force   # Actually clean caches
+./cursor_tracker gc --type orphaned         # Find orphaned version dirs
+./cursor_tracker gc --type nix              # Nix store GC (dry-run)
+./cursor_tracker gc --type full --force     # Full cleanup
+./cursor_tracker recommend                  # Get cleanup recommendations
 ```
 
 ### IEx (Interactive)
@@ -95,6 +107,15 @@ CursorTracker.unwatch()
 
 # Compare instances
 CursorTracker.compare("2.0.77", "2.1.34")
+
+# Garbage Collection
+CursorTracker.analyze()                      # Disk usage analysis
+CursorTracker.recommendations()              # Get cleanup suggestions
+CursorTracker.clean_caches()                 # Dry-run cache cleanup
+CursorTracker.clean_caches(dry_run: false)   # Actually clean
+CursorTracker.clean_orphaned()               # Find orphaned dirs
+CursorTracker.nix_gc()                       # Nix store GC
+CursorTracker.full_cleanup(dry_run: false)   # Full cleanup
 ```
 
 ## What Gets Tracked

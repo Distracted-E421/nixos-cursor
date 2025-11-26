@@ -166,4 +166,84 @@ defmodule CursorTracker do
   def unwatch do
     CursorTracker.DataWatcher.stop_watching()
   end
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Garbage Collection
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @doc """
+  Analyze disk usage across all Cursor-related directories.
+
+  ## Examples
+
+      CursorTracker.analyze()
+  """
+  def analyze do
+    CursorTracker.GarbageCollector.analyze()
+  end
+
+  @doc """
+  Clean old cache directories.
+
+  ## Options
+    - `:dry_run` - If true, only report what would be cleaned (default: true)
+    - `:older_than` - Clean caches older than N days (default: 30)
+
+  ## Examples
+
+      CursorTracker.clean_caches()                    # Dry run
+      CursorTracker.clean_caches(dry_run: false)      # Actually clean
+  """
+  def clean_caches(opts \\ []) do
+    CursorTracker.GarbageCollector.clean_caches(opts)
+  end
+
+  @doc """
+  Find and optionally remove orphaned version directories.
+
+  ## Examples
+
+      CursorTracker.clean_orphaned()                  # Dry run
+      CursorTracker.clean_orphaned(dry_run: false)    # Actually clean
+  """
+  def clean_orphaned(opts \\ []) do
+    CursorTracker.GarbageCollector.clean_orphaned(opts)
+  end
+
+  @doc """
+  Run Nix garbage collection for Cursor packages.
+
+  ## Examples
+
+      CursorTracker.nix_gc()                          # Dry run
+      CursorTracker.nix_gc(dry_run: false)            # Actually collect
+  """
+  def nix_gc(opts \\ []) do
+    CursorTracker.GarbageCollector.nix_gc(opts)
+  end
+
+  @doc """
+  Perform full cleanup: caches + orphaned + nix gc.
+
+  ## Examples
+
+      CursorTracker.full_cleanup()                    # Dry run
+      CursorTracker.full_cleanup(dry_run: false)      # Actually clean
+  """
+  def full_cleanup(opts \\ []) do
+    CursorTracker.GarbageCollector.full_cleanup(opts)
+  end
+
+  @doc """
+  Get disk space recommendations.
+
+  Returns prioritized list of cleanup actions based on disk usage.
+
+  ## Examples
+
+      CursorTracker.recommendations()
+  """
+  def recommendations do
+    CursorTracker.GarbageCollector.recommendations()
+  end
 end
