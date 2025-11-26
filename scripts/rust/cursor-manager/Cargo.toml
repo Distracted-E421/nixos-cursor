@@ -1,0 +1,55 @@
+[package]
+name = "cursor-manager"
+version = "0.1.0"
+edition = "2021"
+description = "Fast, reliable Cursor IDE version manager"
+license = "MIT"
+repository = "https://github.com/Distracted-E421/nixos-cursor"
+
+[[bin]]
+name = "cursor-manager"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Terminal UI
+indicatif = "0.17"
+console = "0.15"
+dialoguer = "0.11"
+
+# File operations
+dirs = "5.0"
+walkdir = "2.5"
+sha2 = "0.10"
+base64 = "0.22"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3.12"
+assert_cmd = "2.0"
+predicates = "3.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

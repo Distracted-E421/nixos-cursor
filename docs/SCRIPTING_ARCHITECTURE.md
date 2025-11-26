@@ -124,12 +124,24 @@ The CursorTracker is a full OTP application with:
 - Git-based snapshots
 - CLI and IEx interfaces
 
-### Phase 4: Rust (Future)
+### Phase 4: Rust ✅ COMPLETE
 
 | Tool | Status | Notes |
 |------|--------|-------|
-| `cursor-manager` | 📋 Planned | Compiled, fast startup |
-| Version resolver | 📋 Planned | Performance-critical |
+| `cursor-manager` | ✅ Done | `scripts/rust/cursor-manager/` |
+
+Full Rust CLI application with:
+- clap for argument parsing
+- tokio for async downloads
+- indicatif for progress bars
+- reqwest for HTTP client
+
+### Test Harness ✅ COMPLETE
+
+Cross-language test suite in Nushell:
+- `tests/run-all-tests.nu` - Comprehensive test harness
+- Tests: Nix, Nushell, Python, Elixir, Rust
+- JSON output for CI integration
 
 ## 🔄 Bash vs Nushell Comparison
 
