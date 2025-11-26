@@ -32,23 +32,8 @@ def section [title: string] {
 
 def pass [test: string] { print $"  (ansi green)✓(ansi reset) ($test)" }
 def fail [test: string] { print $"  (ansi red)✗(ansi reset) ($test)" }
-def skip [test: string] { print $"  (ansi yellow)○(ansi reset) ($test) (skipped)" }
+def skip-test [test: string] { print $"  (ansi yellow)○(ansi reset) ($test) \(skipped\)" }
 def info [msg: string] { print $"  (ansi cyan)ℹ(ansi reset) ($msg)" }
-
-# Run a command and return success/failure
-def test-cmd [description: string, cmd: string]: nothing -> record {
-    let start = (date now)
-    let result = (do { nu -c $cmd } | complete)
-    let elapsed = ((date now) - $start)
-    
-    if $result.exit_code == 0 {
-        pass $description
-        { test: $description, status: "pass", elapsed: $elapsed }
-    } else {
-        fail $"($description): ($result.stderr | str trim)"
-        { test: $description, status: "fail", elapsed: $elapsed, error: $result.stderr }
-    }
-}
 
 # Check if a command exists
 def has-command [cmd: string]: nothing -> bool {
@@ -66,20 +51,44 @@ def test-nix [repo_root: string]: nothing -> list {
     mut results = []
     
     # Check flake
-    let r1 = (test-cmd "Flake check" $"cd ($repo_root) && nix flake check --no-build 2>&1")
-    $results = ($results | append $r1)
+    let r1 = (do { cd $repo_root; nix flake check --no-build } | complete)
+    if $r1.exit_code == 0 {
+        pass "Flake check"
+        $results = ($results | append { test: "Flake check", status: "pass" })
+    } else {
+        fail $"Flake check: ($r1.stderr | str trim | str substring 0..100)"
+        $results = ($results | append { test: "Flake check", status: "fail", error: $r1.stderr })
+    }
     
     # Evaluate main package
-    let r2 = (test-cmd "Evaluate cursor package" $"nix eval ($repo_root)#cursor.name --impure 2>&1")
-    $results = ($results | append $r2)
+    let r2 = (do { nix eval $"($repo_root)#cursor.name" --impure } | complete)
+    if $r2.exit_code == 0 {
+        pass "Evaluate cursor package"
+        $results = ($results | append { test: "Evaluate cursor package", status: "pass" })
+    } else {
+        fail "Evaluate cursor package"
+        $results = ($results | append { test: "Evaluate cursor package", status: "fail" })
+    }
     
     # Evaluate cursor-manager
-    let r3 = (test-cmd "Evaluate cursor-manager" $"nix eval ($repo_root)#cursor-manager.name --impure 2>&1")
-    $results = ($results | append $r3)
+    let r3 = (do { nix eval $"($repo_root)#cursor-manager.name" --impure } | complete)
+    if $r3.exit_code == 0 {
+        pass "Evaluate cursor-manager"
+        $results = ($results | append { test: "Evaluate cursor-manager", status: "pass" })
+    } else {
+        fail "Evaluate cursor-manager"
+        $results = ($results | append { test: "Evaluate cursor-manager", status: "fail" })
+    }
     
     # Check devShell
-    let r4 = (test-cmd "Evaluate devShell" $"nix eval ($repo_root)#devShells.x86_64-linux.default.name --impure 2>&1")
-    $results = ($results | append $r4)
+    let r4 = (do { nix eval $"($repo_root)#devShells.x86_64-linux.default.name" --impure } | complete)
+    if $r4.exit_code == 0 {
+        pass "Evaluate devShell"
+        $results = ($results | append { test: "Evaluate devShell", status: "pass" })
+    } else {
+        fail "Evaluate devShell"
+        $results = ($results | append { test: "Evaluate devShell", status: "fail" })
+    }
     
     $results
 }
@@ -92,27 +101,57 @@ def test-nushell [repo_root: string]: nothing -> list {
     let scripts_dir = $"($repo_root)/scripts/nu"
     
     # Test script syntax
-    for script in (ls $scripts_dir/*.nu | get name) {
+    for script in (glob $"($scripts_dir)/*.nu") {
         let name = ($script | path basename)
-        let r = (test-cmd $"Syntax: ($name)" $"nu --commands 'source ($script)'")
-        $results = ($results | append $r)
+        let r = (do { nu --commands $"source ($script)" } | complete)
+        if $r.exit_code == 0 {
+            pass $"Syntax: ($name)"
+            $results = ($results | append { test: $"Syntax: ($name)", status: "pass" })
+        } else {
+            fail $"Syntax: ($name)"
+            $results = ($results | append { test: $"Syntax: ($name)", status: "fail" })
+        }
     }
     
     # Test disk-usage.nu --help
-    let r1 = (test-cmd "disk-usage.nu --help" $"nu ($scripts_dir)/disk-usage.nu --help")
-    $results = ($results | append $r1)
+    let r1 = (do { nu $"($scripts_dir)/disk-usage.nu" --help } | complete)
+    if $r1.exit_code == 0 {
+        pass "disk-usage.nu --help"
+        $results = ($results | append { test: "disk-usage.nu --help", status: "pass" })
+    } else {
+        fail "disk-usage.nu --help"
+        $results = ($results | append { test: "disk-usage.nu --help", status: "fail" })
+    }
     
     # Test gc-helper.nu --help
-    let r2 = (test-cmd "gc-helper.nu --help" $"nu ($scripts_dir)/gc-helper.nu --help")
-    $results = ($results | append $r2)
+    let r2 = (do { nu $"($scripts_dir)/gc-helper.nu" --help } | complete)
+    if $r2.exit_code == 0 {
+        pass "gc-helper.nu --help"
+        $results = ($results | append { test: "gc-helper.nu --help", status: "pass" })
+    } else {
+        fail "gc-helper.nu --help"
+        $results = ($results | append { test: "gc-helper.nu --help", status: "fail" })
+    }
     
     # Test validate-urls.nu --help
-    let r3 = (test-cmd "validate-urls.nu --help" $"nu ($scripts_dir)/validate-urls.nu --help")
-    $results = ($results | append $r3)
+    let r3 = (do { nu $"($scripts_dir)/validate-urls.nu" --help } | complete)
+    if $r3.exit_code == 0 {
+        pass "validate-urls.nu --help"
+        $results = ($results | append { test: "validate-urls.nu --help", status: "pass" })
+    } else {
+        fail "validate-urls.nu --help"
+        $results = ($results | append { test: "validate-urls.nu --help", status: "fail" })
+    }
     
     # Test test-versions.nu --help
-    let r4 = (test-cmd "test-versions.nu --help" $"nu ($scripts_dir)/test-versions.nu --help")
-    $results = ($results | append $r4)
+    let r4 = (do { nu $"($scripts_dir)/test-versions.nu" --help } | complete)
+    if $r4.exit_code == 0 {
+        pass "test-versions.nu --help"
+        $results = ($results | append { test: "test-versions.nu --help", status: "pass" })
+    } else {
+        fail "test-versions.nu --help"
+        $results = ($results | append { test: "test-versions.nu --help", status: "fail" })
+    }
     
     $results
 }
@@ -125,21 +164,27 @@ def test-python [repo_root: string]: nothing -> list {
     let scripts_dir = $"($repo_root)/scripts/python"
     
     if not (has-command "python3") {
-        skip "Python not available"
+        skip-test "Python not available"
         return [{ test: "Python", status: "skip" }]
     }
     
     # Check syntax
-    let r1 = (test-cmd "compute_hashes.py syntax" $"python3 -m py_compile ($scripts_dir)/compute_hashes.py")
-    $results = ($results | append $r1)
+    let r1 = (do { python3 -m py_compile $"($scripts_dir)/compute_hashes.py" } | complete)
+    if $r1.exit_code == 0 {
+        pass "compute_hashes.py syntax"
+        $results = ($results | append { test: "compute_hashes.py syntax", status: "pass" })
+    } else {
+        fail "compute_hashes.py syntax"
+        $results = ($results | append { test: "compute_hashes.py syntax", status: "fail" })
+    }
     
     # Check imports (requires deps)
-    let r2_result = (do { python3 -c "import httpx, rich, typer" } | complete)
-    if $r2_result.exit_code == 0 {
+    let r2 = (do { python3 -c "import httpx, rich, typer" } | complete)
+    if $r2.exit_code == 0 {
         pass "Python dependencies available"
         $results = ($results | append { test: "Python dependencies", status: "pass" })
     } else {
-        skip "Python dependencies not installed (httpx, rich, typer)"
+        skip-test "Python dependencies not installed"
         $results = ($results | append { test: "Python dependencies", status: "skip" })
     }
     
@@ -154,7 +199,7 @@ def test-elixir [repo_root: string]: nothing -> list {
     let elixir_dir = $"($repo_root)/scripts/elixir/cursor_tracker"
     
     if not (has-command "elixir") {
-        skip "Elixir not available"
+        skip-test "Elixir not available"
         return [{ test: "Elixir", status: "skip" }]
     }
     
@@ -201,7 +246,7 @@ def test-rust [repo_root: string]: nothing -> list {
     let rust_dir = $"($repo_root)/scripts/rust/cursor-manager"
     
     if not (has-command "cargo") {
-        skip "Cargo not available"
+        skip-test "Cargo not available"
         return [{ test: "Rust", status: "skip" }]
     }
     
@@ -236,15 +281,22 @@ def test-rust [repo_root: string]: nothing -> list {
         }
     }
     
-    # Try cargo check (syntax validation)
-    info "Running cargo check (this may take a moment)..."
-    let cargo_result = (do { cd $rust_dir; cargo check 2>&1 } | complete)
-    if $cargo_result.exit_code == 0 {
-        pass "cargo check passed"
-        $results = ($results | append { test: "cargo check", status: "pass" })
+    # Try cargo check (syntax validation) - requires nix develop for deps
+    # Check if we have pkg-config and openssl (required for cargo check)
+    let has_openssl = (do { pkg-config --exists openssl } | complete).exit_code == 0
+    if $has_openssl {
+        info "Running cargo check (this may take a moment)..."
+        let cargo_result = (do { cd $rust_dir; cargo check } | complete)
+        if $cargo_result.exit_code == 0 {
+            pass "cargo check passed"
+            $results = ($results | append { test: "cargo check", status: "pass" })
+        } else {
+            fail "cargo check failed"
+            $results = ($results | append { test: "cargo check", status: "fail", error: $cargo_result.stderr })
+        }
     } else {
-        fail $"cargo check failed"
-        $results = ($results | append { test: "cargo check", status: "fail", error: $cargo_result.stderr })
+        skip-test "cargo check - run in nix develop for full deps"
+        $results = ($results | append { test: "cargo check", status: "skip" })
     }
     
     $results
@@ -257,10 +309,10 @@ def test-versions [repo_root: string]: nothing -> list {
     mut results = []
     
     # Test a sample of versions
-    let sample_versions = ["cursor" "cursor-2_1_34" "cursor-2_0_77" "cursor-1_7_59"]
+    let sample_versions = ["cursor" "cursor-2_1_34" "cursor-2_0_77" "cursor-1_7_54"]
     
     for pkg in $sample_versions {
-        let result = (do { nix eval $"($repo_root)#($pkg).name" --impure 2>&1 } | complete)
+        let result = (do { nix eval $"($repo_root)#($pkg).name" --impure } | complete)
         if $result.exit_code == 0 {
             pass $"Package: ($pkg)"
             $results = ($results | append { test: $"Package: ($pkg)", status: "pass" })
