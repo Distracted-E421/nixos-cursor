@@ -28,3 +28,14 @@ Thumbs.db
 *.tmp
 *.bak
 *.orig
+
+# Build artifacts
+__pycache__/
+*.pyc
+target/
+Cargo.lock
+*.rlib
+*.rmeta
+*.so
+*.d
+
