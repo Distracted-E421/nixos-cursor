@@ -12,7 +12,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    
+
     # MCP servers (memory, playwright, etc.)
     mcp-servers-nix = {
       url = "github:natsukium/mcp-servers-nix";
@@ -20,94 +20,150 @@
     };
   };
 
-  outputs = { self, nixpkgs, mcp-servers-nix }: 
+  outputs =
+    {
+      self,
+      nixpkgs,
+      mcp-servers-nix,
+    }:
     let
-      systems = [ "x86_64-linux" "aarch64-linux" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      
+
       # Helper to create app entries from packages
       mkApp = pkg: mainProgram: {
         type = "app";
         program = "${pkg}/bin/${mainProgram}";
       };
-    in {
+    in
+    {
       # Package outputs
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs {
             inherit system;
-            config.allowUnfree = true;  # Cursor is proprietary
+            config.allowUnfree = true; # Cursor is proprietary
           };
-        in 
+        in
         let
           # Multi-version cursor system
-          cursorVersions = pkgs.callPackage ./cursor-versions.nix {};
+          cursorVersions = pkgs.callPackage ./cursor-versions.nix { };
         in
         {
           default = self.packages.${system}.cursor;
-          
+
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
-          
+
           # Version-specific packages for running multiple instances (48 total)
           # Latest Era - 2.1.x (11 versions)
           inherit (cursorVersions)
-            cursor-2_1_34 cursor-2_1_32 cursor-2_1_26 cursor-2_1_25 cursor-2_1_24
-            cursor-2_1_20 cursor-2_1_19 cursor-2_1_17 cursor-2_1_15 cursor-2_1_7 cursor-2_1_6;
-          
+            cursor-2_1_34
+            cursor-2_1_32
+            cursor-2_1_26
+            cursor-2_1_25
+            cursor-2_1_24
+            cursor-2_1_20
+            cursor-2_1_19
+            cursor-2_1_17
+            cursor-2_1_15
+            cursor-2_1_7
+            cursor-2_1_6
+            ;
+
           # Custom Modes Era - 2.0.x (17 versions)
-          inherit (cursorVersions) 
-            cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 
-            cursor-2_0_69 cursor-2_0_64 cursor-2_0_63 cursor-2_0_60
-            cursor-2_0_57 cursor-2_0_54 cursor-2_0_52 cursor-2_0_43
-            cursor-2_0_40 cursor-2_0_38 cursor-2_0_34 cursor-2_0_32 cursor-2_0_11;
-          
+          inherit (cursorVersions)
+            cursor-2_0_77
+            cursor-2_0_75
+            cursor-2_0_74
+            cursor-2_0_73
+            cursor-2_0_69
+            cursor-2_0_64
+            cursor-2_0_63
+            cursor-2_0_60
+            cursor-2_0_57
+            cursor-2_0_54
+            cursor-2_0_52
+            cursor-2_0_43
+            cursor-2_0_40
+            cursor-2_0_38
+            cursor-2_0_34
+            cursor-2_0_32
+            cursor-2_0_11
+            ;
+
           # Classic Era - 1.7.x (19 versions)
-          inherit (cursorVersions) 
-            cursor-1_7_54 cursor-1_7_53 cursor-1_7_52 cursor-1_7_46
-            cursor-1_7_44 cursor-1_7_43 cursor-1_7_40 cursor-1_7_39 cursor-1_7_38
-            cursor-1_7_36 cursor-1_7_33 cursor-1_7_28 cursor-1_7_25 cursor-1_7_23
-            cursor-1_7_22 cursor-1_7_17 cursor-1_7_16 cursor-1_7_12 cursor-1_7_11;
-          
+          inherit (cursorVersions)
+            cursor-1_7_54
+            cursor-1_7_53
+            cursor-1_7_52
+            cursor-1_7_46
+            cursor-1_7_44
+            cursor-1_7_43
+            cursor-1_7_40
+            cursor-1_7_39
+            cursor-1_7_38
+            cursor-1_7_36
+            cursor-1_7_33
+            cursor-1_7_28
+            cursor-1_7_25
+            cursor-1_7_23
+            cursor-1_7_22
+            cursor-1_7_17
+            cursor-1_7_16
+            cursor-1_7_12
+            cursor-1_7_11
+            ;
+
           # Legacy Era - 1.6.x (1 version)
           inherit (cursorVersions) cursor-1_6_45;
-          
+
           # Isolated test instance (separate profile for testing)
-          cursor-test = (pkgs.callPackage ./cursor {
-            commandLineArgs = [ "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions" ];
-          }).overrideAttrs (old: {
-            pname = "cursor-test";
-            postInstall = (old.postInstall or "") + ''
-              mv $out/bin/cursor $out/bin/cursor-test
-              if [ -f "$out/bin/cursor-update" ]; then
-                mv $out/bin/cursor-update $out/bin/cursor-test-update
-              fi
-              if [ -f "$out/bin/cursor-check-update" ]; then
-                mv $out/bin/cursor-check-update $out/bin/cursor-test-check-update
-              fi
-              substituteInPlace $out/share/applications/cursor.desktop \
-                --replace-fail "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
-                --replace-fail "Name=Cursor" "Name=Cursor (Test)"
-            '';
-          });
-          
+          cursor-test =
+            (pkgs.callPackage ./cursor {
+              commandLineArgs = [
+                "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions"
+              ];
+            }).overrideAttrs
+              (old: {
+                pname = "cursor-test";
+                postInstall = (old.postInstall or "") + ''
+                  mv $out/bin/cursor $out/bin/cursor-test
+                  if [ -f "$out/bin/cursor-update" ]; then
+                    mv $out/bin/cursor-update $out/bin/cursor-test-update
+                  fi
+                  if [ -f "$out/bin/cursor-check-update" ]; then
+                    mv $out/bin/cursor-check-update $out/bin/cursor-test-check-update
+                  fi
+                  substituteInPlace $out/share/applications/cursor.desktop \
+                    --replace-fail "Exec=$out/bin/cursor" "Exec=$out/bin/cursor-test" \
+                    --replace-fail "Name=Cursor" "Name=Cursor (Test)"
+                '';
+              });
+
           # Cursor Version Manager (GUI Launcher)
-          cursor-manager = pkgs.callPackage ./cursor/manager.nix {};
+          cursor-manager = pkgs.callPackage ./cursor/manager.nix { };
         }
       );
 
       # App outputs - enables clean `nix run github:...#cursor-1_7_54` syntax
-      apps = forAllSystems (system:
+      apps = forAllSystems (
+        system:
         let
           pkgs = self.packages.${system};
-        in {
+        in
+        {
           default = mkApp pkgs.cursor "cursor";
-          
+
           # Main cursor
           cursor = mkApp pkgs.cursor "cursor";
           cursor-manager = mkApp pkgs.cursor-manager "cursor-manager";
           cursor-test = mkApp pkgs.cursor-test "cursor-test";
-          
+
           # 2.1.x Latest Era (11 versions)
           cursor-2_1_34 = mkApp pkgs.cursor-2_1_34 "cursor-2.1.34";
           cursor-2_1_32 = mkApp pkgs.cursor-2_1_32 "cursor-2.1.32";
@@ -120,7 +176,7 @@
           cursor-2_1_15 = mkApp pkgs.cursor-2_1_15 "cursor-2.1.15";
           cursor-2_1_7 = mkApp pkgs.cursor-2_1_7 "cursor-2.1.7";
           cursor-2_1_6 = mkApp pkgs.cursor-2_1_6 "cursor-2.1.6";
-          
+
           # 2.0.x Custom Modes Era (17 versions)
           cursor-2_0_77 = mkApp pkgs.cursor-2_0_77 "cursor-2.0.77";
           cursor-2_0_75 = mkApp pkgs.cursor-2_0_75 "cursor-2.0.75";
@@ -139,7 +195,7 @@
           cursor-2_0_34 = mkApp pkgs.cursor-2_0_34 "cursor-2.0.34";
           cursor-2_0_32 = mkApp pkgs.cursor-2_0_32 "cursor-2.0.32";
           cursor-2_0_11 = mkApp pkgs.cursor-2_0_11 "cursor-2.0.11";
-          
+
           # 1.7.x Classic Era (19 versions)
           cursor-1_7_54 = mkApp pkgs.cursor-1_7_54 "cursor-1.7.54";
           cursor-1_7_53 = mkApp pkgs.cursor-1_7_53 "cursor-1.7.53";
@@ -160,7 +216,7 @@
           cursor-1_7_16 = mkApp pkgs.cursor-1_7_16 "cursor-1.7.16";
           cursor-1_7_12 = mkApp pkgs.cursor-1_7_12 "cursor-1.7.12";
           cursor-1_7_11 = mkApp pkgs.cursor-1_7_11 "cursor-1.7.11";
-          
+
           # 1.6.x Legacy Era (1 version)
           cursor-1_6_45 = mkApp pkgs.cursor-1_6_45 "cursor-1.6.45";
         }
@@ -172,10 +228,94 @@
         cursor-with-mcp = import ./home-manager-module;
       };
 
+      # Development shells
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.mkShell {
+            name = "nixos-cursor-dev";
+
+            packages = with pkgs; [
+              # Modern shell scripting
+              nushell
+
+              # Python with batteries
+              (python3.withPackages (
+                ps: with ps; [
+                  httpx # Async HTTP client
+                  rich # Beautiful terminal output
+                  typer # CLI framework
+                ]
+              ))
+
+              # Compiled languages (optional, for future use)
+              # nim           # Python-like syntax, compiles to C
+              # zig           # Systems programming
+              # cargo rustc   # Rust toolchain
+
+              # Development tools
+              jq # JSON processing (fallback)
+              statix # Nix linter
+              nixpkgs-fmt # Nix formatter
+
+              # Testing
+              shellcheck # Bash linter (for legacy scripts)
+            ];
+
+            shellHook = ''
+              echo "nixos-cursor development shell"
+              echo ""
+              echo "Available tools:"
+              echo "  nu        - Nushell (modern shell scripts)"
+              echo "  python    - Python 3 with httpx, rich, typer"
+              echo "  statix    - Nix linter"
+              echo ""
+              echo "Scripts:"
+              echo "  nu scripts/nu/disk-usage.nu --help"
+              echo "  python scripts/python/compute_hashes.py --help"
+            '';
+          };
+
+          # Full development shell with all compiled languages
+          full = pkgs.mkShell {
+            name = "nixos-cursor-full";
+
+            packages = with pkgs; [
+              # Shells
+              nushell
+
+              # Python
+              (python3.withPackages (
+                ps: with ps; [
+                  httpx
+                  rich
+                  typer
+                ]
+              ))
+
+              # Compiled languages
+              nim
+              zig
+              cargo
+              rustc
+
+              # Development
+              jq
+              statix
+              nixpkgs-fmt
+              shellcheck
+            ];
+          };
+        }
+      );
+
       # Overlays
       overlays.default = final: prev: {
-        cursor = final.callPackage ./cursor {};
-        
+        cursor = final.callPackage ./cursor { };
+
         # MCP server packages from mcp-servers-nix
         mcp-server-memory = mcp-servers-nix.packages.${final.system}.mcp-server-memory or null;
         playwright-mcp = mcp-servers-nix.packages.${final.system}.playwright-mcp or null;

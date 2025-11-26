@@ -1,10 +1,70 @@
 # Development Scripts
 
-This directory contains **automation scripts** for managing the nixos-cursor development workflow, including branch management, release preparation, and validation.
+This directory contains **automation scripts** for managing the nixos-cursor development workflow, including branch management, release preparation, validation, and storage management.
 
 ---
 
-## 📜 Available Scripts
+## 🏗️ Multi-Language Architecture
+
+We use **the right tool for the job**, not just bash for everything:
+
+| Directory | Language | Best For |
+|-----------|----------|----------|
+| `nu/` | [Nushell](https://www.nushell.sh/) | Data manipulation, structured output |
+| `python/` | Python 3 | HTTP operations, complex logic |
+| `bash/` (root) | Bash | Simple wrappers, git operations |
+| `lib/` | Shared | Common utilities |
+
+### Why Not Just Bash?
+
+| Issue | Bash | Modern Alternative |
+|-------|------|-------------------|
+| JSON handling | Requires `jq` | Native (Nushell, Python) |
+| Arithmetic | `$((a+b))` or `bc` | Native operators |
+| Data types | Strings only | Tables, records, lists |
+| Error handling | `set -e` (fragile) | Result types |
+
+### Getting Started
+
+```bash
+# Enter development shell with all tools
+nix develop
+
+# Or run specific scripts directly
+nix develop --command nu scripts/nu/disk-usage.nu
+nix develop --command python scripts/python/compute_hashes.py --help
+```
+
+See [docs/SCRIPTING_ARCHITECTURE.md](../docs/SCRIPTING_ARCHITECTURE.md) for the full rationale.
+
+---
+
+## 📁 Directory Structure
+
+```
+scripts/
+├── nu/                      # Nushell scripts (data-heavy)
+│   └── disk-usage.nu        # Nix store analysis
+├── python/                  # Python scripts (HTTP, complex logic)
+│   └── compute_hashes.py    # URL hash computation
+├── lib/                     # Shared utilities
+│   └── colors.nu            # Nushell color helpers
+├── storage/                 # Disk/GC management (bash)
+│   ├── disk-usage.sh        # Legacy bash version
+│   └── gc-helper.sh         # Garbage collection helper
+├── validation/              # URL/hash validation (bash)
+│   ├── validate-urls.sh
+│   └── compute-hashes.sh    # Legacy bash version
+├── data-tracking/           # User data tracking (bash)
+│   └── cursor-data-tracker.sh
+├── prepare-public-branch.sh # Release automation
+├── release-to-main.sh       # Release automation
+└── validate-public-branch.sh # Pre-release validation
+```
+
+---
+
+## �� Available Scripts
 
 ### `prepare-public-branch.sh`
 
