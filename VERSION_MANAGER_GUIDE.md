@@ -1,6 +1,6 @@
 # Cursor Version Manager Guide
 
-## v0.1.0 - The Complete Multi-Version Solution
+## v0.1.1 - The Complete Multi-Version Solution
 
 We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 
@@ -56,12 +56,13 @@ nix run github:Distracted-E421/nixos-cursor#cursor-manager
 ```
 
 **GUI Features:**
-- **Era Dropdown**: Select from 2.0.x, 1.7.x, 1.6.x, or System Default
-- **Version Dropdown**: Lists all versions for selected era
-- **Options**: Settings sync + optional Docs/Auth sharing (persistent across sessions)
-- **Launch Button**: Starts selected version with configured options
+* **Era Dropdown**: Select from 2.0.x, 1.7.x, 1.6.x, or System Default
+* **Version Dropdown**: Lists all versions for selected era
+* **Options**: Settings sync + optional Docs/Auth sharing (persistent across sessions)
+* **Launch Button**: Starts selected version with configured options
 
 **Example Workflow:**
+
 1. Select "2.0.x - Custom Modes Era" from first dropdown
 2. Select "2.0.77 (Stable - Recommended)" from second dropdown
 3. Check "Sync Settings & Keybindings" (recommended)
@@ -97,9 +98,9 @@ The Manager handles data migration for you!
 * **Settings Sync**: When launching a version for the first time, it checks for your main configuration and offers to sync `settings.json` and `keybindings.json`.
 
 * **Shared Auth & Docs** (*Unique Feature*): Check the "Share Docs & Auth" box to symlink your `globalStorage` directory. This enables:
-  - **Single Login**: Authenticate once, use across all versions
-  - **Shared Indexed Docs**: Your `@Docs` indexed documentation is available in every version
-  - **Persistent Context**: AI context from one version carries over to others
+  * **Single Login**: Authenticate once, use across all versions
+  * **Shared Indexed Docs**: Your `@Docs` indexed documentation is available in every version
+  * **Persistent Context**: AI context from one version carries over to others
   
   > **Why is this special?** Base Cursor stores auth and docs in the user data directory. Since each Cursor installation has its own data directory, you'd normally need to re-authenticate and re-index docs for each version. Our symlink approach shares this state globally - something the official Cursor doesn't support.
 
@@ -125,29 +126,32 @@ Add to your `configuration.nix` or `home.nix` to have multiple versions availabl
 ```
 
 **After installation, you'll have these commands available:**
-- `cursor` → Launches 2.0.77 (latest)
-- `cursor-2.0.64` → Launches 2.0.64
-- `cursor-1.7.54` → Launches 1.7.54
-- `cursor-manager` → Opens the GUI picker
+* `cursor` → Launches 2.0.77 (latest)
+* `cursor-2.0.64` → Launches 2.0.64
+* `cursor-1.7.54` → Launches 1.7.54
+* `cursor-manager` → Opens the GUI picker
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### Version won't launch
+
 - Check that the version was built successfully: `nix build .#cursor-2_0_64`
-- Look for errors in terminal output when launching
-- Ensure isolated data directory exists: `ls -la ~/.cursor-2.0.64/`
+* Look for errors in terminal output when launching
+* Ensure isolated data directory exists: `ls -la ~/.cursor-2.0.64/`
 
 ### Settings not syncing
+
 - Settings sync only happens on first launch of a version
-- Delete the version's data directory to trigger re-sync: `rm -rf ~/.cursor-VERSION/`
-- Check that source settings exist: `ls ~/.config/Cursor/User/`
+* Delete the version's data directory to trigger re-sync: `rm -rf ~/.cursor-VERSION/`
+* Check that source settings exist: `ls ~/.config/Cursor/User/`
 
 ### Multiple versions conflict
+
 - Each version should have its own binary name and paths
-- Check with: `which cursor-2.0.64` and `which cursor-1.7.54`
-- If you see conflicts, ensure you're using the latest flake version
+* Check with: `which cursor-2.0.64` and `which cursor-1.7.54`
+* If you see conflicts, ensure you're using the latest flake version
 
 ---
 

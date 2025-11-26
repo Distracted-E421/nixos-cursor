@@ -9,12 +9,14 @@
 ## 📁 Where Cursor Stores Data
 
 ### Global Data (Persists Across Updates)
+
 - **`~/.config/Cursor/User/settings.json`** - Global settings
 - **`~/.config/Cursor/User/keybindings.json`** - Custom keybindings
 - **`~/.config/Cursor/extensions/`** - Installed extensions
 - **`~/.cursor/mcp.json`** - MCP server config (symlinked by Home Manager)
 
 ### Workspace-Specific Data (Per Project)
+
 - **`.cursor/agents/`** - Custom agents (Maxim, Gorky, etc.)
 - **`.cursor/rules/`** - Workspace rules
 - **`.cursorrules`** - Cursor rules file
@@ -23,6 +25,7 @@
 ### Version-Specific Data (Multi-Version Mode)
 
 With nixos-cursor v0.1.0+, each version can have isolated data:
+
 - **`~/.cursor-2.0.77/`** - Data for version 2.0.77
 - **`~/.cursor-1.7.54/`** - Data for version 1.7.54
 - **`~/.cursor-VERSION/extensions/`** - Version-specific extensions
@@ -30,6 +33,7 @@ With nixos-cursor v0.1.0+, each version can have isolated data:
 ### Shared Data (Unique Feature)
 
 The **Share Docs & Auth** feature symlinks `globalStorage` across versions:
+
 - **Single login** - Authenticate once, use everywhere
 - **Shared indexed docs** - `@Docs` available in all versions
 - This is **not possible in base Cursor**!
@@ -84,6 +88,7 @@ This ensures Cursor reopens your last workspace (homelab) on startup.
 After running `./update.sh` and updating Cursor:
 
 ### 1. Check Agents Load
+
 ```bash
 # Open Cursor with homelab workspace
 cursor ~/homelab
@@ -93,6 +98,7 @@ cursor ~/homelab
 ```
 
 ### 2. Check MCP Servers
+
 ```bash
 # Verify MCP config
 cat ~/.cursor/mcp.json | jq '.mcpServers | keys'
@@ -101,6 +107,7 @@ cat ~/.cursor/mcp.json | jq '.mcpServers | keys'
 ```
 
 ### 3. Check Settings Persisted
+
 ```bash
 # Verify settings
 cat ~/.config/Cursor/User/settings.json | jq
@@ -113,18 +120,21 @@ cat ~/.config/Cursor/User/settings.json | jq
 ### Agents Missing After Update
 
 **Check**:
+
 ```bash
 ls -la ~/homelab/.cursor/agents/
 # Should show: maxim.json, gorky.json, etc.
 ```
 
 **Verify** Cursor opened with workspace:
+
 ```bash
 ps aux | grep cursor | grep homelab
 # Should show cursor process with /home/e421/homelab argument
 ```
 
 **If still missing**:
+
 1. Close all Cursor windows
 2. Open explicitly: `cursor ~/homelab`
 3. Check agent selector in UI
@@ -132,17 +142,58 @@ ps aux | grep cursor | grep homelab
 ### MCP Servers Not Working
 
 **Check** symlink:
+
 ```bash
 ls -la ~/.cursor/mcp.json
 # Should point to: /nix/store/.../home-manager-files/.cursor/mcp.json
 ```
 
 **Restart** MCP servers:
+
 ```bash
 # Kill existing servers
 pkill -f 'mcp-server'
 
 # Cursor will restart them automatically
+```
+
+### MCP First-Run Terminal Prompt Issues
+
+**Symptom**: When MCP servers start for the first time, you see prompts in the terminal but:
+
+- Text input is invisible (no echo when typing)
+- No feedback after entering values
+- Terminal appears to hang or "break"
+
+**Cause**: The `npx` command downloads MCP packages on first run. Some npm packages may have initialization prompts that don't handle terminal I/O properly.
+
+**Solution** (v0.1.1+): The Home Manager module now:
+
+1. **Pre-caches packages** during `home-manager switch` activation
+2. **Uses wrapper scripts** with `NPM_CONFIG_YES=true` and `CI=true` environment variables
+3. **Avoids interactive prompts** entirely
+
+**Manual Fix** (if using older version):
+
+```bash
+# Pre-download MCP packages manually
+export NPM_CONFIG_YES=true
+export CI=true
+npx -y @modelcontextprotocol/server-filesystem --help
+npx -y @modelcontextprotocol/server-github --help
+
+# Now restart Cursor - no prompts should appear
+```
+
+**If still experiencing issues**:
+
+```bash
+# Clear npm cache and retry
+npm cache clean --force
+rm -rf ~/.npm/_npx
+
+# Re-run home-manager to trigger pre-caching
+home-manager switch
 ```
 
 ### Settings Reset After Update
@@ -152,6 +203,7 @@ pkill -f 'mcp-server'
 **Cause**: Cursor reads `~/.config/Cursor/User/settings.json` - this should persist
 
 **Check**:
+
 ```bash
 # Verify settings file exists
 cat ~/.config/Cursor/User/settings.json
@@ -195,6 +247,7 @@ programs.cursor-ide.userSettings = {
 2. **Run update script**: `cd cursor && ./update.sh`
 3. **Build new version**: `nix build .#cursor`
 4. **Test before switching**:
+
    ```bash
    # Test new version
    ./result/bin/cursor ~/homelab
@@ -203,6 +256,7 @@ programs.cursor-ide.userSettings = {
    # Check MCP servers work
    # Check settings persisted
    ```
+
 5. **If good, commit and switch**: `home-manager switch`
 6. **If issues, rollback**: `home-manager switch --rollback`
 
@@ -220,11 +274,13 @@ This ensures agents always load.
 ## 🔐 Data Safety
 
 **What's Safe to Delete (Cache)**:
+
 - `~/.config/Cursor/Cache/` - Cursor will rebuild
 - `~/.config/Cursor/CachedData/` - Version-specific cache
 - `~/.config/Cursor/Code Cache/` - Renderer cache
 
 **What's NEVER Safe to Delete**:
+
 - `~/.config/Cursor/User/` - **YOUR SETTINGS**
 - `~/.config/Cursor/extensions/` - Installed extensions
 - `~/homelab/.cursor/` - **YOUR CUSTOM AGENTS**
@@ -259,6 +315,6 @@ This would make agents part of your declarative config.
 
 ---
 
-**Last Updated**: 2025-11-25 (v0.1.0)  
+**Last Updated**: 2025-11-26 (v0.1.1)  
 **Status**: Documented  
 **See Also**: [VERSION_MANAGER_GUIDE.md](../VERSION_MANAGER_GUIDE.md) for multi-version usage

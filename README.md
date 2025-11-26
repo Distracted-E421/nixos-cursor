@@ -1,6 +1,6 @@
 # nixos-cursor
 
-**Status**: v0.1.0 (Stable) - **37 Versions Available**  
+**Status**: v0.1.1 (Stable) - **48 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
@@ -13,6 +13,7 @@ A production-ready NixOS package for **Cursor IDE** with built-in support for **
 > Multi-version packages install to unique paths (`/share/cursor-VERSION/`, `/bin/cursor-VERSION`), enabling simultaneous installation without path conflicts. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
 
 **Version Coverage:**
+
 - **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
 - **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
 - **1.6.x Legacy Era**: 1 version (1.6.45)
@@ -80,6 +81,7 @@ home-manager.extraSpecialArgs = { inherit inputs; };
 ```
 
 After installation, you'll have:
+
 - `cursor` → Launches 2.0.77
 - `cursor-2.0.77` → Launches 2.0.77
 - `cursor-1.x.xx` → Launches specified version (assuming it is supported, see below)
@@ -102,11 +104,13 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
 ```
 
 **For Local Development:**
+
 ```bash
 CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 ```
 
 **Available Versions**:
+
 - **2_0_x**: 2_0_77, 2_0_75, 2_0_74, 2_0_73, 2_0_69, 2_0_64, 2_0_63, 2_0_60, 2_0_57, 2_0_54, 2_0_52, 2_0_43, 2_0_40, 2_0_38, 2_0_34, 2_0_32, 2_0_11
 - **1_7_x**: 1_7_54, 1_7_53, 1_7_52, 1_7_46, 1_7_44, 1_7_43, 1_7_40, 1_7_39, 1_7_38, 1_7_36, 1_7_33, 1_7_28, 1_7_25, 1_7_23, 1_7_22, 1_7_17, 1_7_16, 1_7_12, 1_7_11
 - **1_6_x**: 1_6_45
@@ -193,6 +197,7 @@ I committed to making nixos-cursor the definitive way to run Cursor on NixOS. He
 - **Contributions**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 **Current Community Requests:**
+
 - *None yet - be the first!*
 
 ---

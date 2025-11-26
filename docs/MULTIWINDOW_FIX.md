@@ -2,7 +2,7 @@
 
 > **⚠️ Internal Roadmap Document**  
 > This is a planning document for a future feature (multi-window focus handling).  
-> It is **not currently implemented** in nixos-cursor v0.1.0.  
+> It is **not currently implemented** in nixos-cursor v0.1.1.  
 > See the [Roadmap](../README.md#-roadmap) for planned features.
 
 **Date**: 2025-11-19  
@@ -27,11 +27,13 @@
 ### **Current Behavior** (cursor-focus-fix v1)
 
 **Single Window**: ✅ Works perfectly (99% success)
+
 - Detects focus mismatch
 - Restores keyboard focus
 - ~100ms latency
 
 **Multiple Windows**: ❌ Broken
+
 - All windows share same global focus state
 - Focus restoration conflicts between windows
 - Each window fights to restore focus
@@ -53,6 +55,7 @@
 **Goal**: Each Cursor window manages its own focus independently
 
 **Changes to preload.js**:
+
 ```javascript
 // OLD (global state - causes conflicts):
 let isRestoringFocus = false;
@@ -74,6 +77,7 @@ window.__CURSOR_FOCUS_FIX__ = windowState;
 ```
 
 **Benefits**:
+
 - Each window has isolated state
 - No global conflicts
 - Can track per-window metrics
@@ -86,6 +90,7 @@ window.__CURSOR_FOCUS_FIX__ = windowState;
 **Integration with gpu-window-manager**:
 
 **A. Extend DBus Interface** (`src/dbus_service.rs`):
+
 ```rust
 #[dbus_interface(name = "com.github.e421.GpuWindowManager")]
 impl GpuWindowManagerInterface {
@@ -116,6 +121,7 @@ impl GpuWindowManagerInterface {
 ```
 
 **B. Add DBus Client to preload.js**:
+
 ```javascript
 // Query GPU manager for window's GPU
 async function queryWindowGpu() {
@@ -153,6 +159,7 @@ function subscribeToGpuTransitions() {
 ```
 
 **C. KDE Window Tracking** (`src/window_kde.rs` - NEW):
+
 ```rust
 use anyhow::{Result, Context};
 use std::process::Command;
@@ -189,6 +196,7 @@ pub fn get_window_geometry_wayland(pid: u32, title: &str) -> Result<(i32, i32, u
 **Goal**: Adjust focus behavior based on GPU transitions
 
 **Enhanced Focus Logic**:
+
 ```javascript
 function restoreFocus() {
   if (windowState.isRestoringFocus) {
@@ -234,6 +242,7 @@ function restoreFocus() {
 ### **Week 1: Multi-Window Fix on KDE**
 
 #### **Day 1-2: Per-Window State**
+
 - [ ] Modify `preload.js` to use instance-scoped state
 - [ ] Add window instance ID generation
 - [ ] Test with 2-3 Cursor windows
@@ -241,6 +250,7 @@ function restoreFocus() {
 - [ ] Measure latency (<50ms target)
 
 #### **Day 3-4: GPU Manager Integration**
+
 - [ ] Extend DBus interface (`GetWindowGpu`, `WatchWindowGpu`)
 - [ ] Implement KDE window geometry queries (X11 + Wayland)
 - [ ] Add window → monitor → GPU mapping logic
@@ -248,6 +258,7 @@ function restoreFocus() {
 - [ ] Verify GPU detection for each window
 
 #### **Day 5-7: GPU-Aware Focus**
+
 - [ ] Integrate GPU awareness into focus restoration
 - [ ] Handle GPU transition events
 - [ ] Add extra delay for NVIDIA ↔ Intel Arc transitions
@@ -257,6 +268,7 @@ function restoreFocus() {
 ### **Week 2: Testing & Refinement**
 
 #### **Day 8-10: Multi-Window Testing**
+
 - [ ] Test 2 windows same GPU (Arc A770)
 - [ ] Test 2 windows different GPUs (Arc + NVIDIA)
 - [ ] Test 4+ windows (real workload simulation)
@@ -264,6 +276,7 @@ function restoreFocus() {
 - [ ] Test GPU hot-plug (if supported)
 
 #### **Day 11-14: Performance Optimization**
+
 - [ ] Reduce DBus call overhead (cache results)
 - [ ] Optimize focus detection loop
 - [ ] Add metrics export (focus restoration time per window)
@@ -277,16 +290,19 @@ function restoreFocus() {
 ### **Test Environment**
 
 **Hardware**: Obsidian
+
 - Intel Arc A770 (16GB) - 3 monitors (DP-1, DP-3, DP-4)
 - NVIDIA RTX 2080 (8GB) - 1 monitor (HDMI-A-5)
 
 **Software**: KDE Plasma 6 on NixOS 25.11
+
 - Test both X11 and Wayland sessions
 - Test with real agent chat workloads
 
 ### **Test Cases**
 
 #### **TC1: Basic Multi-Window**
+
 - Open 2 Cursor windows (same GPU)
 - Open agent chat in both
 - Type in window 1
@@ -295,24 +311,28 @@ function restoreFocus() {
 - **Expected**: Both windows accept input correctly
 
 #### **TC2: Cross-GPU Windows**
+
 - Window 1 on Arc monitor (DP-3)
 - Window 2 on NVIDIA monitor (HDMI-A-5)
 - Type in both alternately
 - **Expected**: Focus restoration works on both GPUs
 
 #### **TC3: Window Movement**
+
 - Open window on Arc monitor
 - Drag to NVIDIA monitor
 - Type in window
 - **Expected**: GPU transition detected, typing works
 
 #### **TC4: Rapid Switching**
+
 - Open 3 windows
 - Alt+Tab between them rapidly
 - Type in each
 - **Expected**: No focus conflicts, all accept input
 
 #### **TC5: Stress Test**
+
 - Open 5+ Cursor windows across all monitors
 - Open agent chats in all
 - Type in each sequentially
@@ -354,6 +374,7 @@ nixos/pkgs/
 ### **Dependencies**
 
 **Rust (`Cargo.toml`)**:
+
 ```toml
 [dependencies]
 # Existing...
@@ -364,6 +385,7 @@ kdbus = "0.3"            # KDE DBus bindings (optional)
 ```
 
 **NixOS (system packages)**:
+
 ```nix
 environment.systemPackages = with pkgs; [
   xdotool          # X11 window queries
@@ -415,6 +437,7 @@ histogram_quantile(0.95, cursor_gpu_transition_duration_ms_bucket)
 ### **Today (Day 1)**
 
 1. **Backup current preload.js**
+
    ```bash
    cp nixos/pkgs/cursor-focus-fix/preload.js{,.backup}
    ```
@@ -451,24 +474,28 @@ histogram_quantile(0.95, cursor_gpu_transition_duration_ms_bucket)
 ## 💡 **Design Decisions**
 
 ### **Why Per-Window State?**
+
 - **Isolation**: Each window independent
 - **No conflicts**: Windows don't interfere
 - **Scalability**: Supports 10+ windows
 - **Debugging**: Per-window metrics
 
 ### **Why DBus Communication?**
+
 - **Standard IPC**: Well-supported on Linux
 - **Async**: Non-blocking queries
 - **Monitoring**: Can use `dbus-monitor` to debug
 - **Future-proof**: Easy to extend with new methods
 
 ### **Why KDE First?**
+
 - **Stability**: Main development environment
 - **Dual GPU**: Real multi-GPU testing
 - **X11 + Wayland**: Test both protocols
 - **Faster iteration**: No Niri boot/reboot cycle
 
 ### **Why Not Wayland Protocol Extension?**
+
 - **Complexity**: Requires compositor changes
 - **Time**: Months to get upstream acceptance
 - **Compatibility**: DBus works on X11 + Wayland
@@ -481,6 +508,7 @@ histogram_quantile(0.95, cursor_gpu_transition_duration_ms_bucket)
 ### **End State (2 weeks)**
 
 **User Experience**:
+
 - Open 5 Cursor windows across 4 monitors (2 GPUs)
 - Each agent chat window types perfectly
 - Alt+Tab between windows is instant
@@ -489,12 +517,14 @@ histogram_quantile(0.95, cursor_gpu_transition_duration_ms_bucket)
 - Imperceptible latency (<50ms)
 
 **Technical Metrics**:
+
 - 100% typing success rate (up from ~0% with multiple windows)
 - <50ms focus restoration (maintained from single-window)
 - <1% CPU overhead for focus monitoring
 - <10ms GPU transition detection
 
 **Foundation for Future**:
+
 - GPU-aware window management proven on KDE
 - DBus architecture ready for Niri integration
 - Metrics pipeline for optimization
