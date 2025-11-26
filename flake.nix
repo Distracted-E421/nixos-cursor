@@ -296,6 +296,10 @@
                 ]
               ))
 
+              # Elixir/BEAM
+              elixir
+              erlang
+
               # Compiled languages
               nim
               zig

@@ -106,19 +106,23 @@ scripts/
 
 Legacy bash scripts moved to `scripts/legacy/` for reference.
 
-### Phase 2: Python (uv)
+### Phase 2: Python (uv) ✅ COMPLETE
 
 | Script | Status | Notes |
 |--------|--------|-------|
 | `compute-hashes.sh` | ✅ Done | `scripts/python/compute_hashes.py` |
-| Complex HTTP operations | 📋 Planned | async, progress bars |
 
-### Phase 3: Elixir (Future)
+### Phase 3: Elixir ✅ COMPLETE
 
 | Tool | Status | Notes |
 |------|--------|-------|
-| `cursor-data-tracker` | 📋 Planned | Long-running, fault-tolerant |
-| Service monitoring | 📋 Planned | OTP supervision trees |
+| `cursor-data-tracker` | ✅ Done | `scripts/elixir/cursor_tracker/` |
+
+The CursorTracker is a full OTP application with:
+- GenServer-based architecture
+- File watching with debounce
+- Git-based snapshots
+- CLI and IEx interfaces
 
 ### Phase 4: Rust (Future)
 

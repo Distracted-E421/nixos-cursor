@@ -43,20 +43,25 @@ See [docs/SCRIPTING_ARCHITECTURE.md](../docs/SCRIPTING_ARCHITECTURE.md) for the 
 
 ```
 scripts/
-├── nu/                      # Nushell scripts (data-heavy)
-│   └── disk-usage.nu        # Nix store analysis
-├── python/                  # Python scripts (HTTP, complex logic)
+├── nu/                      # Nushell scripts (Tier 1)
+│   ├── disk-usage.nu        # Nix store analysis
+│   ├── gc-helper.nu         # Garbage collection
+│   ├── validate-urls.nu     # URL validation
+│   └── test-versions.nu     # Version testing
+├── python/                  # Python scripts (Tier 1)
 │   └── compute_hashes.py    # URL hash computation
+├── elixir/                  # Elixir projects (Tier 1)
+│   └── cursor_tracker/      # OTP app for data tracking
 ├── lib/                     # Shared utilities
 │   └── colors.nu            # Nushell color helpers
-├── storage/                 # Disk/GC management (bash)
-│   ├── disk-usage.sh        # Legacy bash version
-│   └── gc-helper.sh         # Garbage collection helper
-├── validation/              # URL/hash validation (bash)
+├── legacy/                  # Deprecated bash scripts
+│   ├── disk-usage.sh
+│   ├── gc-helper.sh
 │   ├── validate-urls.sh
-│   └── compute-hashes.sh    # Legacy bash version
-├── data-tracking/           # User data tracking (bash)
-│   └── cursor-data-tracker.sh
+│   └── all-versions-test.sh
+├── storage/                 # Disk/GC management
+├── validation/              # URL/hash validation
+├── data-tracking/           # User data tracking
 ├── prepare-public-branch.sh # Release automation
 ├── release-to-main.sh       # Release automation
 └── validate-public-branch.sh # Pre-release validation
