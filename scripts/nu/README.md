@@ -32,20 +32,47 @@ nix run nixpkgs#nushell -- scripts/nu/disk-usage.nu
 Analyzes Nix store usage for Cursor packages.
 
 ```bash
-# Basic usage
-nu disk-usage.nu
-
-# Detailed breakdown
-nu disk-usage.nu --detailed
-
-# JSON output
-nu disk-usage.nu --json
-
-# Show GC roots
-nu disk-usage.nu --gc-roots
+nu disk-usage.nu                # Basic usage
+nu disk-usage.nu --detailed     # Detailed breakdown
+nu disk-usage.nu --json         # JSON output
+nu disk-usage.nu --gc-roots     # Show GC roots
 ```
 
-**Features:**
+### `gc-helper.nu`
+
+Safe, interactive garbage collection for NixOS/nix-darwin.
+
+```bash
+nu gc-helper.nu                 # Analyze (default)
+nu gc-helper.nu collect         # Run garbage collection
+nu gc-helper.nu generations     # Manage generations
+nu gc-helper.nu optimize        # Run store optimization
+nu gc-helper.nu full --yes      # Full cleanup, no prompts
+```
+
+### `validate-urls.nu`
+
+Validate Cursor download URLs are accessible.
+
+```bash
+nu validate-urls.nu             # Validate all URLs
+nu validate-urls.nu --linux-only    # Only Linux URLs
+nu validate-urls.nu --darwin-only   # Only Darwin URLs
+nu validate-urls.nu --json      # JSON output
+```
+
+### `test-versions.nu`
+
+Test build capability for all defined Cursor versions.
+
+```bash
+nu test-versions.nu             # Quick eval test (default)
+nu test-versions.nu full        # Dry-build test
+nu test-versions.nu build       # Full build (slow!)
+nu test-versions.nu --json      # JSON output
+```
+
+**All scripts feature:**
 - Native structured data handling
 - Beautiful table output
 - No `bc`, `awk`, or `jq` required

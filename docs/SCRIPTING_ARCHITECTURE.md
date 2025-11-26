@@ -95,14 +95,16 @@ scripts/
 
 ## ⚡ Migration Priority
 
-### Phase 1: Nushell (Current)
+### Phase 1: Nushell ✅ COMPLETE
 
 | Script | Status | Notes |
 |--------|--------|-------|
 | `disk-usage.sh` | ✅ Done | `scripts/nu/disk-usage.nu` |
-| `gc-helper.sh` | 🔄 In Progress | Data-heavy, interactive |
-| `validate-urls.sh` | 📋 Planned | HTTP + structured output |
-| `all-versions-test.sh` | 📋 Planned | JSON parsing, tables |
+| `gc-helper.sh` | ✅ Done | `scripts/nu/gc-helper.nu` |
+| `validate-urls.sh` | ✅ Done | `scripts/nu/validate-urls.nu` |
+| `all-versions-test.sh` | ✅ Done | `scripts/nu/test-versions.nu` |
+
+Legacy bash scripts moved to `scripts/legacy/` for reference.
 
 ### Phase 2: Python (uv)
 
