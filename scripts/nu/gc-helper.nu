@@ -37,6 +37,172 @@ def confirm [prompt: string]: nothing -> bool {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# CURSOR-SPECIFIC CLEANUP
+# ─────────────────────────────────────────────────────────────────────────────
+
+const CURSOR_CACHE_DIRS = [
+    "Cache"
+    "CachedData"
+    "CachedExtensions"
+    "CachedExtensionVSIXs"
+    "GPUCache"
+    "Code Cache"
+    "blob_storage"
+    "Crashpad"
+    "logs"
+]
+
+# Find Cursor cache directories and their sizes
+def find-cursor-caches [] {
+    let cursor_config = $"($env.HOME)/.config/Cursor"
+    if not ($cursor_config | path exists) { return [] }
+    
+    $CURSOR_CACHE_DIRS | each { |dir|
+        let path = $"($cursor_config)/($dir)"
+        if ($path | path exists) {
+            let size = (du $path | first | get apparent)
+            { name: $dir, path: $path, size: $size }
+        } else {
+            null
+        }
+    } | where { |x| $x != null }
+}
+
+# Find orphaned Cursor version directories
+def find-orphaned-versions [] {
+    let home = $env.HOME
+    let pattern = $"($home)/.cursor-*"
+    
+    glob $pattern | where { |p| ($p | path type) == "dir" } | each { |path|
+        let name = ($path | path basename)
+        let version = ($name | str replace ".cursor-" "")
+        let size = (du $path | first | get apparent)
+        { name: $name, version: $version, path: $path, size: $size }
+    }
+}
+
+# Find stale workspace storage
+def find-stale-workspaces [older_than: duration = 30day] {
+    let ws_dir = $"($env.HOME)/.config/Cursor/User/workspaceStorage"
+    if not ($ws_dir | path exists) { return [] }
+    
+    let threshold = (date now) - $older_than
+    
+    ls $ws_dir | where type == dir | each { |dir|
+        let mtime = $dir.modified
+        let size = (du $dir.name | first | get apparent)
+        let workspace_json = $"($dir.name)/workspace.json"
+        
+        # Check if workspace folder still exists
+        let orphaned = if ($workspace_json | path exists) {
+            let content = (open $workspace_json)
+            let folder = ($content | get -io folder | default "")
+            if ($folder | is-empty) { true } else { not ($folder | path exists) }
+        } else {
+            true
+        }
+        
+        let stale = ($mtime < $threshold) or $orphaned
+        
+        if $stale {
+            { 
+                id: ($dir.name | path basename)
+                path: $dir.name
+                size: $size 
+                modified: $mtime
+                orphaned: $orphaned
+            }
+        } else {
+            null
+        }
+    } | where { |x| $x != null }
+}
+
+# Analyze Cursor disk usage
+def analyze-cursor [] {
+    print $"(ansi white_bold)Cursor Disk Usage:(ansi reset)"
+    print ""
+    
+    # Cache directories
+    let caches = (find-cursor-caches)
+    let cache_total = ($caches | get size | math sum)
+    
+    print $"  Cache directories:"
+    $caches | each { |c| print $"    - ($c.name): (ansi yellow)($c.size)(ansi reset)" }
+    print $"    Total cache: (ansi cyan)($cache_total)(ansi reset)"
+    print ""
+    
+    # Version directories
+    let versions = (find-orphaned-versions)
+    if ($versions | length) > 0 {
+        let version_total = ($versions | get size | math sum)
+        print $"  Version directories:"
+        $versions | each { |v| print $"    - ($v.name): (ansi yellow)($v.size)(ansi reset)" }
+        print $"    Total: (ansi cyan)($version_total)(ansi reset)"
+        print ""
+    }
+    
+    # Stale workspaces
+    let stale = (find-stale-workspaces)
+    if ($stale | length) > 0 {
+        let stale_total = ($stale | get size | math sum)
+        print $"  Stale workspaces \(($stale | length) found\):"
+        $stale | first 5 | each { |s| 
+            let status = if $s.orphaned { "(orphaned)" } else { "(stale)" }
+            print $"    - ($s.id): (ansi yellow)($s.size)(ansi reset) ($status)"
+        }
+        if ($stale | length) > 5 {
+            print $"    ... and (($stale | length) - 5) more"
+        }
+        print $"    Total stale: (ansi cyan)($stale_total)(ansi reset)"
+        print ""
+    }
+    
+    # Return summary
+    {
+        cache_total: $cache_total
+        cache_dirs: $caches
+        version_dirs: $versions
+        stale_workspaces: $stale
+    }
+}
+
+# Clean Cursor caches
+def do-clean-cursor-caches [dry_run: bool, interactive: bool] {
+    let caches = (find-cursor-caches)
+    let total = ($caches | get size | math sum)
+    
+    if ($caches | length) == 0 {
+        success "No Cursor caches to clean"
+        return
+    }
+    
+    print $"(ansi white_bold)Cursor caches to clean:(ansi reset)"
+    $caches | each { |c| print $"  - ($c.name): (ansi yellow)($c.size)(ansi reset)" }
+    print $"  Total: (ansi cyan)($total)(ansi reset)"
+    print ""
+    
+    if $dry_run {
+        warn "[DRY RUN] Would clean Cursor caches"
+        return
+    }
+    
+    if $interactive {
+        if not (confirm "Clean Cursor caches?") {
+            print "Cancelled."
+            return
+        }
+    }
+    
+    $caches | each { |c|
+        print $"Cleaning: ($c.path)"
+        rm -rf $c.path
+    }
+    
+    success $"Cleaned ($total) from Cursor caches"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ANALYSIS FUNCTIONS
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -162,12 +328,17 @@ def analyze-garbage [] {
         print ""
     }
     
+    # Cursor-specific analysis
+    print ""
+    let cursor_analysis = (analyze-cursor)
+    
     # Return summary
     {
         dead_paths: $dead_count
         dead_size: $dead_size
         system_generations: ($sys_gens | length)
         user_generations: ($user_gens | length)
+        cursor: $cursor_analysis
     }
 }
 
@@ -357,6 +528,8 @@ Commands:
     generations     Manage system generations
     optimize        Run store optimization
     full            Full cleanup (generations + gc + optimize)
+    cursor          Clean Cursor caches only
+    cursor-analyze  Analyze Cursor disk usage only
 
 Options:
     -h, --help              Show this help
@@ -370,6 +543,9 @@ Examples:
     nu gc-helper.nu collect --dry-run         # Dry-run garbage collection
     nu gc-helper.nu generations --keep 3      # Keep only last 3 generations
     nu gc-helper.nu full --yes                # Full cleanup, no prompts
+    nu gc-helper.nu cursor                    # Clean Cursor caches (interactive)
+    nu gc-helper.nu cursor -y                 # Clean Cursor caches (no prompts)
+    nu gc-helper.nu cursor-analyze            # Show only Cursor disk usage
 
 Safety Features:
     - Shows space that will be freed before any action
@@ -397,6 +573,12 @@ Safety Features:
         "generations" => { do-generations $dry_run $interactive $keep }
         "optimize" => { do-optimize $dry_run $interactive }
         "full" => { do-full $dry_run $interactive $keep }
+        "cursor" => { 
+            print $"(ansi white_bold)Cursor-Specific Cleanup(ansi reset)"
+            print ""
+            do-clean-cursor-caches $dry_run $interactive
+        }
+        "cursor-analyze" => { analyze-cursor | ignore }
         _ => {
             error $"Unknown command: ($cmd)"
             print "Use --help for usage information"
