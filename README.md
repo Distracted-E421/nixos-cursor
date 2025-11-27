@@ -1,6 +1,6 @@
 # nixos-cursor
 
-**Status**: v0.1.1 (Stable) - **48 Versions Available**  
+**Status**: v0.1.2 (Stable) - **48 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)

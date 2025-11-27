@@ -167,7 +167,7 @@ pkill -f 'mcp-server'
 
 **Cause**: The `npx` command downloads MCP packages on first run. Some npm packages may have initialization prompts that don't handle terminal I/O properly.
 
-**Solution** (v0.1.1+): The Home Manager module now:
+**Solution** (v0.1.2+): The Home Manager module now:
 
 1. **Pre-caches packages** during `home-manager switch` activation
 2. **Uses wrapper scripts** with `NPM_CONFIG_YES=true` and `CI=true` environment variables
@@ -315,6 +315,6 @@ This would make agents part of your declarative config.
 
 ---
 
-**Last Updated**: 2025-11-26 (v0.1.1)  
+**Last Updated**: 2025-11-27 (v0.1.2)  
 **Status**: Documented  
 **See Also**: [VERSION_MANAGER_GUIDE.md](../VERSION_MANAGER_GUIDE.md) for multi-version usage

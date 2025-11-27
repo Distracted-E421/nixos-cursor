@@ -2,7 +2,7 @@
 
 > **⚠️ Internal Roadmap Document**  
 > This is a planning document for a future feature (multi-window focus handling).  
-> It is **not currently implemented** in nixos-cursor v0.1.1.  
+> It is **not currently implemented** in nixos-cursor v0.1.2.  
 > See the [Roadmap](../README.md#-roadmap) for planned features.
 
 **Date**: 2025-11-19  

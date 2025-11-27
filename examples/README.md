@@ -3,7 +3,7 @@
 Real-world configuration examples for different use cases.
 
 **Repository**: [github.com/Distracted-E421/nixos-cursor](https://github.com/Distracted-E421/nixos-cursor)  
-**Version**: v0.1.1 - 37 Cursor versions available, secrets support added
+**Version**: v0.1.2 - 37 Cursor versions available, secrets support added
 
 ---
 

@@ -1,6 +1,6 @@
 # Cursor Version Manager Guide
 
-## v0.1.1 - The Complete Multi-Version Solution
+## v0.1.2 - The Complete Multi-Version Solution
 
 We have implemented a **robust, production-ready solution** for managing **37 historical Cursor versions** on NixOS. This system addresses the deprecation of custom modes by allowing you to run any stable version of Cursor that preserves your workflow.
 

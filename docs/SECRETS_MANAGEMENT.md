@@ -288,7 +288,7 @@ programs.cursor = {
 
 ---
 
-## nixos-cursor Module Design (Implemented in v0.1.1)
+## nixos-cursor Module Design (Implemented in v0.1.2)
 
 The Home Manager module now has first-class secrets support via `tokenFile`:
 
