@@ -482,7 +482,6 @@ pkgs.writers.writePython3Bin "cursor-manager"
             except Exception as e:
                 messagebox.showerror("Launch Error", f"Failed to launch: {e}")
 
-
         def analyze_disk(self):
             """Analyze Cursor disk usage"""
             try:
@@ -593,7 +592,8 @@ pkgs.writers.writePython3Bin "cursor-manager"
                         orphans.append((path, entry, size))
 
             if not orphans:
-                messagebox.showinfo("Clean Orphans", "No orphaned directories found!")
+                messagebox.showinfo(
+                    "Clean Orphans", "No orphaned directories found!")
                 return
 
             total_size = sum(s for _, _, s in orphans)
