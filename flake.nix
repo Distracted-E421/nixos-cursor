@@ -27,11 +27,25 @@
       mcp-servers-nix,
     }:
     let
-      systems = [
+      # Linux systems (full support)
+      linuxSystems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
+      
+      # Darwin systems (experimental)
+      darwinSystems = [
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      
+      # All systems
+      systems = linuxSystems ++ darwinSystems;
       forAllSystems = nixpkgs.lib.genAttrs systems;
+      
+      # Helpers for platform-specific builds
+      forLinuxSystems = nixpkgs.lib.genAttrs linuxSystems;
+      forDarwinSystems = nixpkgs.lib.genAttrs darwinSystems;
 
       # Helper to create app entries from packages
       mkApp = pkg: mainProgram: {
@@ -48,18 +62,32 @@
             inherit system;
             config.allowUnfree = true; # Cursor is proprietary
           };
-        in
-        let
-          # Multi-version cursor system
-          cursorVersions = pkgs.callPackage ./cursor-versions.nix { };
+          
+          # Detect platform type
+          isLinux = pkgs.stdenv.isLinux;
+          isDarwin = pkgs.stdenv.isDarwin;
+          
+          # Linux: Full multi-version system
+          cursorVersions = if isLinux then pkgs.callPackage ./cursor-versions.nix { } else null;
+          
+          # Darwin: Experimental single-version support
+          # TODO: Add multi-version support for Darwin
+          cursorDarwin = if isDarwin then pkgs.callPackage ./cursor/darwin.nix {
+            version = "2.1.34";
+            srcUrl = "https://downloads.cursor.com/production/609c37304ae83141fd217c4ae638bf532185650f/darwin/universal/Cursor-darwin-universal.dmg";
+            hashUniversal = "sha256-PLACEHOLDER_NEEDS_VERIFICATION";
+          } else null;
         in
         {
           default = self.packages.${system}.cursor;
 
-          # Main cursor package (2.0.77 - targeted stable)
-          inherit (cursorVersions) cursor;
-
-          # Version-specific packages for running multiple instances (48 total)
+          # Main cursor package
+          # Linux: 2.0.77 (targeted stable with custom modes)
+          # Darwin: 2.1.34 (latest available, experimental)
+          cursor = if isLinux then cursorVersions.cursor else cursorDarwin;
+        }
+        # Linux-only: Version-specific packages for running multiple instances (48 total)
+        // pkgs.lib.optionalAttrs isLinux {
           # Latest Era - 2.1.x (11 versions)
           inherit (cursorVersions)
             cursor-2_1_34
@@ -155,12 +183,15 @@
         system:
         let
           pkgs = self.packages.${system};
+          lib = nixpkgs.lib;
+          isLinux = builtins.elem system linuxSystems;
         in
         {
           default = mkApp pkgs.cursor "cursor";
-
-          # Main cursor
           cursor = mkApp pkgs.cursor "cursor";
+        }
+        # Linux-only apps (multi-version + manager)
+        // lib.optionalAttrs isLinux {
           cursor-manager = mkApp pkgs.cursor-manager "cursor-manager";
           cursor-test = mkApp pkgs.cursor-test "cursor-test";
 
