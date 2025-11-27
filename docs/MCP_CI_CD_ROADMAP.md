@@ -5,6 +5,7 @@ This document outlines the roadmap for implementing a CI/CD pipeline for MCP ser
 ## Current State
 
 ### Active MCP Servers
+
 - **filesystem** - File operations (read, write, list directories)
 - **memory** - Persistent context storage
 - **nixos** - NixOS package/option search
@@ -12,16 +13,19 @@ This document outlines the roadmap for implementing a CI/CD pipeline for MCP ser
 - **playwright** - Browser automation
 
 ### Configuration
+
 MCP servers are configured in `~/.cursor/mcp.json` (managed by Home Manager).
 
 ## Phase 1: MCP Server Health Monitoring (Current)
 
 ### Goals
+
 1. Detect when MCP servers fail to start
 2. Monitor server health during Cursor sessions
 3. Alert on server crashes or timeouts
 
 ### Implementation
+
 ```yaml
 # .github/workflows/mcp-health.yml
 name: MCP Server Health Check
@@ -49,11 +53,13 @@ jobs:
 ## Phase 2: MCP Server Version Pinning
 
 ### Goals
+
 1. Pin MCP server versions for reproducibility
 2. Test upgrades before deployment
 3. Rollback capability
 
 ### Implementation
+
 ```nix
 # In Home Manager module
 programs.cursor.mcpServers = {
@@ -73,11 +79,13 @@ programs.cursor.mcpServers = {
 ## Phase 3: First-Class Tool Support
 
 ### Goals
+
 1. Support tools beyond MCP (future protocols)
 2. Unified tool configuration
 3. Tool capability discovery
 
 ### Proposed Architecture
+
 ```
 ┌─────────────────────────────────────────────┐
 │              Cursor IDE                      │
@@ -91,6 +99,7 @@ programs.cursor.mcpServers = {
 ```
 
 ### Tool Categories
+
 1. **MCP Servers** - Current implementation
 2. **LSP Extensions** - Language server protocol tools
 3. **Native Tools** - Built-in Cursor tools
@@ -99,6 +108,7 @@ programs.cursor.mcpServers = {
 ## Phase 4: CI/CD Pipeline
 
 ### Workflow Structure
+
 ```
 ┌────────────────────────────────────────────────────────┐
 │                    GitHub Actions                       │
@@ -119,12 +129,14 @@ programs.cursor.mcpServers = {
 ```
 
 ### CI Jobs
+
 1. **build-mcp-packages** - Build all MCP server packages
 2. **test-mcp-protocol** - Verify MCP protocol compliance
 3. **test-tool-integration** - Test tool invocation
 4. **deploy-to-cachix** - Push built packages to cache
 
 ### CD Jobs
+
 1. **update-home-manager** - Update module with new versions
 2. **notify-users** - Create release notes
 3. **rollback-on-failure** - Automatic rollback mechanism
@@ -132,11 +144,13 @@ programs.cursor.mcpServers = {
 ## Phase 5: Tool Discovery and Registration
 
 ### Goals
+
 1. Automatic tool discovery from flake
 2. Tool capability introspection
 3. Dynamic tool loading
 
 ### Implementation
+
 ```nix
 # flake.nix
 {
@@ -202,4 +216,3 @@ To contribute to MCP server development:
 2. Add Nix packaging in `mcp/<server>/default.nix`
 3. Add tests in `tests/mcp/<server>/`
 4. Update this roadmap with new capabilities
-

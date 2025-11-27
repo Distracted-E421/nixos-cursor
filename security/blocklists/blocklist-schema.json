@@ -4,7 +4,11 @@
   "title": "NPM Security Blocklist",
   "description": "Schema for npm package security blocklists",
   "type": "object",
-  "required": ["version", "lastUpdated", "packages"],
+  "required": [
+    "version",
+    "lastUpdated",
+    "packages"
+  ],
   "properties": {
     "version": {
       "type": "string",
@@ -61,7 +65,11 @@
   "definitions": {
     "blockedPackage": {
       "type": "object",
-      "required": ["name", "versions", "reason"],
+      "required": [
+        "name",
+        "versions",
+        "reason"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -79,7 +87,10 @@
           "description": "Why this package is blocked"
         },
         "cve": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "CVE identifier if applicable"
         },
         "discovered": {
