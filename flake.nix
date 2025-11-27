@@ -1,5 +1,5 @@
 {
-  description = "Cursor IDE with MCP Servers for NixOS";
+  description = "Cursor IDE with MCP Servers for NixOS and macOS";
 
   nixConfig = {
     extra-substituters = [
@@ -27,17 +27,89 @@
       mcp-servers-nix,
     }:
     let
-      systems = [
+      # All supported systems
+      # Linux: Full support with AppImage
+      # Darwin: Full support with DMG (hashes need verification on macOS)
+      linuxSystems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
+
+      darwinSystems = [
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+
+      systems = linuxSystems ++ darwinSystems;
       forAllSystems = nixpkgs.lib.genAttrs systems;
+      forLinuxSystems = nixpkgs.lib.genAttrs linuxSystems;
+      forDarwinSystems = nixpkgs.lib.genAttrs darwinSystems;
 
       # Helper to create app entries from packages
       mkApp = pkg: mainProgram: {
         type = "app";
         program = "${pkg}/bin/${mainProgram}";
       };
+
+      # All version names (shared across platforms)
+      allVersions = [
+        # 2.1.x Latest Era (11 versions)
+        "cursor-2_1_34"
+        "cursor-2_1_32"
+        "cursor-2_1_26"
+        "cursor-2_1_25"
+        "cursor-2_1_24"
+        "cursor-2_1_20"
+        "cursor-2_1_19"
+        "cursor-2_1_17"
+        "cursor-2_1_15"
+        "cursor-2_1_7"
+        "cursor-2_1_6"
+        # 2.0.x Custom Modes Era (17 versions)
+        "cursor-2_0_77"
+        "cursor-2_0_75"
+        "cursor-2_0_74"
+        "cursor-2_0_73"
+        "cursor-2_0_69"
+        "cursor-2_0_64"
+        "cursor-2_0_63"
+        "cursor-2_0_60"
+        "cursor-2_0_57"
+        "cursor-2_0_54"
+        "cursor-2_0_52"
+        "cursor-2_0_43"
+        "cursor-2_0_40"
+        "cursor-2_0_38"
+        "cursor-2_0_34"
+        "cursor-2_0_32"
+        "cursor-2_0_11"
+        # 1.7.x Classic Era (19 versions)
+        "cursor-1_7_54"
+        "cursor-1_7_53"
+        "cursor-1_7_52"
+        "cursor-1_7_46"
+        "cursor-1_7_44"
+        "cursor-1_7_43"
+        "cursor-1_7_40"
+        "cursor-1_7_39"
+        "cursor-1_7_38"
+        "cursor-1_7_36"
+        "cursor-1_7_33"
+        "cursor-1_7_28"
+        "cursor-1_7_25"
+        "cursor-1_7_23"
+        "cursor-1_7_22"
+        "cursor-1_7_17"
+        "cursor-1_7_16"
+        "cursor-1_7_12"
+        "cursor-1_7_11"
+        # 1.6.x Legacy (1 version)
+        "cursor-1_6_45"
+      ];
+
+      # Convert package name to binary name (cursor-2_1_34 -> cursor-2.1.34)
+      pkgToBinary =
+        name: if name == "cursor" then "cursor" else builtins.replaceStrings [ "_" ] [ "." ] name;
     in
     {
       # Package outputs
@@ -48,10 +120,19 @@
             inherit system;
             config.allowUnfree = true; # Cursor is proprietary
           };
-        in
-        let
-          # Multi-version cursor system
-          cursorVersions = pkgs.callPackage ./cursor-versions.nix { };
+
+          lib = pkgs.lib;
+          isLinux = lib.hasInfix "linux" system;
+          isDarwin = lib.hasInfix "darwin" system;
+
+          # Load platform-specific version module
+          cursorVersions =
+            if isLinux then
+              pkgs.callPackage ./cursor-versions.nix { }
+            else if isDarwin then
+              pkgs.callPackage ./cursor-versions-darwin.nix { }
+            else
+              throw "Unsupported system: ${system}";
         in
         {
           default = self.packages.${system}.cursor;
@@ -121,7 +202,9 @@
 
           # Legacy Era - 1.6.x (1 version)
           inherit (cursorVersions) cursor-1_6_45;
-
+        }
+        # Linux-specific extras
+        // lib.optionalAttrs isLinux {
           # Isolated test instance (separate profile for testing)
           cursor-test =
             (pkgs.callPackage ./cursor {
@@ -145,8 +228,28 @@
                 '';
               });
 
-          # Cursor Version Manager (GUI Launcher)
+          # Cursor Version Manager (Rust CLI - Linux only for now)
           cursor-manager = pkgs.callPackage ./cursor/manager.nix { };
+        }
+        # Darwin-specific extras
+        // lib.optionalAttrs isDarwin {
+          # Darwin test instance
+          cursor-test = (
+            pkgs.callPackage ./cursor/darwin.nix {
+              version = "2.0.77";
+              srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/x64/Cursor-darwin-x64.dmg";
+              srcUrlArm64 = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/arm64/Cursor-darwin-arm64.dmg";
+              srcUrlUniversal = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/universal/Cursor-darwin-universal.dmg";
+              binaryName = "cursor-test";
+              shareDirName = "cursor-test";
+              commandLineArgs = [
+                "--user-data-dir"
+                "\\$HOME/.cursor-test"
+                "--extensions-dir"
+                "\\$HOME/.cursor-test/extensions"
+              ];
+            }
+          );
         }
       );
 
@@ -155,13 +258,14 @@
         system:
         let
           pkgs = self.packages.${system};
+          lib = nixpkgs.lib;
+          isLinux = lib.hasInfix "linux" system;
         in
         {
           default = mkApp pkgs.cursor "cursor";
 
           # Main cursor
           cursor = mkApp pkgs.cursor "cursor";
-          cursor-manager = mkApp pkgs.cursor-manager "cursor-manager";
           cursor-test = mkApp pkgs.cursor-test "cursor-test";
 
           # 2.1.x Latest Era (11 versions)
