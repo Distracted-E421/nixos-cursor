@@ -1,19 +1,29 @@
 # nixos-cursor
 
-**Status**: v0.1.2 (Stable) - **48 Versions Available**  
+**Status**: v0.1.3 (Stable) - **48 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
 
-A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **37 historical versions** spanning three eras for ultimate workflow stability.
+A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **48 historical versions** spanning four eras for ultimate workflow stability.
 
 > **Why Multi-Version Support?**
-> With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
+> With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **48 versions** (spanning 2.1.x, 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
 >
 > Multi-version packages install to unique paths (`/share/cursor-VERSION/`, `/bin/cursor-VERSION`), enabling simultaneous installation without path conflicts. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
 
-**Version Coverage:**
+**Supported Platforms:**
 
+| Platform | Support Level | Format |
+|----------|--------------|--------|
+| x86_64-linux | ✅ Full | AppImage |
+| aarch64-linux | ✅ Full | AppImage |
+| x86_64-darwin | 🧪 Experimental | DMG |
+| aarch64-darwin | 🧪 Experimental | DMG (Universal) |
+
+**Version Coverage (48 total):**
+
+- **2.1.x Latest Era**: 11 versions (2.1.6 - 2.1.34)
 - **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
 - **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
 - **1.6.x Legacy Era**: 1 version (1.6.45)
