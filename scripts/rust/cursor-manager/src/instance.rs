@@ -1,7 +1,12 @@
 //! Instance management for isolated Cursor environments
+//! 
+//! NOTE: This module is infrastructure for future multi-instance support.
+//! Currently unused but kept for planned features.
+
+#![allow(dead_code)]
 
 use std::path::PathBuf;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::config::Config;

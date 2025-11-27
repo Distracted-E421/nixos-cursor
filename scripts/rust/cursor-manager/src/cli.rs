@@ -6,8 +6,7 @@ use console::{style, Emoji};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::config::Config;
-use crate::version::{Version, VersionManager};
-use crate::instance::InstanceManager;
+use crate::version::VersionManager;
 use crate::download::Downloader;
 
 static CHECK: Emoji = Emoji("✓ ", "* ");

@@ -17,8 +17,8 @@ clap = { version = "4.5", features = ["derive", "env"] }
 # Async runtime
 tokio = { version = "1.40", features = ["full"] }
 
-# HTTP client
-reqwest = { version = "0.12", features = ["json", "stream"] }
+# HTTP client (rustls for cross-platform support - no OpenSSL needed)
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 futures-util = "0.3"
 
 # Serialization
