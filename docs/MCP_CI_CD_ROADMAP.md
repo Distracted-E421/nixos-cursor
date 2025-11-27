@@ -177,6 +177,17 @@ programs.cursor.mcpServers = {
 | Phase 4 | Q3 2025 | 📋 Planned |
 | Phase 5 | Q4 2025 | 📋 Planned |
 
+## NPM Security Integration
+
+**NEW (November 2025)**: In response to the Shai-Hulud supply chain attacks, we've implemented comprehensive npm security measures:
+
+- **Blocklist enforcement** - Known malicious packages blocked at install time
+- **Integrity verification** - Lockfile-based SRI hash verification
+- **Pattern scanning** - IOC detection for credential theft, file exfiltration
+- **CI/CD integration** - GitHub Actions workflow for automated scanning
+
+See: [NPM Security Architecture](./NPM_SECURITY_ARCHITECTURE.md)
+
 ## Related Documentation
 
 - [MCP GitHub Setup](./MCP_GITHUB_SETUP.md)

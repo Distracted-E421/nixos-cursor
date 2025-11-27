@@ -427,6 +427,12 @@
         # MCP server packages from mcp-servers-nix
         mcp-server-memory = mcp-servers-nix.packages.${final.system}.mcp-server-memory or null;
         playwright-mcp = mcp-servers-nix.packages.${final.system}.playwright-mcp or null;
+
+        # NPM security module for MCP servers
+        npm-security = final.callPackage ./security { };
       };
+
+      # Security module (standalone import)
+      lib.npmSecurity = import ./security;
     };
 }

@@ -1,0 +1,194 @@
+{
+  "$schema": "./blocklist-schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2025-11-27T00:00:00Z",
+  "description": "Known malicious npm packages - DO NOT INSTALL",
+  "sources": [
+    "https://www.itpro.com/security/cyber-attacks/shai-hulud-malware",
+    "https://socket.dev/npm/issue",
+    "https://snyk.io/vuln"
+  ],
+  "packages": {
+    "historical": {
+      "description": "Historically compromised packages (may have clean versions now)",
+      "packages": [
+        {
+          "name": "event-stream",
+          "versions": ["3.3.6"],
+          "reason": "Contained flatmap-stream malware (2018)",
+          "cve": null,
+          "discovered": "2018-11-26"
+        },
+        {
+          "name": "flatmap-stream",
+          "versions": ["*"],
+          "reason": "Malicious package targeting bitcoin wallets",
+          "cve": null,
+          "discovered": "2018-11-26"
+        },
+        {
+          "name": "ua-parser-js",
+          "versions": ["0.7.29", "0.8.0", "1.0.0"],
+          "reason": "Hijacked to install cryptominers and password stealers",
+          "cve": "CVE-2021-41265",
+          "discovered": "2021-10-22"
+        },
+        {
+          "name": "coa",
+          "versions": ["2.0.3", "2.0.4", "2.1.1", "2.1.3", "3.0.1", "3.1.3"],
+          "reason": "Hijacked to install malware",
+          "cve": null,
+          "discovered": "2021-11-04"
+        },
+        {
+          "name": "rc",
+          "versions": ["1.2.9", "1.3.9", "2.3.9"],
+          "reason": "Hijacked to install malware",
+          "cve": null,
+          "discovered": "2021-11-04"
+        },
+        {
+          "name": "colors",
+          "versions": ["1.4.1", "1.4.2"],
+          "reason": "Intentionally corrupted by maintainer (protestware)",
+          "cve": null,
+          "discovered": "2022-01-08"
+        },
+        {
+          "name": "faker",
+          "versions": ["6.6.6"],
+          "reason": "Intentionally corrupted by maintainer (protestware)",
+          "cve": null,
+          "discovered": "2022-01-08"
+        },
+        {
+          "name": "node-ipc",
+          "versions": ["10.1.1", "10.1.2", "10.1.3"],
+          "reason": "Protestware that overwrites files on Russian/Belarusian IPs",
+          "cve": "CVE-2022-23812",
+          "discovered": "2022-03-15"
+        }
+      ]
+    },
+    "typosquatting": {
+      "description": "Typosquatting packages mimicking popular packages",
+      "packages": [
+        {
+          "name": "loadsh",
+          "versions": ["*"],
+          "reason": "Typosquat of lodash",
+          "discovered": "2019-08-01"
+        },
+        {
+          "name": "crossenv",
+          "versions": ["*"],
+          "reason": "Typosquat of cross-env, steals environment variables",
+          "discovered": "2017-08-01"
+        },
+        {
+          "name": "cross-env.js",
+          "versions": ["*"],
+          "reason": "Typosquat of cross-env",
+          "discovered": "2017-08-01"
+        },
+        {
+          "name": "mongose",
+          "versions": ["*"],
+          "reason": "Typosquat of mongoose",
+          "discovered": "2018-05-01"
+        },
+        {
+          "name": "babelcli",
+          "versions": ["*"],
+          "reason": "Typosquat of babel-cli",
+          "discovered": "2017-08-01"
+        },
+        {
+          "name": "expresss",
+          "versions": ["*"],
+          "reason": "Typosquat of express",
+          "discovered": "2020-01-01"
+        },
+        {
+          "name": "electorn",
+          "versions": ["*"],
+          "reason": "Typosquat of electron",
+          "discovered": "2020-01-01"
+        }
+      ]
+    },
+    "shai_hulud_2025": {
+      "description": "Packages compromised in Shai-Hulud supply chain attack (November 2025)",
+      "packages": [
+        {
+          "name": "_placeholder_shai_hulud_1",
+          "versions": ["*"],
+          "reason": "Shai-Hulud campaign - credential theft payload",
+          "discovered": "2025-11-01",
+          "note": "Placeholder - real package names to be added as discovered"
+        }
+      ],
+      "indicators_of_compromise": {
+        "description": "Patterns to detect Shai-Hulud payloads",
+        "postinstall_patterns": [
+          "curl.*|.*bash",
+          "wget.*|.*sh",
+          "base64.*decode",
+          "eval\\(.*atob",
+          "/dev/tcp/",
+          "nc\\s+-e",
+          "\\$\\(curl",
+          "process\\.env\\[.*TOKEN",
+          "process\\.env\\[.*KEY",
+          "process\\.env\\[.*SECRET",
+          "process\\.env\\[.*PASSWORD",
+          "fs\\.readFileSync.*\\.ssh",
+          "fs\\.readFileSync.*\\.aws",
+          "fs\\.readFileSync.*\\.npmrc"
+        ],
+        "suspicious_domains": [
+          "*.workers.dev",
+          "*.pages.dev",
+          "*.netlify.app",
+          "*.vercel.app",
+          "pastebin.com",
+          "hastebin.com",
+          "ghostbin.com"
+        ],
+        "suspicious_behaviors": [
+          "Accesses SSH keys",
+          "Accesses AWS credentials",
+          "Accesses npm tokens",
+          "Exfiltrates environment variables",
+          "Downloads and executes remote scripts",
+          "Creates persistent backdoors",
+          "Modifies shell profiles"
+        ]
+      }
+    },
+    "always_block": {
+      "description": "Packages that should never be installed regardless of version",
+      "packages": [
+        {
+          "name": "flatmap-stream",
+          "versions": ["*"],
+          "reason": "Purely malicious package, no legitimate use"
+        }
+      ]
+    }
+  },
+  "rules": {
+    "block_unpublished_republished": {
+      "enabled": true,
+      "description": "Block packages that were unpublished and republished (common attack vector)"
+    },
+    "block_new_maintainer_old_package": {
+      "enabled": true,
+      "description": "Alert when package has new maintainer but is an old, popular package"
+    },
+    "block_install_scripts_by_default": {
+      "enabled": true,
+      "description": "Disable postinstall/preinstall scripts unless explicitly whitelisted"
+    }
+  }
+}
