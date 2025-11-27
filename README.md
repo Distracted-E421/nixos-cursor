@@ -23,13 +23,14 @@ A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in 
 
 ---
 
-### 🍎 macOS Users: We Need Your Help!
+### 🍎 macOS Users: We Need Your Help
 
 > **Darwin support is built but needs hash verification!**
 >
 > We've implemented full 48-version support for macOS (both Intel and Apple Silicon), but we need macOS users to help compute the SHA256 hashes for the DMG files. This is a 5-minute task that makes a huge difference!
 >
 > **Quick contribution** (literally 5 minutes):
+>
 > ```bash
 > curl -L -o cursor.dmg "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/universal/Cursor-darwin-universal.dmg"
 > nix hash file cursor.dmg  # Copy this output and open an issue!
