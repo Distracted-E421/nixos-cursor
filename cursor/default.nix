@@ -43,7 +43,8 @@
   version ? "2.0.77", # Cursor version to build
   hash ? "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=", # AppImage hash for x86_64
   hashAarch64 ? "sha256-PLACEHOLDER_NEEDS_VERIFICATION", # AppImage hash for aarch64
-  srcUrl ? "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage", # Specific download URL (overrides default downloader.cursor.sh)
+  srcUrl ? null, # x86_64 download URL (null = use downloader.cursor.sh)
+  srcUrlAarch64 ? null, # aarch64 download URL (null = derive from srcUrl or use downloader.cursor.sh)
   localAppImage ? null, # Path to local AppImage file (for offline builds or DNS issues)
   commandLineArgs ? "", # Command-line arguments (string or list)
   shareDirName ? "cursor", # Directory name under /share/ (cursor or cursor-VERSION for multi-version)
@@ -61,19 +62,38 @@ let
   # This ensures that if we pass "$HOME/..." it gets expanded at runtime
   argsString = lib.concatMapStrings (arg: " \"${arg}\"") argsList;
 
+  # Derive aarch64 URL from x86_64 URL if not explicitly provided
+  # Pattern: .../linux/x64/Cursor-VERSION-x86_64.AppImage -> .../linux/arm64/Cursor-VERSION-aarch64.AppImage
+  deriveAarch64Url = x64Url:
+    if x64Url == null then null
+    else
+      builtins.replaceStrings 
+        ["/linux/x64/" "-x86_64.AppImage"] 
+        ["/linux/arm64/" "-aarch64.AppImage"] 
+        x64Url;
+
+  # Effective aarch64 URL (explicit or derived)
+  effectiveSrcUrlAarch64 = if srcUrlAarch64 != null then srcUrlAarch64 else deriveAarch64Url srcUrl;
+
   # Select source: local file > specific URL > standard URL
   appImageSrc =
     if localAppImage != null then
       # Use local AppImage (for DNS issues or offline builds)
       localAppImage
-    else if srcUrl != null then
-      # Use specific provided URL (for version pinning or alternate mirrors)
+    else if hostPlatform.system == "x86_64-linux" && srcUrl != null then
+      # Use provided x86_64 URL
       fetchurl {
         url = srcUrl;
         inherit hash;
       }
+    else if hostPlatform.system == "aarch64-linux" && effectiveSrcUrlAarch64 != null then
+      # Use provided or derived aarch64 URL
+      fetchurl {
+        url = effectiveSrcUrlAarch64;
+        hash = hashAarch64;
+      }
     else
-      # Use network fetch (normal path)
+      # Fall back to standard downloader.cursor.sh URLs
       let
         sources = {
           x86_64-linux = fetchurl {
