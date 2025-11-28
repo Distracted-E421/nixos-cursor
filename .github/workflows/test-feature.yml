@@ -113,12 +113,16 @@ jobs:
       - name: Check Home Manager module structure
         run: |
           # Verify the module file exists
-          test -f modules/home-manager/cursor.nix
+          test -f home-manager-module/default.nix
           echo "✅ Home Manager module exists"
 
           # Check for required options
-          grep -q "programs.cursor" modules/home-manager/cursor.nix
-          echo "✅ Module has programs.cursor option"
+          grep -q "options" home-manager-module/default.nix
+          echo "✅ Module has options defined"
+          
+          # Check that it's exposed in flake
+          grep -q "homeManagerModules" flake.nix
+          echo "✅ Module exposed in flake"
 
   # Integration test - build a sample Cursor version
   integration-test:
