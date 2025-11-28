@@ -14,56 +14,84 @@
       "packages": [
         {
           "name": "event-stream",
-          "versions": ["3.3.6"],
+          "versions": [
+            "3.3.6"
+          ],
           "reason": "Contained flatmap-stream malware (2018)",
           "cve": null,
           "discovered": "2018-11-26"
         },
         {
           "name": "flatmap-stream",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Malicious package targeting bitcoin wallets",
           "cve": null,
           "discovered": "2018-11-26"
         },
         {
           "name": "ua-parser-js",
-          "versions": ["0.7.29", "0.8.0", "1.0.0"],
+          "versions": [
+            "0.7.29",
+            "0.8.0",
+            "1.0.0"
+          ],
           "reason": "Hijacked to install cryptominers and password stealers",
           "cve": "CVE-2021-41265",
           "discovered": "2021-10-22"
         },
         {
           "name": "coa",
-          "versions": ["2.0.3", "2.0.4", "2.1.1", "2.1.3", "3.0.1", "3.1.3"],
+          "versions": [
+            "2.0.3",
+            "2.0.4",
+            "2.1.1",
+            "2.1.3",
+            "3.0.1",
+            "3.1.3"
+          ],
           "reason": "Hijacked to install malware",
           "cve": null,
           "discovered": "2021-11-04"
         },
         {
           "name": "rc",
-          "versions": ["1.2.9", "1.3.9", "2.3.9"],
+          "versions": [
+            "1.2.9",
+            "1.3.9",
+            "2.3.9"
+          ],
           "reason": "Hijacked to install malware",
           "cve": null,
           "discovered": "2021-11-04"
         },
         {
           "name": "colors",
-          "versions": ["1.4.1", "1.4.2"],
+          "versions": [
+            "1.4.1",
+            "1.4.2"
+          ],
           "reason": "Intentionally corrupted by maintainer (protestware)",
           "cve": null,
           "discovered": "2022-01-08"
         },
         {
           "name": "faker",
-          "versions": ["6.6.6"],
+          "versions": [
+            "6.6.6"
+          ],
           "reason": "Intentionally corrupted by maintainer (protestware)",
           "cve": null,
           "discovered": "2022-01-08"
         },
         {
           "name": "node-ipc",
-          "versions": ["10.1.1", "10.1.2", "10.1.3"],
+          "versions": [
+            "10.1.1",
+            "10.1.2",
+            "10.1.3"
+          ],
           "reason": "Protestware that overwrites files on Russian/Belarusian IPs",
           "cve": "CVE-2022-23812",
           "discovered": "2022-03-15"
@@ -75,43 +103,57 @@
       "packages": [
         {
           "name": "loadsh",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of lodash",
           "discovered": "2019-08-01"
         },
         {
           "name": "crossenv",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of cross-env, steals environment variables",
           "discovered": "2017-08-01"
         },
         {
           "name": "cross-env.js",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of cross-env",
           "discovered": "2017-08-01"
         },
         {
           "name": "mongose",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of mongoose",
           "discovered": "2018-05-01"
         },
         {
           "name": "babelcli",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of babel-cli",
           "discovered": "2017-08-01"
         },
         {
           "name": "expresss",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of express",
           "discovered": "2020-01-01"
         },
         {
           "name": "electorn",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Typosquat of electron",
           "discovered": "2020-01-01"
         }
@@ -122,7 +164,9 @@
       "packages": [
         {
           "name": "_placeholder_shai_hulud_1",
-          "versions": ["*"],
+          "versions": [
+            "*"
+          ],
           "reason": "Shai-Hulud campaign - credential theft payload",
           "discovered": "2025-11-01",
           "note": "Placeholder - real package names to be added as discovered"
@@ -168,13 +212,7 @@
     },
     "always_block": {
       "description": "Packages that should never be installed regardless of version",
-      "packages": [
-        {
-          "name": "flatmap-stream",
-          "versions": ["*"],
-          "reason": "Purely malicious package, no legitimate use"
-        }
-      ]
+      "packages": []
     }
   },
   "rules": {

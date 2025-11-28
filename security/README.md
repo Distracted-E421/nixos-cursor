@@ -19,6 +19,7 @@ MCP servers pull npm packages that have **deep dependency trees**:
 ## 🛡️ Features
 
 ### 1. Blocklist Enforcement
+
 Known malicious packages are blocked before they can execute:
 
 ```bash
@@ -28,6 +29,7 @@ cursor-security check event-stream
 ```
 
 ### 2. Integrity Verification
+
 Lockfiles with SRI hashes ensure packages haven't been tampered with:
 
 ```bash
@@ -36,6 +38,7 @@ cursor-security generate-lockfile @modelcontextprotocol/server-filesystem
 ```
 
 ### 3. Pattern Scanning
+
 Scan packages for suspicious patterns before installation:
 
 ```bash
@@ -44,6 +47,7 @@ cursor-security scan @some/suspicious-package
 ```
 
 ### 4. CI/CD Integration
+
 GitHub Actions workflow automatically scans all MCP packages on every PR.
 
 ## 📦 Files
@@ -134,7 +138,45 @@ nix flake update
 ```
 
 To report a malicious package, open an issue or PR at:
-https://github.com/e421/nixos-cursor/issues
+<https://github.com/e421/nixos-cursor/issues>
+
+## 🧪 Testing
+
+The security module includes comprehensive test suites written in **Nushell** (preferred) with bash fallbacks:
+
+### Nushell Tests (Recommended)
+
+```nu
+# Run all tests (offline)
+nu security/tests/run-all-tests.nu
+
+# Run all tests including network tests
+nu security/tests/run-all-tests.nu --network
+
+# Run individual test suites
+nu security/tests/test-blocklist.nu    # Blocklist validation
+nu security/tests/test-scanner.nu      # Scanner pattern detection
+nu security/tests/test-scanner.nu --network  # Include live package scanning
+```
+
+### Bash Tests (Legacy)
+
+```bash
+# These exist for compatibility but Nushell versions are preferred
+./security/tests/run-all-tests.sh
+./security/tests/test-blocklist.sh
+./security/tests/test-scanner.sh --with-network
+```
+
+### Test Coverage
+
+- **Blocklist Tests**: 64 tests validating blocklist structure, malicious package detection, and false positive prevention
+- **Scanner Tests**: Pattern detection, install script identification, synthetic malware detection
+- **Network Tests**: Real-world validation against npm packages (requires --with-network)
+
+### Whitelisting
+
+Known-legitimate pattern usage is documented in `tests/whitelist.json`. This prevents false positives for packages that legitimately use patterns that might otherwise trigger warnings (e.g., GitHub MCP server using base64 for API responses).
 
 ## 📚 References
 

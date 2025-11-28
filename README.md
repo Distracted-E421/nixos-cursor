@@ -76,6 +76,48 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ---
 
+## 📦 Install Size & Requirements
+
+**Disk Space Requirements** (Fresh NixOS 25.11 KDE Desktop):
+
+| Configuration | Effective New Space | Download Size (Cachix) |
+|---------------|---------------------|------------------------|
+| **Minimal** (cursor only) | ~500-800 MB | ~400 MB |
+| **Standard** (+ MCP servers) | ~800-1200 MB | ~500 MB |
+| **Full** (+ Playwright browser) | ~2-3 GB | ~1.5 GB |
+
+**Why "Effective New Space"?** Many dependencies (GTK3, mesa, glib) are already included in a standard NixOS KDE desktop. The numbers above represent actual *additional* disk usage.
+
+### Component Breakdown
+
+| Component | Closure Size | Already in KDE | Effective New |
+|-----------|--------------|----------------|---------------|
+| Cursor 2.0.77 (AppImage) | 1798 MB | ~1300 MB | ~500 MB |
+| cursor-manager (GUI) | 194 MB | ~150 MB | ~50 MB |
+| Node.js 22 (MCP servers) | 210 MB | ~100 MB | ~110 MB |
+| uv (mcp-nixos) | 104 MB | ~80 MB | ~25 MB |
+| Google Chrome (Playwright) | 1689 MB | ~800 MB | ~900 MB |
+
+### 🚀 Cachix Binary Cache
+
+All 48 Cursor versions are **pre-built and cached** on `nixos-cursor.cachix.org`:
+
+```
+Without Cachix:  Build from AppImage = ~5-10 minutes + 1.8GB download
+With Cachix:     Fetch pre-built    = ~30 seconds + 400MB download
+```
+
+The flake automatically configures Cachix - no setup required!
+
+### Space-Saving Tips
+
+1. **Use one version**: If you don't need multi-version, stick with `cursor` (saves ~500MB per additional version)
+2. **Skip Playwright browser**: Only enable `mcp.playwright.enable` if you need browser automation (~1.5GB)
+3. **Enable auto-cleanup**: cursor-manager can remove old versions automatically
+4. **npm lazy loading**: MCP npm packages only download on first use (~50-100MB in ~/.npm/)
+
+---
+
 ## Quick Start
 
 ### **Option A: Direct Package Installation (Recommended)**
