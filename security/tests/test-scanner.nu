@@ -49,7 +49,7 @@ def log-info [msg: string] {
 }
 
 # Load whitelist for false positive handling
-def load-whitelist [] -> record {
+def load-whitelist [] {
     if ($whitelist_file | path exists) {
         open $whitelist_file
     } else {
@@ -58,7 +58,7 @@ def load-whitelist [] -> record {
 }
 
 # Check if a package+pattern combo is whitelisted
-def is-whitelisted [pkg: string, pattern: string, whitelist: record] -> bool {
+def is-whitelisted [pkg: string, pattern: string, whitelist: record] {
     let pkg_entry = $whitelist.packages | get -i $pkg
     if ($pkg_entry | is-empty) {
         return false
@@ -72,7 +72,7 @@ def is-whitelisted [pkg: string, pattern: string, whitelist: record] -> bool {
 # Test: Synthetic malicious pattern detection
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-synthetic-malicious-detection [] -> record {
+def test-synthetic-malicious-detection [] {
     print ""
     print "═══ Test: Synthetic Malicious Pattern Detection ═══"
     
@@ -149,7 +149,7 @@ def test-synthetic-malicious-detection [] -> record {
 # Test: Install script detection
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-install-script-detection [] -> record {
+def test-install-script-detection [] {
     print ""
     print "═══ Test: Install Script Detection ═══"
     
@@ -216,7 +216,7 @@ def test-install-script-detection [] -> record {
 # Test: Safe packages should scan clean (network test)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-safe-packages-network [] -> record {
+def test-safe-packages-network [] {
     print ""
     print "═══ Test: Safe Packages Should Scan Clean ═══"
     
@@ -282,7 +282,7 @@ def test-safe-packages-network [] -> record {
 # Test: MCP packages should scan clean (network test)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-mcp-packages-network [] -> record {
+def test-mcp-packages-network [] {
     print ""
     print "═══ Test: MCP Packages Should Scan Clean ═══"
     
@@ -351,7 +351,7 @@ def main [
     --network  # Include network tests (slower)
 ] {
     print "╔═══════════════════════════════════════════════════════════════════╗"
-    print "║          NPM Security Scanner Test Suite (Nushell)                ║"
+    print "║          NPM Security Scanner Test Suite [Nushell]                ║"
     print "╚═══════════════════════════════════════════════════════════════════╝"
     print ""
     print $"Date: (date now | format date '%Y-%m-%d %H:%M:%S')"

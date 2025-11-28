@@ -71,13 +71,11 @@ jobs:
 
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Install nushell
-        run: nix profile install nixpkgs#nushell
-
-      - name: Run blocklist tests
+      - name: Run blocklist tests (Bash)
         run: |
           cd security/tests
-          nu run-all-tests.nu --verbose
+          chmod +x run-all-tests.sh test-blocklist.sh test-scanner.sh
+          ./run-all-tests.sh
         continue-on-error: true
 
       - name: Validate blocklist JSON

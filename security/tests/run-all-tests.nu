@@ -36,7 +36,7 @@ def main [
     
     # Run scanner tests
     print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    print $"(ansi blue)Running: Scanner Tests (offline)(ansi reset)"
+    print $"(ansi blue)Running: Scanner Tests [offline](ansi reset)"
     print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     let scanner_result = do { nu $"($script_dir)/test-scanner.nu" } | complete
@@ -51,7 +51,7 @@ def main [
     # Run network tests if requested
     if $network {
         print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        print $"(ansi blue)Running: Scanner Tests (with network)(ansi reset)"
+        print $"(ansi blue)Running: Scanner Tests [network](ansi reset)"
         print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         
         let network_result = do { nu $"($script_dir)/test-scanner.nu" --network } | complete
@@ -80,7 +80,7 @@ def main [
         print "  3. Test in a real Cursor installation"
         exit 0
     } else {
-        print $"(ansi red)($failed_suites) test suite(s) failed(ansi reset)"
+        print $"(ansi red)($failed_suites) test suite[s] failed(ansi reset)"
         print ""
         print "Fix failures before merging to main."
         exit 1

@@ -42,7 +42,7 @@ def log-info [msg: string] {
 }
 
 # Extract all blocked package names from blocklist
-def get-blocked-packages [blocklist: record] -> list<string> {
+def get-blocked-packages [blocklist: record] {
     $blocklist.packages
     | transpose key value
     | each { |row|
@@ -56,7 +56,7 @@ def get-blocked-packages [blocklist: record] -> list<string> {
 # Test: Blocklist file exists and is valid JSON
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-blocklist-exists [] -> record {
+def test-blocklist-exists [] {
     print ""
     print "═══ Test: Blocklist File Validity ═══"
     
@@ -110,7 +110,7 @@ def test-blocklist-exists [] -> record {
 # Test: Known malicious packages are in the blocklist
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-known-malicious-blocked [] -> record {
+def test-known-malicious-blocked [] {
     print ""
     print "═══ Test: Known Malicious Packages Are Blocked ═══"
     
@@ -155,7 +155,7 @@ def test-known-malicious-blocked [] -> record {
 # Test: Safe packages are NOT in the blocklist (false positive check)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-safe-packages-not-blocked [] -> record {
+def test-safe-packages-not-blocked [] {
     print ""
     print "═══ Test: Safe Packages Not Blocked (False Positive Check) ═══"
     
@@ -211,7 +211,7 @@ def test-safe-packages-not-blocked [] -> record {
 # Test: Version-specific blocking works correctly
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-version-specific-blocking [] -> record {
+def test-version-specific-blocking [] {
     print ""
     print "═══ Test: Version-Specific Blocking ═══"
     
@@ -274,7 +274,7 @@ def test-version-specific-blocking [] -> record {
 # Test: IOC patterns are valid regexes
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-ioc-patterns [] -> record {
+def test-ioc-patterns [] {
     print ""
     print "═══ Test: IOC Patterns ═══"
     
@@ -310,7 +310,7 @@ def test-ioc-patterns [] -> record {
 # Test: No duplicate entries
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-no-duplicates [] -> record {
+def test-no-duplicates [] {
     print ""
     print "═══ Test: No Duplicate Entries ═══"
     
@@ -322,7 +322,8 @@ def test-no-duplicates [] -> record {
     mut failed = 0
     
     if ($all_packages | length) == ($unique_packages | length) {
-        log-pass $"No duplicate package entries (($all_packages | length) total)"
+        let count = ($all_packages | length)
+        log-pass $"No duplicate package entries - ($count) total"
         $passed += 1
     } else {
         let duplicates = $all_packages | uniq --count | where count > 1 | get value
@@ -337,7 +338,7 @@ def test-no-duplicates [] -> record {
 # Test: Categories have descriptions
 # ═══════════════════════════════════════════════════════════════════════════
 
-def test-category-metadata [] -> record {
+def test-category-metadata [] {
     print ""
     print "═══ Test: Category Metadata ═══"
     
@@ -366,7 +367,7 @@ def test-category-metadata [] -> record {
 
 def main [] {
     print "╔═══════════════════════════════════════════════════════════════════╗"
-    print "║          NPM Security Blocklist Test Suite (Nushell)              ║"
+    print "║          NPM Security Blocklist Test Suite [Nushell]              ║"
     print "╚═══════════════════════════════════════════════════════════════════╝"
     print ""
     print $"Testing: ($blocklist_file)"
