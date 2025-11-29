@@ -94,6 +94,14 @@ pub struct SecurityScanner {
     blocked_packages: Vec<String>,
 }
 
+/// # TODO(P1): Release v0.3.0 - Security Scanner Enhancements
+/// - [ ] Add auto-update for blocklist from GitHub
+/// - [ ] Implement fetch_cve_info() for real CVE lookups
+/// - [ ] Add Socket.dev API integration
+/// - [ ] Support Cargo.toml scanning (Rust packages)
+/// - [ ] Support pyproject.toml scanning (Python packages)
+/// - [ ] Add blocklist version checking
+/// - [ ] Implement scan caching to avoid re-scanning
 impl SecurityScanner {
     pub fn new() -> Self {
         let mut scanner = Self {

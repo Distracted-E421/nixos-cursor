@@ -8,6 +8,13 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 /// Extract message content from various possible JSON structures in Cursor's database
+/// 
+/// # TODO(P1): Release v0.3.0 - Content Extraction
+/// - [ ] Parse files_edited from edit_file/search_replace tool calls
+/// - [ ] Extract file paths mentioned in tool arguments
+/// - [ ] Track code block languages for syntax highlighting
+/// - [ ] Handle more Cursor internal JSON formats
+/// - [ ] Add content_type detection (text, code, terminal, markdown)
 fn extract_message_content(data: &Value) -> (String, Option<ToolCallInfo>, Option<String>) {
     let mut content = String::new();
     let mut tool_call: Option<ToolCallInfo> = None;

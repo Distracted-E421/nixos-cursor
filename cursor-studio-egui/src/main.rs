@@ -53,6 +53,14 @@ fn main() -> eframe::Result<()> {
 }
 
 /// Configure fonts with proper Unicode support for terminal characters
+/// 
+/// # TODO(P0): Release v0.3.0 - Unicode Font Support
+/// - [ ] Add Nerd Font paths for terminal symbols (❯, ⚡, , etc.)
+/// - [ ] Try: ~/.local/share/fonts/NerdFonts/
+/// - [ ] Try: /nix/store/*nerd-fonts*/share/fonts/
+/// - [ ] Improve fallback chain order (monospace → symbols → emoji)
+/// - [ ] Add config option for custom font paths
+/// - [ ] Test with common shell prompts (starship, powerlevel10k)
 fn configure_fonts(ctx: &egui::Context) {
     use egui::{FontData, FontDefinitions, FontFamily};
 
@@ -394,6 +402,12 @@ impl CursorStudio {
         }
     }
     
+    /// # TODO(P1): Release v0.3.0 - Settings Persistence
+    /// - [ ] Add save_window_settings() for size/position
+    /// - [ ] Save sidebar widths (left_sidebar_width, right_sidebar_width)
+    /// - [ ] Save last opened conversation ID
+    /// - [ ] Call save_settings on app close (implement on_close_event)
+    /// - [ ] Add settings export/import for backup
     fn save_settings(&self) {
         // UI settings
         let _ = self
@@ -706,6 +720,13 @@ impl CursorStudio {
         }
     }
     
+    /// # TODO(P1): Release v0.3.0 - Export Features
+    /// - [ ] Add export_conversation_to_json() for JSON format
+    /// - [ ] Add export_bookmarked_sections() for bookmarks only
+    /// - [ ] Add syntax highlighting in code blocks (use ```language)
+    /// - [ ] Add option to include/exclude thinking blocks
+    /// - [ ] Add option to include/exclude tool calls
+    /// - [ ] Show export progress for large conversations
     fn export_conversation_to_markdown(&mut self, conv_id: &str) {
         // Get conversation info
         let conv = match self.conversations.iter().find(|c| c.id == conv_id) {
@@ -1754,6 +1775,13 @@ impl CursorStudio {
         });
     }
 
+    /// # TODO(P1): Release v0.3.0 - Global Search
+    /// - [ ] Add global_search() to search across ALL conversations
+    /// - [ ] Add filter buttons: All | 👤 User | 🤖 AI | 🔧 Tools
+    /// - [ ] Add date range filter
+    /// - [ ] Add "Jump to" buttons for search results
+    /// - [ ] Show conversation title in results
+    /// - [ ] Highlight matching text in results
     fn show_search_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         ui.vertical(|ui| {
             ui.add_space(12.0);
@@ -2645,6 +2673,13 @@ impl CursorStudio {
         });
     }
 
+    /// # TODO(P1): Release v0.3.0 - Security Panel Polish
+    /// - [ ] Wire up NPM scan results display (show blocked packages)
+    /// - [ ] Add "Jump to" buttons for security findings
+    /// - [ ] Show CVE details in expandable sections
+    /// - [ ] Add Socket.dev links for package research
+    /// - [ ] Implement audit log export functionality
+    /// - [ ] Add scan history with timestamps
     fn show_security_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
@@ -4524,6 +4559,13 @@ fn render_code_block(ui: &mut egui::Ui, code: &str, lang: &str, theme: Theme) {
 }
 
 /// Render a single line of text with heading, inline code support
+/// 
+/// # TODO(P0): Release v0.3.0 - Bold Text Rendering
+/// - [ ] Fix nested **bold** within larger text blocks
+/// - [ ] Handle bold + inline code mixing: **`code`** or `**bold**`
+/// - [ ] Support ***bold italic*** (triple asterisk)
+/// - [ ] Handle escaped asterisks: \*not bold\*
+/// - [ ] Test edge cases: **bold with spaces** and **multi-word bold**
 fn render_text_line(ui: &mut egui::Ui, line: &str, theme: Theme) {
     let trimmed = line.trim();
 
