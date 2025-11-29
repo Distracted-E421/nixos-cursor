@@ -3713,7 +3713,7 @@ impl CursorStudio {
                     );
                     ui.label(RichText::new("Chats").size(11.0).color(theme.fg_dim));
                 });
-                
+
                 // Messages
                 cols[1].vertical_centered(|ui| {
                     ui.label(
@@ -3724,7 +3724,7 @@ impl CursorStudio {
                     );
                     ui.label(RichText::new("Messages").size(11.0).color(theme.fg_dim));
                 });
-                
+
                 // Favorites
                 cols[2].vertical_centered(|ui| {
                     ui.label(
@@ -3735,7 +3735,7 @@ impl CursorStudio {
                     );
                     ui.label(RichText::new("Favorites").size(11.0).color(theme.fg_dim));
                 });
-                
+
                 // Versions
                 cols[3].vertical_centered(|ui| {
                     ui.label(
@@ -3759,71 +3759,52 @@ impl CursorStudio {
 
             ui.add_space(32.0);
 
-            // Buttons - centered
-            ui.vertical_centered(|ui| {
-                if self.import_in_progress {
-                    // Animated spinner during import
-                    egui::Frame::none()
-                        .fill(theme.sidebar_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(Vec2::new(20.0, 10.0))
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.add(egui::Spinner::new().size(20.0));
-                                ui.add_space(8.0);
-                                ui.label(
-                                    RichText::new("Importing...").color(theme.accent).size(14.0),
-                                );
-                            });
+            // Buttons - use columns for proper centering
+            ui.columns(3, |cols| {
+                // Import button
+                cols[0].vertical_centered(|ui| {
+                    if self.import_in_progress {
+                        ui.horizontal(|ui| {
+                            ui.add(egui::Spinner::new().size(16.0));
+                            ui.label(RichText::new("...").color(theme.accent));
                         });
-                    ui.ctx().request_repaint();
-                } else {
-                    ui.horizontal(|ui| {
-                        if styled_button_accent(ui, "⬇ Import Chats", Vec2::new(130.0, 36.0), theme)
-                            .clicked()
-                        {
-                            if !self.import_warning_shown {
-                                self.import_warning_shown = true;
-                                self.set_status(
-                                    "⚠️ Import may take a moment - click again to proceed",
-                                );
-                            } else {
-                                do_import = true;
-                                self.import_warning_shown = false;
-                            }
+                        ui.ctx().request_repaint();
+                    } else if styled_button_accent(ui, "⬇ Import", Vec2::new(100.0, 32.0), theme).clicked() {
+                        if !self.import_warning_shown {
+                            self.import_warning_shown = true;
+                            self.set_status("⚠️ Click again to confirm");
+                        } else {
+                            do_import = true;
+                            self.import_warning_shown = false;
                         }
-
-                        ui.add_space(8.0);
-
-                        if styled_button(ui, "🔄 Reimport", Vec2::new(100.0, 36.0)).clicked() {
-                            self.do_clear_and_reimport();
-                        }
-
-                        ui.add_space(8.0);
-
-                        if styled_button_accent(
-                            ui,
-                            "▶ Launch Cursor",
-                            Vec2::new(130.0, 36.0),
-                            theme,
-                        )
-                        .clicked()
-                        {
-                            do_launch = true;
-                        }
-                    });
-
-                    // Warning hint
-                    if self.import_warning_shown {
-                        ui.add_space(4.0);
-                        ui.label(
-                            RichText::new("⚠️ Click Import again to confirm")
-                                .color(theme.warning)
-                                .size(10.0),
-                        );
                     }
-                }
+                });
+
+                // Reimport button
+                cols[1].vertical_centered(|ui| {
+                    if styled_button(ui, "🔄 Reimport", Vec2::new(100.0, 32.0)).clicked() {
+                        self.do_clear_and_reimport();
+                    }
+                });
+
+                // Launch button
+                cols[2].vertical_centered(|ui| {
+                    if styled_button_accent(ui, "▶ Launch", Vec2::new(100.0, 32.0), theme).clicked() {
+                        do_launch = true;
+                    }
+                });
             });
+            
+            // Warning hint
+            if self.import_warning_shown {
+                ui.vertical_centered(|ui| {
+                    ui.label(
+                        RichText::new("⚠️ Click Import again to confirm")
+                            .color(theme.warning)
+                            .size(10.0),
+                    );
+                });
+            }
 
             ui.add_space(24.0);
 
