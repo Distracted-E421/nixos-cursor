@@ -8,13 +8,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 /// Extract message content from various possible JSON structures in Cursor's database
-/// 
-/// # TODO(P1): Release v0.3.0 - Content Extraction
-/// - [ ] Parse files_edited from edit_file/search_replace tool calls
-/// - [ ] Extract file paths mentioned in tool arguments
-/// - [ ] Track code block languages for syntax highlighting
-/// - [ ] Handle more Cursor internal JSON formats
-/// - [ ] Add content_type detection (text, code, terminal, markdown)
 fn extract_message_content(data: &Value) -> (String, Option<ToolCallInfo>, Option<String>) {
     let mut content = String::new();
     let mut tool_call: Option<ToolCallInfo> = None;
@@ -404,6 +397,19 @@ pub struct ChatDatabase {
 }
 
 impl ChatDatabase {
+    /// Create a new database with a custom data directory (for testing)
+    #[cfg(test)]
+    pub fn new_with_path(data_dir: PathBuf) -> Result<Self> {
+        std::fs::create_dir_all(&data_dir)?;
+        let db_path = data_dir.join("studio.db");
+        let conn = Connection::open(&db_path)?;
+        conn.execute_batch(SCHEMA)?;
+        Ok(Self {
+            conn: Arc::new(Mutex::new(conn)),
+            data_dir,
+        })
+    }
+
     pub fn new() -> Result<Self> {
         let data_dir = dirs::config_dir()
             .context("No config directory")?
@@ -1185,5 +1191,133 @@ impl ChatDatabase {
         }
 
         Ok((total_imported, total_skipped))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_db() -> ChatDatabase {
+        let temp_dir = std::env::temp_dir().join(format!("cursor-studio-test-{}", uuid::Uuid::new_v4()));
+        ChatDatabase::new_with_path(temp_dir).unwrap()
+    }
+
+    #[test]
+    fn test_database_creation() {
+        let db = create_test_db();
+        assert!(db.get_path().parent().unwrap().exists());
+    }
+
+    #[test]
+    fn test_config_get_set() {
+        let db = create_test_db();
+        
+        // Set a config value
+        db.set_config("test.key", "test_value").unwrap();
+        
+        // Get it back
+        let value = db.get_config("test.key");
+        assert_eq!(value, Some("test_value".to_string()));
+    }
+
+    #[test]
+    fn test_config_f32() {
+        let db = create_test_db();
+        
+        // Set a float config
+        db.set_config("test.float", "3.14").unwrap();
+        
+        // Get it back
+        let value = db.get_config_f32("test.float", 0.0);
+        assert!((value - 3.14).abs() < 0.001);
+        
+        // Default for missing key
+        let default = db.get_config_f32("missing.key", 42.0);
+        assert!((default - 42.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_config_usize() {
+        let db = create_test_db();
+        
+        db.set_config("test.count", "100").unwrap();
+        
+        let value = db.get_config_usize("test.count", 0);
+        assert_eq!(value, 100);
+        
+        let default = db.get_config_usize("missing.key", 50);
+        assert_eq!(default, 50);
+    }
+
+    #[test]
+    fn test_config_bool() {
+        let db = create_test_db();
+        
+        db.set_config("test.enabled", "true").unwrap();
+        assert!(db.get_config_bool("test.enabled", false));
+        
+        db.set_config("test.disabled", "false").unwrap();
+        assert!(!db.get_config_bool("test.disabled", true));
+        
+        // Default for missing
+        assert!(db.get_config_bool("missing.key", true));
+    }
+
+    #[test]
+    fn test_display_preferences() {
+        let db = create_test_db();
+        
+        // Set a preference (content_type, alignment, style, collapsed)
+        db.set_display_preference("user", "right", "default", false).unwrap();
+        
+        // Get all preferences
+        let prefs = db.get_display_preferences().unwrap();
+        let user_pref = prefs.iter().find(|p| p.content_type == "user");
+        assert!(user_pref.is_some());
+        assert_eq!(user_pref.unwrap().alignment, "right");
+    }
+
+    #[test]
+    fn test_bookmarks() {
+        let db = create_test_db();
+        
+        // Add a bookmark (conv_id, msg_id, msg_seq, label, note, color)
+        let result = db.add_bookmark(
+            "conv123", 
+            "msg456", 
+            1, 
+            Some("Test Label"), 
+            None, 
+            "gold"
+        );
+        assert!(result.is_ok());
+        
+        // Get bookmarks
+        let bookmarks = db.get_bookmarks("conv123").unwrap();
+        assert_eq!(bookmarks.len(), 1);
+        assert_eq!(bookmarks[0].conversation_id, "conv123");
+        assert_eq!(bookmarks[0].message_id, "msg456");
+        assert_eq!(bookmarks[0].label, Some("Test Label".to_string()));
+    }
+
+    #[test]
+    fn test_delete_bookmark() {
+        let db = create_test_db();
+        
+        // Add a bookmark
+        db.add_bookmark("conv123", "msg456", 1, None, None, "gold").unwrap();
+        
+        // Verify it exists
+        let bookmarks = db.get_bookmarks("conv123").unwrap();
+        assert_eq!(bookmarks.len(), 1);
+        let bookmark_id = &bookmarks[0].id;
+        
+        // Delete it
+        db.delete_bookmark(bookmark_id).unwrap();
+        
+        // Verify it's gone
+        let bookmarks = db.get_bookmarks("conv123").unwrap();
+        assert_eq!(bookmarks.len(), 0);
     }
 }
