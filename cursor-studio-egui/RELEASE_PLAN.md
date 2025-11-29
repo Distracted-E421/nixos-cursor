@@ -1,5 +1,16 @@
 # Cursor Studio v0.3.0 Release Plan
 
+## 🔄 CI/CD Status
+
+| Platform | Build | Test | Status |
+|----------|-------|------|--------|
+| Linux x86_64 | ✅ | ✅ | Ready |
+| macOS Intel | ✅ | ✅ | Ready |
+| macOS ARM64 | ✅ | ✅ | Ready |
+| Nix Build | ✅ | N/A | Ready |
+
+**Workflow:** `.github/workflows/cursor-studio.yml`
+
 ## 📊 Release Readiness Chart
 
 ```
