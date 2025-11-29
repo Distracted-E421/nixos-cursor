@@ -4198,141 +4198,164 @@ impl CursorStudio {
                 let msg_seq = msg.sequence;
 
                 // === RIGHT-ALIGNED MESSAGES (bubble style) ===
+                // Position box on right, but keep internal content left-to-right
                 if use_right_align {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                        ui.add_space(16.0);
+                    ui.horizontal(|ui| {
+                        // Spacer pushes content to the right
+                        let available = ui.available_width();
+                        let box_width = max_width.min(available * 0.75);
+                        ui.add_space(available - box_width - 16.0);
 
+                        // Frame with normal left-to-right layout inside
                         egui::Frame::none()
                             .fill(theme.accent.linear_multiply(0.15))
                             .rounding(Rounding::same(12.0))
                             .inner_margin(egui::Margin::symmetric(12.0, 8.0))
                             .show(ui, |ui| {
-                                ui.set_max_width(max_width);
+                                ui.set_max_width(box_width);
+                                // Force left-to-right layout inside the box
+                                ui.with_layout(
+                                    egui::Layout::top_down(egui::Align::LEFT),
+                                    |ui| {
+                                        // Header row with bookmark button
+                                        ui.horizontal(|ui| {
+                                            // Bookmark indicator/button
+                                            let bookmark_icon =
+                                                if is_bookmarked { "🔖" } else { "⭐" };
+                                            let bookmark_color = if is_bookmarked {
+                                                Color32::from_rgb(255, 215, 0)
+                                            } else {
+                                                Color32::from_rgb(100, 100, 100)
+                                            };
+                                            let bookmark_btn = ui
+                                                .add(
+                                                    egui::Button::new(
+                                                        RichText::new(bookmark_icon)
+                                                            .color(bookmark_color)
+                                                            .size(14.0),
+                                                    )
+                                                    .frame(false)
+                                                    .min_size(Vec2::new(20.0, 20.0)),
+                                                )
+                                                .on_hover_text(if is_bookmarked {
+                                                    "Remove bookmark"
+                                                } else {
+                                                    "Add bookmark"
+                                                });
 
-                                // Header row with bookmark button
-                                ui.horizontal(|ui| {
-                                    // Bookmark indicator/button - VISIBLE
-                                    let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
-                                    let bookmark_color = if is_bookmarked {
-                                        Color32::from_rgb(255, 215, 0) // Gold
-                                    } else {
-                                        Color32::from_rgb(100, 100, 100) // Gray, visible
-                                    };
-                                    let bookmark_btn = ui
-                                        .add(
-                                            egui::Button::new(
-                                                RichText::new(bookmark_icon)
-                                                    .color(bookmark_color)
-                                                    .size(14.0), // Larger
-                                            )
-                                            .frame(false)
-                                            .min_size(Vec2::new(20.0, 20.0)),
-                                        )
-                                        .on_hover_text(if is_bookmarked {
-                                            "Remove bookmark"
-                                        } else {
-                                            "Add bookmark"
+                                            if bookmark_btn.hovered() {
+                                                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                                            }
+
+                                            if bookmark_btn.clicked() {
+                                                if is_bookmarked {
+                                                    if let Some(bm) = bookmarks
+                                                        .iter()
+                                                        .find(|b| b.message_id == msg_id)
+                                                    {
+                                                        bookmark_actions.push(
+                                                            BookmarkAction::Remove(
+                                                                bm.id.clone(),
+                                                                conv_id_clone.clone(),
+                                                            ),
+                                                        );
+                                                    }
+                                                } else {
+                                                    bookmark_actions.push(BookmarkAction::Add(
+                                                        conv_id_clone.clone(),
+                                                        msg_id.clone(),
+                                                        msg_seq,
+                                                    ));
+                                                }
+                                            }
+
+                                            ui.label(
+                                                RichText::new(format!("{} {}", icon, label))
+                                                    .color(color)
+                                                    .strong()
+                                                    .size(11.0),
+                                            );
                                         });
 
-                                    if bookmark_btn.hovered() {
-                                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                                    }
+                                        ui.add_space(4.0);
 
-                                    if bookmark_btn.clicked() {
-                                        if is_bookmarked {
-                                            if let Some(bm) =
-                                                bookmarks.iter().find(|b| b.message_id == msg_id)
-                                            {
-                                                let bm_id = bm.id.clone();
-                                                bookmark_actions.push(BookmarkAction::Remove(
-                                                    bm_id,
-                                                    conv_id_clone.clone(),
-                                                ));
-                                            }
-                                        } else {
-                                            bookmark_actions.push(BookmarkAction::Add(
-                                                conv_id_clone.clone(),
-                                                msg_id.clone(),
-                                                msg_seq,
-                                            ));
-                                        }
-                                    }
-
-                                    ui.label(
-                                        RichText::new(format!("{} {}", icon, label))
-                                            .color(color)
-                                            .strong()
-                                            .size(11.0),
-                                    );
-                                });
-
-                                ui.add_space(4.0);
-
-                                // Render full message body (tool calls, thinking, content)
-                                render_message_body(ui, msg, theme);
+                                        // Render full message body (tool calls, thinking, content)
+                                        render_message_body(ui, msg, theme);
+                                    },
+                                );
                             });
+
+                        ui.add_space(16.0);
                     });
                     continue; // Skip the rest for right-aligned messages
                 }
 
                 // === CENTER-ALIGNED MESSAGES ===
                 if use_center_align {
-                    ui.vertical_centered(|ui| {
+                    // Center the box, but keep content left-aligned inside
+                    ui.horizontal(|ui| {
+                        let available = ui.available_width();
+                        let box_width = max_width.min(available * 0.75);
+                        // Center by adding equal spacing on both sides
+                        ui.add_space((available - box_width) / 2.0);
+
                         egui::Frame::none()
                             .fill(theme.sidebar_bg)
                             .rounding(Rounding::same(8.0))
                             .inner_margin(egui::Margin::symmetric(12.0, 8.0))
                             .show(ui, |ui| {
-                                ui.set_max_width(max_width);
-
-                                // Header with bookmark
-                                ui.horizontal(|ui| {
-                                    // Bookmark button
-                                    let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
-                                    let bookmark_color = if is_bookmarked {
-                                        Color32::from_rgb(255, 215, 0)
-                                    } else {
-                                        Color32::from_rgb(100, 100, 100)
-                                    };
-                                    let bookmark_btn = ui.add(
-                                        egui::Button::new(
-                                            RichText::new(bookmark_icon)
-                                                .color(bookmark_color)
-                                                .size(14.0),
-                                        )
-                                        .frame(false)
-                                        .min_size(Vec2::new(20.0, 20.0)),
-                                    );
-                                    if bookmark_btn.clicked() {
-                                        if is_bookmarked {
-                                            if let Some(bm) =
-                                                bookmarks.iter().find(|b| b.message_id == msg_id)
-                                            {
-                                                bookmark_actions.push(BookmarkAction::Remove(
-                                                    bm.id.clone(),
+                                ui.set_max_width(box_width);
+                                // Force left-to-right layout inside
+                                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                                    // Header with bookmark
+                                    ui.horizontal(|ui| {
+                                        let bookmark_icon =
+                                            if is_bookmarked { "🔖" } else { "⭐" };
+                                        let bookmark_color = if is_bookmarked {
+                                            Color32::from_rgb(255, 215, 0)
+                                        } else {
+                                            Color32::from_rgb(100, 100, 100)
+                                        };
+                                        let bookmark_btn = ui.add(
+                                            egui::Button::new(
+                                                RichText::new(bookmark_icon)
+                                                    .color(bookmark_color)
+                                                    .size(14.0),
+                                            )
+                                            .frame(false)
+                                            .min_size(Vec2::new(20.0, 20.0)),
+                                        );
+                                        if bookmark_btn.clicked() {
+                                            if is_bookmarked {
+                                                if let Some(bm) =
+                                                    bookmarks.iter().find(|b| b.message_id == msg_id)
+                                                {
+                                                    bookmark_actions.push(BookmarkAction::Remove(
+                                                        bm.id.clone(),
+                                                        conv_id_clone.clone(),
+                                                    ));
+                                                }
+                                            } else {
+                                                bookmark_actions.push(BookmarkAction::Add(
                                                     conv_id_clone.clone(),
+                                                    msg_id.clone(),
+                                                    msg_seq,
                                                 ));
                                             }
-                                        } else {
-                                            bookmark_actions.push(BookmarkAction::Add(
-                                                conv_id_clone.clone(),
-                                                msg_id.clone(),
-                                                msg_seq,
-                                            ));
                                         }
-                                    }
 
-                                    ui.label(
-                                        RichText::new(format!("{} {}", icon, label))
-                                            .color(color)
-                                            .strong()
-                                            .size(12.0),
-                                    );
+                                        ui.label(
+                                            RichText::new(format!("{} {}", icon, label))
+                                                .color(color)
+                                                .strong()
+                                                .size(12.0),
+                                        );
+                                    });
+                                    ui.add_space(4.0);
+
+                                    // Render full message body (tool calls, thinking, content)
+                                    render_message_body(ui, msg, theme);
                                 });
-                                ui.add_space(4.0);
-
-                                // Render full message body (tool calls, thinking, content)
-                                render_message_body(ui, msg, theme);
                             });
                     });
                     continue;
