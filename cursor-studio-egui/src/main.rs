@@ -3775,9 +3775,8 @@ impl CursorStudio {
 
             ui.add_space(32.0);
 
-            ui.horizontal(|ui| {
-                ui.add_space((ui.available_width() - 300.0) / 2.0);
-
+            // Buttons - centered
+            ui.vertical_centered(|ui| {
                 if self.import_in_progress {
                     // Animated spinner during import
                     egui::Frame::none()
@@ -3795,84 +3794,68 @@ impl CursorStudio {
                         });
                     ui.ctx().request_repaint();
                 } else {
-                    if styled_button_accent(ui, "⬇ Import Chats", Vec2::new(140.0, 40.0), theme)
-                        .clicked()
-                    {
-                        // Show warning first time
-                        if !self.import_warning_shown {
-                            self.import_warning_shown = true;
-                            self.set_status("⚠️ Import may take a moment - click again to proceed");
-                        } else {
-                            do_import = true;
-                            self.import_warning_shown = false;
+                    ui.horizontal(|ui| {
+                        if styled_button_accent(ui, "⬇ Import Chats", Vec2::new(130.0, 36.0), theme)
+                            .clicked()
+                        {
+                            if !self.import_warning_shown {
+                                self.import_warning_shown = true;
+                                self.set_status("⚠️ Import may take a moment - click again to proceed");
+                            } else {
+                                do_import = true;
+                                self.import_warning_shown = false;
+                            }
                         }
-                    }
 
-                    // Show warning hint
+                        ui.add_space(8.0);
+
+                        if styled_button(ui, "🔄 Reimport", Vec2::new(100.0, 36.0)).clicked() {
+                            self.do_clear_and_reimport();
+                        }
+
+                        ui.add_space(8.0);
+
+                        if styled_button_accent(ui, "▶ Launch Cursor", Vec2::new(130.0, 36.0), theme)
+                            .clicked()
+                        {
+                            do_launch = true;
+                        }
+                    });
+                    
+                    // Warning hint
                     if self.import_warning_shown {
                         ui.add_space(4.0);
                         ui.label(
-                            RichText::new("⚠️ Large chat histories may freeze UI briefly")
+                            RichText::new("⚠️ Click Import again to confirm")
                                 .color(theme.warning)
                                 .size(10.0),
                         );
                     }
-
-                    ui.add_space(12.0);
-
-                    // Clear & Reimport button (preserves bookmarks)
-                    ui.vertical(|ui| {
-                        if styled_button(ui, "🔄 Clear & Reimport", Vec2::new(140.0, 32.0))
-                            .clicked()
-                        {
-                            self.do_clear_and_reimport();
-                        }
-                        ui.add_space(2.0);
-                        ui.label(
-                            RichText::new("Keeps bookmarks")
-                                .color(theme.fg_dim)
-                                .size(9.0),
-                        );
-                    });
-                }
-
-                ui.add_space(16.0);
-
-                if styled_button_accent(ui, "▶ Launch Cursor", Vec2::new(140.0, 40.0), theme)
-                    .clicked()
-                {
-                    do_launch = true;
                 }
             });
 
             ui.add_space(24.0);
 
-            ui.label(
-                RichText::new("Quick Tips:")
-                    .size(12.0)
-                    .color(theme.fg_dim)
-                    .strong(),
-            );
-            ui.add_space(4.0);
-            ui.label(
-                RichText::new(
-                    "• Use the sidebar icons to switch between Versions, Search, and Settings",
-                )
-                .size(11.0)
-                .color(theme.fg_dim),
-            );
-            ui.label(
-                RichText::new(
-                    "• Click version names to set default, use 'Launch:' to pick which to start",
-                )
-                .size(11.0)
-                .color(theme.fg_dim),
-            );
-            ui.label(
-                RichText::new("• Drag sidebar edges to resize them")
-                    .size(11.0)
-                    .color(theme.fg_dim),
-            );
+            // Quick tips - centered
+            ui.vertical_centered(|ui| {
+                ui.label(
+                    RichText::new("Quick Tips")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+                ui.add_space(4.0);
+                ui.label(
+                    RichText::new("Sidebar: Versions • Search • Settings")
+                        .size(10.0)
+                        .color(theme.fg_dim),
+                );
+                ui.label(
+                    RichText::new("Click version → set default • Drag edges → resize")
+                        .size(10.0)
+                        .color(theme.fg_dim),
+                );
+            });
         });
 
         if do_import {
@@ -4350,13 +4333,10 @@ impl CursorStudio {
 
                 // === CENTER-ALIGNED MESSAGES ===
                 if use_center_align {
-                    // Center the box, but keep content left-aligned inside
-                    ui.horizontal(|ui| {
-                        let available = ui.available_width();
-                        let box_width = max_width.min(available * 0.75);
-                        // Center by adding equal spacing on both sides
-                        ui.add_space((available - box_width) / 2.0);
-
+                    let box_width = max_width.min(ui.available_width() * 0.66);
+                    
+                    // Use vertical_centered for proper centering
+                    ui.vertical_centered(|ui| {
                         egui::Frame::none()
                             .fill(theme.sidebar_bg)
                             .rounding(Rounding::same(8.0))
@@ -4417,6 +4397,8 @@ impl CursorStudio {
                                 });
                             });
                     });
+                    
+                    ui.add_space(message_spacing);
                     continue;
                 }
 
