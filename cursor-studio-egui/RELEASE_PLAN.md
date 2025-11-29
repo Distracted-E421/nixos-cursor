@@ -57,10 +57,11 @@
 
 | Phase | Check | Status |
 |-------|-------|--------|
-| 1 | Flake Check | ✅ Ready |
+| 1 | Flake Check | ✅ PASSING |
 | 2 | NixOS x86_64 | ✅ Ready |
 | 2 | NixOS Darwin | ✅ Ready |
-| 3 | Home Manager | ✅ Ready |
+| 3 | Home Manager (Cursor IDE) | ✅ PASSING |
+| 3 | Home Manager (cursor-studio) | ✅ NEW! |
 | 4 | Rust Tests | ✅ Ready |
 | 5 | Release | ⏳ Manual trigger |
 

@@ -90,11 +90,12 @@
 ## 🔮 Future Goals
 
 ### v0.4.0 - Unified Configuration
-- [ ] Home Manager module for cursor-studio
+- [x] Home Manager module for cursor-studio ✅ DONE (v0.3.0)
+- [x] `programs.cursor-studio` options in home.nix ✅ DONE (v0.3.0)
+- [x] Shared config schema (JSON) ✅ DONE (v0.3.0)
 - [ ] CLI interface (`cursor-studio-cli`)
 - [ ] TUI interface (`cursor-studio-tui`)
-- [ ] Shared config schema (JSON/TOML) across all interfaces
-- [ ] `programs.cursor-studio` options in home.nix
+- [ ] TOML config support
 
 ### Post v0.4.0
 - GPUI migration (Zed's framework)
