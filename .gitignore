@@ -33,9 +33,13 @@ Thumbs.db
 __pycache__/
 *.pyc
 target/
-Cargo.lock
 *.rlib
 *.rmeta
 *.so
 *.d
+
+# Cargo.lock - ignore for libraries, but keep for applications
+Cargo.lock
+# Exception: cursor-studio-egui is an application, needs reproducible builds
+!cursor-studio-egui/Cargo.lock
 
