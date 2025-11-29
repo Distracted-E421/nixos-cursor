@@ -14,6 +14,79 @@ use std::path::PathBuf;
 use std::process::Command;
 use theme::Theme;
 
+/// External config from Home Manager or other sources
+/// Located at ~/.config/cursor-studio/config.json
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExternalConfig {
+    #[serde(default)]
+    theme: Option<String>,
+    #[serde(default)]
+    font_scale: Option<f32>,
+    #[serde(default)]
+    message_spacing: Option<f32>,
+    #[serde(default)]
+    status_bar_font_size: Option<f32>,
+    #[serde(default)]
+    display_prefs: Vec<ExternalDisplayPref>,
+    #[serde(default)]
+    cursor_data_dir: Option<String>,
+    #[serde(default)]
+    security: Option<ExternalSecurityConfig>,
+    #[serde(default)]
+    resources: Option<ExternalResourceConfig>,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExternalDisplayPref {
+    content_type: String,
+    alignment: String,
+    #[serde(default)]
+    style: String,
+    #[serde(default)]
+    collapsed: bool,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExternalSecurityConfig {
+    #[serde(default)]
+    npm_scanning: bool,
+    #[serde(default)]
+    sensitive_data_scan: bool,
+    #[serde(default)]
+    blocklist_path: Option<String>,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct ExternalResourceConfig {
+    max_cpu_threads: Option<usize>,
+    max_ram_mb: Option<usize>,
+    max_vram_mb: Option<usize>,
+    storage_limit_mb: Option<usize>,
+}
+
+impl ExternalConfig {
+    /// Load config from ~/.config/cursor-studio/config.json if it exists
+    fn load() -> Option<Self> {
+        let config_path = dirs::config_dir()?.join("cursor-studio").join("config.json");
+        if config_path.exists() {
+            let content = std::fs::read_to_string(&config_path).ok()?;
+            match serde_json::from_str(&content) {
+                Ok(config) => {
+                    log::info!("Loaded Home Manager config from {:?}", config_path);
+                    Some(config)
+                }
+                Err(e) => {
+                    log::warn!("Failed to parse config.json: {}", e);
+                    None
+                }
+            }
+        } else {
+            log::debug!("No external config at {:?}", config_path);
+            None
+        }
+    }
+}
+
 // Known Cursor versions that can be downloaded
 const AVAILABLE_VERSIONS: &[&str] = &[
     "0.50.5", "0.50.4", "0.50.3", "0.50.2", "0.50.1", "0.50.0", "0.49.6", "0.49.5", "0.49.4",
@@ -53,7 +126,7 @@ fn main() -> eframe::Result<()> {
 }
 
 /// Configure fonts with proper Unicode support for terminal characters
-/// 
+///
 /// # TODO(P0): Release v0.3.0 - Unicode Font Support
 /// - [ ] Add Nerd Font paths for terminal symbols (❯, ⚡, , etc.)
 /// - [ ] Try: ~/.local/share/fonts/NerdFonts/
@@ -252,19 +325,19 @@ struct CursorStudio {
 
     // Security scan results
     security_scan_results: Option<SecurityScanResults>,
-    
+
     // NPM security scanner
     npm_scanner: security::SecurityScanner,
     npm_scan_results: Option<Vec<(PathBuf, Vec<security::PackageScanResult>)>>,
     selected_scan_item: Option<(String, String)>, // (conv_id, msg_id) for jump-to
-    
+
     // Scroll-to-message support
     scroll_to_message_id: Option<String>,
-    
+
     // NPM scan state
     npm_scan_path: String,
     show_npm_scan_results: bool,
-    
+
     // Conversation search
     conv_search_query: String,
     conv_search_results: Vec<usize>, // indices of matching messages
@@ -291,6 +364,9 @@ enum ImportProgress {
 
 impl CursorStudio {
     fn new() -> Self {
+        // Try to load Home Manager / external config first
+        let ext_config = ExternalConfig::load();
+
         let db = ChatDatabase::new().expect("Failed to open database");
         let versions = db.get_versions().unwrap_or_default();
         let conversations = db.get_conversations(50).unwrap_or_default();
@@ -307,23 +383,69 @@ impl CursorStudio {
         // Launch version starts as default
         let launch_version = default_version.clone();
 
-        // Load display preferences
-        let display_prefs = db.get_display_preferences().unwrap_or_default();
+        // Load display preferences from DB, or use external config
+        let display_prefs = if let Some(ref cfg) = ext_config {
+            if !cfg.display_prefs.is_empty() {
+                // Convert external config to DisplayPreference
+                cfg.display_prefs
+                    .iter()
+                    .map(|p| DisplayPreference {
+                        content_type: p.content_type.clone(),
+                        alignment: p.alignment.clone(),
+                        style: if p.style.is_empty() {
+                            "default".to_string()
+                        } else {
+                            p.style.clone()
+                        },
+                        collapsed_by_default: p.collapsed,
+                    })
+                    .collect()
+            } else {
+                db.get_display_preferences().unwrap_or_default()
+            }
+        } else {
+            db.get_display_preferences().unwrap_or_default()
+        };
 
-        // Load UI settings from config before moving db
-        let font_scale = db.get_config_f32("ui.font_scale", 1.0);
-        let message_spacing = db.get_config_f32("ui.message_spacing", 12.0);
-        let status_bar_font_size = db.get_config_f32("ui.status_bar_font_size", 11.0);
-        let max_cpu_threads = db.get_config_usize(
-            "res.max_cpu_threads",
-            std::thread::available_parallelism()
-                .map(|n| n.get())
-                .unwrap_or(8)
-                .min(16),
-        );
-        let max_ram_mb = db.get_config_usize("res.max_ram_mb", 4096);
-        let max_vram_mb = db.get_config_usize("res.max_vram_mb", 2048);
-        let storage_limit_mb = db.get_config_usize("res.storage_limit_mb", 10240);
+        // Load UI settings: external config takes priority, then DB, then defaults
+        let font_scale = ext_config
+            .as_ref()
+            .and_then(|c| c.font_scale)
+            .unwrap_or_else(|| db.get_config_f32("ui.font_scale", 1.0));
+        let message_spacing = ext_config
+            .as_ref()
+            .and_then(|c| c.message_spacing)
+            .unwrap_or_else(|| db.get_config_f32("ui.message_spacing", 12.0));
+        let status_bar_font_size = ext_config
+            .as_ref()
+            .and_then(|c| c.status_bar_font_size)
+            .unwrap_or_else(|| db.get_config_f32("ui.status_bar_font_size", 11.0));
+
+        // Resource limits: external config takes priority
+        let default_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(8)
+            .min(16);
+        let max_cpu_threads = ext_config
+            .as_ref()
+            .and_then(|c| c.resources.as_ref())
+            .and_then(|r| r.max_cpu_threads)
+            .unwrap_or_else(|| db.get_config_usize("res.max_cpu_threads", default_threads));
+        let max_ram_mb = ext_config
+            .as_ref()
+            .and_then(|c| c.resources.as_ref())
+            .and_then(|r| r.max_ram_mb)
+            .unwrap_or_else(|| db.get_config_usize("res.max_ram_mb", 4096));
+        let max_vram_mb = ext_config
+            .as_ref()
+            .and_then(|c| c.resources.as_ref())
+            .and_then(|r| r.max_vram_mb)
+            .unwrap_or_else(|| db.get_config_usize("res.max_vram_mb", 2048));
+        let storage_limit_mb = ext_config
+            .as_ref()
+            .and_then(|c| c.resources.as_ref())
+            .and_then(|r| r.storage_limit_mb)
+            .unwrap_or_else(|| db.get_config_usize("res.storage_limit_mb", 10240));
 
         Self {
             theme: Theme::dark(),
@@ -378,30 +500,30 @@ impl CursorStudio {
             max_ram_mb,
             max_vram_mb,
             storage_limit_mb,
-                        // Security scan
+            // Security scan
             security_scan_results: None,
-            
+
             // NPM security
             npm_scanner: security::SecurityScanner::new(),
             npm_scan_results: None,
             selected_scan_item: None,
-            
+
             // Scroll-to-message
             scroll_to_message_id: None,
-            
+
             // NPM scan state
             npm_scan_path: dirs::home_dir()
                 .map(|h| h.to_string_lossy().to_string())
                 .unwrap_or_else(|| "/home".to_string()),
             show_npm_scan_results: false,
-            
+
             // Conversation search
             conv_search_query: String::new(),
             conv_search_results: Vec::new(),
             conv_search_index: 0,
         }
     }
-    
+
     /// # TODO(P1): Release v0.3.0 - Settings Persistence
     /// - [ ] Add save_window_settings() for size/position
     /// - [ ] Save sidebar widths (left_sidebar_width, right_sidebar_width)
@@ -679,26 +801,26 @@ impl CursorStudio {
                 }
             }
         }
-        
+
         if !found_tab {
             // Open the conversation
             self.tabs.push(Tab::Conversation(conv_id.to_string()));
             self.active_tab = self.tabs.len() - 1;
             self.current_messages = self.db.get_messages(conv_id).unwrap_or_default();
         }
-        
+
         // Set the scroll target - the UI will pick this up
         self.scroll_to_message_id = Some(msg_id.to_string());
         self.set_status(&format!("📍 Jumped to message"));
     }
-    
+
     fn scan_npm_packages(&mut self) {
         let path = PathBuf::from(&self.npm_scan_path);
         if !path.exists() {
             self.set_status(&format!("✗ Path does not exist: {}", self.npm_scan_path));
             return;
         }
-        
+
         match self.npm_scanner.scan_directory(&path) {
             Ok(results) => {
                 let total_issues: usize = results.iter().map(|(_, r)| r.len()).sum();
@@ -719,7 +841,7 @@ impl CursorStudio {
             }
         }
     }
-    
+
     /// # TODO(P1): Release v0.3.0 - Export Features
     /// - [ ] Add export_conversation_to_json() for JSON format
     /// - [ ] Add export_bookmarked_sections() for bookmarks only
@@ -736,7 +858,7 @@ impl CursorStudio {
                 return;
             }
         };
-        
+
         // Get messages
         let messages = match self.db.get_messages(conv_id) {
             Ok(m) => m,
@@ -745,17 +867,20 @@ impl CursorStudio {
                 return;
             }
         };
-        
+
         // Build markdown content
         let mut md = String::new();
-        
+
         // Header
         md.push_str(&format!("# {}\n\n", conv.title));
-        md.push_str(&format!("**Exported:** {}\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S")));
+        md.push_str(&format!(
+            "**Exported:** {}\n",
+            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+        ));
         md.push_str(&format!("**Messages:** {}\n", messages.len()));
         md.push_str(&format!("**Source:** Cursor Studio v0.2.1\n\n"));
         md.push_str("---\n\n");
-        
+
         for msg in &messages {
             // Role header
             let role_icon = match msg.role {
@@ -765,22 +890,27 @@ impl CursorStudio {
                 MessageRole::ToolResult => "📋 **TOOL RESULT**",
             };
             md.push_str(&format!("### {}\n\n", role_icon));
-            
+
             // Tool call info
             if let Some(ref tc) = msg.tool_call {
                 md.push_str(&format!("> **Tool:** `{}`\n", tc.name));
                 if !tc.args.is_empty() {
                     // Pretty print args if JSON
-                    let args_display = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&tc.args) {
+                    let args_display = if let Ok(parsed) =
+                        serde_json::from_str::<serde_json::Value>(&tc.args)
+                    {
                         serde_json::to_string_pretty(&parsed).unwrap_or_else(|_| tc.args.clone())
                     } else {
                         tc.args.clone()
                     };
-                    md.push_str(&format!("> ```json\n> {}\n> ```\n", args_display.replace('\n', "\n> ")));
+                    md.push_str(&format!(
+                        "> ```json\n> {}\n> ```\n",
+                        args_display.replace('\n', "\n> ")
+                    ));
                 }
                 md.push_str(&format!("> **Status:** {}\n\n", tc.status));
             }
-            
+
             // Thinking block
             if let Some(ref thinking) = msg.thinking {
                 if !thinking.is_empty() {
@@ -789,37 +919,41 @@ impl CursorStudio {
                     md.push_str("\n\n</details>\n\n");
                 }
             }
-            
+
             // Main content
             if !msg.content.is_empty() {
                 md.push_str(&msg.content);
                 md.push_str("\n");
             }
-            
+
             md.push_str("\n---\n\n");
         }
-        
+
         // Save to file
-        let filename = format!("{}.md", conv.title.chars()
-            .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
-            .take(50)
-            .collect::<String>()
-            .trim()
-            .replace(' ', "_"));
-        
+        let filename = format!(
+            "{}.md",
+            conv.title
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
+                .take(50)
+                .collect::<String>()
+                .trim()
+                .replace(' ', "_")
+        );
+
         let export_dir = dirs::document_dir()
             .or_else(|| dirs::home_dir())
             .unwrap_or_else(|| PathBuf::from("."))
             .join("cursor-studio-exports");
-        
+
         // Create directory if needed
         if let Err(e) = std::fs::create_dir_all(&export_dir) {
             self.set_status(&format!("✗ Failed to create export directory: {}", e));
             return;
         }
-        
+
         let export_path = export_dir.join(&filename);
-        
+
         match std::fs::write(&export_path, md) {
             Ok(_) => {
                 self.set_status(&format!("✓ Exported to {}", export_path.display()));
@@ -829,24 +963,24 @@ impl CursorStudio {
             }
         }
     }
-    
+
     fn search_in_conversation(&mut self, query: &str) {
         self.conv_search_results.clear();
         self.conv_search_index = 0;
-        
+
         if query.is_empty() {
             return;
         }
-        
+
         let query_lower = query.to_lowercase();
-        
+
         for (idx, msg) in self.current_messages.iter().enumerate() {
             // Search in content
             if msg.content.to_lowercase().contains(&query_lower) {
                 self.conv_search_results.push(idx);
                 continue;
             }
-            
+
             // Search in thinking
             if let Some(ref thinking) = msg.thinking {
                 if thinking.to_lowercase().contains(&query_lower) {
@@ -854,16 +988,17 @@ impl CursorStudio {
                     continue;
                 }
             }
-            
+
             // Search in tool call
             if let Some(ref tc) = msg.tool_call {
-                if tc.name.to_lowercase().contains(&query_lower) ||
-                   tc.args.to_lowercase().contains(&query_lower) {
+                if tc.name.to_lowercase().contains(&query_lower)
+                    || tc.args.to_lowercase().contains(&query_lower)
+                {
                     self.conv_search_results.push(idx);
                 }
             }
         }
-        
+
         if self.conv_search_results.is_empty() {
             self.set_status(&format!("No results for '{}'", query));
         } else {
@@ -876,36 +1011,44 @@ impl CursorStudio {
             }
         }
     }
-    
+
     fn jump_to_next_search_result(&mut self) {
         if self.conv_search_results.is_empty() {
             return;
         }
-        
+
         self.conv_search_index = (self.conv_search_index + 1) % self.conv_search_results.len();
         if let Some(&idx) = self.conv_search_results.get(self.conv_search_index) {
             if let Some(msg) = self.current_messages.get(idx) {
                 self.scroll_to_message_id = Some(msg.id.clone());
-                self.set_status(&format!("Result {} of {}", self.conv_search_index + 1, self.conv_search_results.len()));
+                self.set_status(&format!(
+                    "Result {} of {}",
+                    self.conv_search_index + 1,
+                    self.conv_search_results.len()
+                ));
             }
         }
     }
-    
+
     fn jump_to_prev_search_result(&mut self) {
         if self.conv_search_results.is_empty() {
             return;
         }
-        
+
         if self.conv_search_index == 0 {
             self.conv_search_index = self.conv_search_results.len() - 1;
         } else {
             self.conv_search_index -= 1;
         }
-        
+
         if let Some(&idx) = self.conv_search_results.get(self.conv_search_index) {
             if let Some(msg) = self.current_messages.get(idx) {
                 self.scroll_to_message_id = Some(msg.id.clone());
-                self.set_status(&format!("Result {} of {}", self.conv_search_index + 1, self.conv_search_results.len()));
+                self.set_status(&format!(
+                    "Result {} of {}",
+                    self.conv_search_index + 1,
+                    self.conv_search_results.len()
+                ));
             }
         }
     }
@@ -2847,7 +2990,7 @@ impl CursorStudio {
 
                 // Show scan results if available
                 let mut jump_to_msg: Option<(String, String)> = None;
-                
+
                 if let Some(ref results) = self.security_scan_results {
                     ui.add_space(12.0);
                     egui::Frame::none()
@@ -2898,12 +3041,18 @@ impl CursorStudio {
                                         );
                                     });
                                     // Show first few with jump buttons
-                                    for (conv_id, msg_id, preview) in results.potential_api_keys.iter().take(5)
+                                    for (conv_id, msg_id, preview) in
+                                        results.potential_api_keys.iter().take(5)
                                     {
                                         ui.horizontal(|ui| {
                                             ui.add_space(20.0);
-                                            if ui.small_button("→").on_hover_text("Jump to message").clicked() {
-                                                jump_to_msg = Some((conv_id.clone(), msg_id.clone()));
+                                            if ui
+                                                .small_button("→")
+                                                .on_hover_text("Jump to message")
+                                                .clicked()
+                                            {
+                                                jump_to_msg =
+                                                    Some((conv_id.clone(), msg_id.clone()));
                                             }
                                             ui.label(
                                                 RichText::new(preview)
@@ -2942,12 +3091,18 @@ impl CursorStudio {
                                         );
                                     });
                                     // Show with jump buttons
-                                    for (conv_id, msg_id, preview) in results.potential_passwords.iter().take(3)
+                                    for (conv_id, msg_id, preview) in
+                                        results.potential_passwords.iter().take(3)
                                     {
                                         ui.horizontal(|ui| {
                                             ui.add_space(20.0);
-                                            if ui.small_button("→").on_hover_text("Jump to message").clicked() {
-                                                jump_to_msg = Some((conv_id.clone(), msg_id.clone()));
+                                            if ui
+                                                .small_button("→")
+                                                .on_hover_text("Jump to message")
+                                                .clicked()
+                                            {
+                                                jump_to_msg =
+                                                    Some((conv_id.clone(), msg_id.clone()));
                                             }
                                             ui.label(
                                                 RichText::new(preview)
@@ -2973,12 +3128,18 @@ impl CursorStudio {
                                         );
                                     });
                                     // Show with jump buttons
-                                    for (conv_id, msg_id, preview) in results.potential_secrets.iter().take(3)
+                                    for (conv_id, msg_id, preview) in
+                                        results.potential_secrets.iter().take(3)
                                     {
                                         ui.horizontal(|ui| {
                                             ui.add_space(20.0);
-                                            if ui.small_button("→").on_hover_text("Jump to message").clicked() {
-                                                jump_to_msg = Some((conv_id.clone(), msg_id.clone()));
+                                            if ui
+                                                .small_button("→")
+                                                .on_hover_text("Jump to message")
+                                                .clicked()
+                                            {
+                                                jump_to_msg =
+                                                    Some((conv_id.clone(), msg_id.clone()));
                                             }
                                             ui.label(
                                                 RichText::new(preview)
@@ -2992,14 +3153,14 @@ impl CursorStudio {
                             }
                         });
                 }
-                
+
                 // Process jump-to after UI
                 if let Some((conv_id, msg_id)) = jump_to_msg {
                     self.scroll_to_message(&conv_id, &msg_id);
                 }
-                
+
                 ui.add_space(16.0);
-                
+
                 // NPM Package Security Section
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
@@ -3011,7 +3172,7 @@ impl CursorStudio {
                     );
                 });
                 ui.add_space(8.0);
-                
+
                 // Blocklist stats
                 let stats = self.npm_scanner.get_blocklist_stats();
                 egui::Frame::none()
@@ -3027,16 +3188,22 @@ impl CursorStudio {
                         );
                         ui.add_space(4.0);
                         ui.label(
-                            RichText::new(format!("Version: {} • Updated: {}", stats.version, stats.last_updated))
-                                .color(theme.fg_dim)
-                                .size(10.0),
+                            RichText::new(format!(
+                                "Version: {} • Updated: {}",
+                                stats.version, stats.last_updated
+                            ))
+                            .color(theme.fg_dim)
+                            .size(10.0),
                         );
                         ui.label(
-                            RichText::new(format!("{} blocked packages • {} with CVEs", stats.total_packages, stats.packages_with_cve))
-                                .color(theme.warning)
-                                .size(10.0),
+                            RichText::new(format!(
+                                "{} blocked packages • {} with CVEs",
+                                stats.total_packages, stats.packages_with_cve
+                            ))
+                            .color(theme.warning)
+                            .size(10.0),
                         );
-                        
+
                         // Show categories
                         ui.add_space(4.0);
                         for (name, count) in &stats.categories {
@@ -3051,7 +3218,7 @@ impl CursorStudio {
                         }
                     });
                 ui.add_space(8.0);
-                
+
                 // NPM scan path input
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
@@ -3067,7 +3234,7 @@ impl CursorStudio {
                     );
                 });
                 ui.add_space(8.0);
-                
+
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
                     if styled_button(ui, "🔍 Scan for Malicious Packages", Vec2::new(200.0, 32.0))
@@ -3077,7 +3244,7 @@ impl CursorStudio {
                         self.scan_npm_packages();
                     }
                 });
-                
+
                 // Show NPM scan results if available
                 if self.show_npm_scan_results {
                     if let Some(ref results) = self.npm_scan_results {
@@ -3095,13 +3262,16 @@ impl CursorStudio {
                                     );
                                 } else {
                                     ui.label(
-                                        RichText::new(format!("⚠️ Found issues in {} files:", results.len()))
-                                            .color(theme.error)
-                                            .strong()
-                                            .size(11.0),
+                                        RichText::new(format!(
+                                            "⚠️ Found issues in {} files:",
+                                            results.len()
+                                        ))
+                                        .color(theme.error)
+                                        .strong()
+                                        .size(11.0),
                                     );
                                     ui.add_space(4.0);
-                                    
+
                                     for (path, packages) in results.iter().take(10) {
                                         ui.label(
                                             RichText::new(path.to_string_lossy())
@@ -3113,9 +3283,15 @@ impl CursorStudio {
                                             ui.horizontal(|ui| {
                                                 ui.add_space(16.0);
                                                 ui.label(
-                                                    RichText::new(format!("🚫 {} - {}", pkg.package_name, pkg.block_reason.as_deref().unwrap_or("blocked")))
-                                                        .color(theme.error)
-                                                        .size(9.0),
+                                                    RichText::new(format!(
+                                                        "🚫 {} - {}",
+                                                        pkg.package_name,
+                                                        pkg.block_reason
+                                                            .as_deref()
+                                                            .unwrap_or("blocked")
+                                                    ))
+                                                    .color(theme.error)
+                                                    .size(9.0),
                                                 );
                                                 if let Some(cve) = &pkg.cve {
                                                     ui.label(
@@ -3131,7 +3307,7 @@ impl CursorStudio {
                             });
                     }
                 }
-                
+
                 ui.add_space(16.0);
 
                 // Audit Log Section
@@ -3562,25 +3738,28 @@ impl CursorStudio {
                 if panel_btn.clicked() {
                     self.show_bookmark_panel = !self.show_bookmark_panel;
                 }
-                
             });
         }
-        
+
         // Toolbar: Export and Search
         let mut do_export = false;
         let mut do_search = false;
         let mut search_query_changed = false;
-        
+
         ui.horizontal(|ui| {
             ui.add_space(16.0);
-            
+
             // Export button
-            if ui.small_button("📤 Export").on_hover_text("Export to Markdown").clicked() {
+            if ui
+                .small_button("📤 Export")
+                .on_hover_text("Export to Markdown")
+                .clicked()
+            {
                 do_export = true;
             }
-            
+
             ui.add_space(8.0);
-            
+
             // Search box
             ui.label(RichText::new("🔍").size(12.0));
             let search_response = ui.add(
@@ -3589,51 +3768,56 @@ impl CursorStudio {
                     .hint_text("Search in chat...")
                     .font(egui::FontId::proportional(11.0)),
             );
-            
+
             if search_response.changed() {
                 search_query_changed = true;
             }
-            
+
             // Enter to search
             if search_response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                 do_search = true;
             }
-            
+
             // Search nav buttons
             if !self.conv_search_results.is_empty() {
                 ui.label(
-                    RichText::new(format!("{}/{}", 
-                        self.conv_search_index + 1, 
+                    RichText::new(format!(
+                        "{}/{}",
+                        self.conv_search_index + 1,
                         self.conv_search_results.len()
                     ))
                     .size(10.0)
-                    .color(theme.fg_dim)
+                    .color(theme.fg_dim),
                 );
-                
-                if ui.small_button("◀").on_hover_text("Previous result").clicked() {
+
+                if ui
+                    .small_button("◀")
+                    .on_hover_text("Previous result")
+                    .clicked()
+                {
                     self.jump_to_prev_search_result();
                 }
                 if ui.small_button("▶").on_hover_text("Next result").clicked() {
                     self.jump_to_next_search_result();
                 }
             }
-            
+
             // Search button
             if ui.small_button("Find").clicked() {
                 do_search = true;
             }
         });
-        
+
         // Handle actions
         if do_export {
             self.export_conversation_to_markdown(conv_id);
         }
-        
+
         if do_search || (search_query_changed && self.conv_search_query.len() >= 2) {
             let query = self.conv_search_query.clone();
             self.search_in_conversation(&query);
         }
-        
+
         ui.add_space(8.0);
 
         // Bookmark panel (if visible)
@@ -3655,7 +3839,7 @@ impl CursorStudio {
 
                     let bookmarks = self.current_bookmarks.clone();
                     let mut jump_to: Option<(String, String)> = None;
-                    
+
                     for bookmark in &bookmarks {
                         ui.horizontal(|ui| {
                             // Bookmark color indicator
@@ -3678,11 +3862,14 @@ impl CursorStudio {
                                 .on_hover_text("Jump to message")
                                 .clicked()
                             {
-                                jump_to = Some((bookmark.conversation_id.clone(), bookmark.message_id.clone()));
+                                jump_to = Some((
+                                    bookmark.conversation_id.clone(),
+                                    bookmark.message_id.clone(),
+                                ));
                             }
                         });
                     }
-                    
+
                     // Process jump after UI iteration
                     if let Some((cid, mid)) = jump_to {
                         self.scroll_to_message_id = Some(mid);
@@ -3701,453 +3888,452 @@ impl CursorStudio {
         let message_spacing = self.message_spacing;
         let scroll_target = self.scroll_to_message_id.clone();
 
-        let scroll_area = egui::ScrollArea::vertical()
-            .auto_shrink([false; 2]);
-            
-        scroll_area.show(ui, |ui| {
-                ui.add_space(8.0);
+        let scroll_area = egui::ScrollArea::vertical().auto_shrink([false; 2]);
 
-                if msgs.is_empty() {
-                    ui.vertical_centered(|ui| {
-                        ui.add_space(40.0);
-                        ui.label(
-                            RichText::new("No messages found")
-                                .color(theme.fg_dim)
-                                .italics(),
-                        );
-                    });
+        scroll_area.show(ui, |ui| {
+            ui.add_space(8.0);
+
+            if msgs.is_empty() {
+                ui.vertical_centered(|ui| {
+                    ui.add_space(40.0);
+                    ui.label(
+                        RichText::new("No messages found")
+                            .color(theme.fg_dim)
+                            .italics(),
+                    );
+                });
+            }
+
+            for msg in &msgs {
+                ui.add_space(message_spacing);
+
+                // Check if this message is the scroll target
+                let is_scroll_target = scroll_target
+                    .as_ref()
+                    .map(|id| id == &msg.id)
+                    .unwrap_or(false);
+
+                // If this is the scroll target, scroll to it and highlight
+                if is_scroll_target {
+                    ui.scroll_to_cursor(Some(egui::Align::Center));
                 }
 
-                for msg in &msgs {
-                    ui.add_space(message_spacing);
-                    
-                    // Check if this message is the scroll target
-                    let is_scroll_target = scroll_target.as_ref().map(|id| id == &msg.id).unwrap_or(false);
-                    
-                    // If this is the scroll target, scroll to it and highlight
-                    if is_scroll_target {
-                        ui.scroll_to_cursor(Some(egui::Align::Center));
-                    }
+                // Determine alignment based on role AND display preferences
+                let is_user = matches!(msg.role, MessageRole::User);
+                let max_width = ui.available_width() * 0.66; // Messages take 2/3 of tab width
 
-                    // Determine alignment based on role AND display preferences
-                    let is_user = matches!(msg.role, MessageRole::User);
-                    let max_width = ui.available_width() * 0.66; // Messages take 2/3 of tab width
+                // Get alignment from display preferences
+                let content_type_key = match msg.role {
+                    MessageRole::User => "user",
+                    MessageRole::Assistant => "assistant",
+                    MessageRole::ToolCall | MessageRole::ToolResult => "tool_call",
+                };
+                let alignment = display_prefs
+                    .iter()
+                    .find(|p| p.content_type == content_type_key)
+                    .map(|p| p.alignment.as_str())
+                    .unwrap_or(if is_user { "right" } else { "left" });
 
-                    // Get alignment from display preferences
-                    let content_type_key = match msg.role {
-                        MessageRole::User => "user",
-                        MessageRole::Assistant => "assistant",
-                        MessageRole::ToolCall | MessageRole::ToolResult => "tool_call",
+                let use_right_align = alignment == "right";
+                let use_center_align = alignment == "center";
+
+                // Determine icon, label, and color based on role and tool call
+                let (icon, label, color) = if msg.tool_call.is_some() {
+                    let tc = msg.tool_call.as_ref().unwrap();
+                    let status_icon = match tc.status.as_str() {
+                        "completed" => "✓",
+                        "running" => "⏳",
+                        "error" => "✗",
+                        _ => "•",
                     };
-                    let alignment = display_prefs
-                        .iter()
-                        .find(|p| p.content_type == content_type_key)
-                        .map(|p| p.alignment.as_str())
-                        .unwrap_or(if is_user { "right" } else { "left" });
-
-                    let use_right_align = alignment == "right";
-                    let use_center_align = alignment == "center";
-
-                    // Determine icon, label, and color based on role and tool call
-                    let (icon, label, color) = if msg.tool_call.is_some() {
-                        let tc = msg.tool_call.as_ref().unwrap();
-                        let status_icon = match tc.status.as_str() {
-                            "completed" => "✓",
-                            "running" => "⏳",
-                            "error" => "✗",
-                            _ => "•",
-                        };
-                        (
-                            format!("🔧{}", status_icon),
-                            format!("TOOL: {}", tc.name),
-                            theme.warning,
-                        )
-                    } else {
-                        match msg.role {
-                            MessageRole::User => {
-                                ("👤".to_string(), "USER".to_string(), theme.accent)
-                            }
-                            MessageRole::Assistant => {
-                                ("🤖".to_string(), "ASSISTANT".to_string(), theme.success)
-                            }
-                            MessageRole::ToolCall => {
-                                ("🔧".to_string(), "TOOL CALL".to_string(), theme.warning)
-                            }
-                            MessageRole::ToolResult => {
-                                ("📋".to_string(), "TOOL RESULT".to_string(), theme.fg_dim)
-                            }
+                    (
+                        format!("🔧{}", status_icon),
+                        format!("TOOL: {}", tc.name),
+                        theme.warning,
+                    )
+                } else {
+                    match msg.role {
+                        MessageRole::User => ("👤".to_string(), "USER".to_string(), theme.accent),
+                        MessageRole::Assistant => {
+                            ("🤖".to_string(), "ASSISTANT".to_string(), theme.success)
                         }
-                    };
-
-                    // Check if this message is bookmarked
-                    let is_bookmarked = bookmarks.iter().any(|b| b.message_id == msg.id);
-                    let msg_id = msg.id.clone();
-                    let conv_id_clone = conv_id.to_string();
-                    let msg_seq = msg.sequence;
-
-                    // === RIGHT-ALIGNED MESSAGES (bubble style) ===
-                    if use_right_align {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                            ui.add_space(16.0);
-
-                            egui::Frame::none()
-                                .fill(theme.accent.linear_multiply(0.15))
-                                .rounding(Rounding::same(12.0))
-                                .inner_margin(egui::Margin::symmetric(12.0, 8.0))
-                                .show(ui, |ui| {
-                                    ui.set_max_width(max_width);
-
-                                    // Header row with bookmark button
-                                    ui.horizontal(|ui| {
-                                        // Bookmark indicator/button - VISIBLE
-                                        let bookmark_icon =
-                                            if is_bookmarked { "🔖" } else { "⭐" };
-                                        let bookmark_color = if is_bookmarked {
-                                            Color32::from_rgb(255, 215, 0) // Gold
-                                        } else {
-                                            Color32::from_rgb(100, 100, 100) // Gray, visible
-                                        };
-                                        let bookmark_btn = ui
-                                            .add(
-                                                egui::Button::new(
-                                                    RichText::new(bookmark_icon)
-                                                        .color(bookmark_color)
-                                                        .size(14.0), // Larger
-                                                )
-                                                .frame(false)
-                                                .min_size(Vec2::new(20.0, 20.0)),
-                                            )
-                                            .on_hover_text(if is_bookmarked {
-                                                "Remove bookmark"
-                                            } else {
-                                                "Add bookmark"
-                                            });
-
-                                        if bookmark_btn.hovered() {
-                                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                                        }
-
-                                        if bookmark_btn.clicked() {
-                                            if is_bookmarked {
-                                                if let Some(bm) = bookmarks
-                                                    .iter()
-                                                    .find(|b| b.message_id == msg_id)
-                                                {
-                                                    let bm_id = bm.id.clone();
-                                                    bookmark_actions.push(BookmarkAction::Remove(
-                                                        bm_id,
-                                                        conv_id_clone.clone(),
-                                                    ));
-                                                }
-                                            } else {
-                                                bookmark_actions.push(BookmarkAction::Add(
-                                                    conv_id_clone.clone(),
-                                                    msg_id.clone(),
-                                                    msg_seq,
-                                                ));
-                                            }
-                                        }
-
-                                        ui.label(
-                                            RichText::new(format!("{} {}", icon, label))
-                                                .color(color)
-                                                .strong()
-                                                .size(11.0),
-                                        );
-                                    });
-
-                                    ui.add_space(4.0);
-
-                                    // Render full message body (tool calls, thinking, content)
-                                    render_message_body(ui, msg, theme);
-                                });
-                        });
-                        continue; // Skip the rest for right-aligned messages
+                        MessageRole::ToolCall => {
+                            ("🔧".to_string(), "TOOL CALL".to_string(), theme.warning)
+                        }
+                        MessageRole::ToolResult => {
+                            ("📋".to_string(), "TOOL RESULT".to_string(), theme.fg_dim)
+                        }
                     }
+                };
 
-                    // === CENTER-ALIGNED MESSAGES ===
-                    if use_center_align {
-                        ui.vertical_centered(|ui| {
-                            egui::Frame::none()
-                                .fill(theme.sidebar_bg)
-                                .rounding(Rounding::same(8.0))
-                                .inner_margin(egui::Margin::symmetric(12.0, 8.0))
-                                .show(ui, |ui| {
-                                    ui.set_max_width(max_width);
+                // Check if this message is bookmarked
+                let is_bookmarked = bookmarks.iter().any(|b| b.message_id == msg.id);
+                let msg_id = msg.id.clone();
+                let conv_id_clone = conv_id.to_string();
+                let msg_seq = msg.sequence;
 
-                                    // Header with bookmark
-                                    ui.horizontal(|ui| {
-                                        // Bookmark button
-                                        let bookmark_icon =
-                                            if is_bookmarked { "🔖" } else { "⭐" };
-                                        let bookmark_color = if is_bookmarked {
-                                            Color32::from_rgb(255, 215, 0)
-                                        } else {
-                                            Color32::from_rgb(100, 100, 100)
-                                        };
-                                        let bookmark_btn = ui.add(
+                // === RIGHT-ALIGNED MESSAGES (bubble style) ===
+                if use_right_align {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                        ui.add_space(16.0);
+
+                        egui::Frame::none()
+                            .fill(theme.accent.linear_multiply(0.15))
+                            .rounding(Rounding::same(12.0))
+                            .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.set_max_width(max_width);
+
+                                // Header row with bookmark button
+                                ui.horizontal(|ui| {
+                                    // Bookmark indicator/button - VISIBLE
+                                    let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
+                                    let bookmark_color = if is_bookmarked {
+                                        Color32::from_rgb(255, 215, 0) // Gold
+                                    } else {
+                                        Color32::from_rgb(100, 100, 100) // Gray, visible
+                                    };
+                                    let bookmark_btn = ui
+                                        .add(
                                             egui::Button::new(
                                                 RichText::new(bookmark_icon)
                                                     .color(bookmark_color)
-                                                    .size(14.0),
+                                                    .size(14.0), // Larger
                                             )
                                             .frame(false)
                                             .min_size(Vec2::new(20.0, 20.0)),
-                                        );
-                                        if bookmark_btn.clicked() {
-                                            if is_bookmarked {
-                                                if let Some(bm) = bookmarks
-                                                    .iter()
-                                                    .find(|b| b.message_id == msg_id)
-                                                {
-                                                    bookmark_actions.push(BookmarkAction::Remove(
-                                                        bm.id.clone(),
-                                                        conv_id_clone.clone(),
-                                                    ));
-                                                }
-                                            } else {
-                                                bookmark_actions.push(BookmarkAction::Add(
-                                                    conv_id_clone.clone(),
-                                                    msg_id.clone(),
-                                                    msg_seq,
-                                                ));
-                                            }
-                                        }
+                                        )
+                                        .on_hover_text(if is_bookmarked {
+                                            "Remove bookmark"
+                                        } else {
+                                            "Add bookmark"
+                                        });
 
-                                        ui.label(
-                                            RichText::new(format!("{} {}", icon, label))
-                                                .color(color)
-                                                .strong()
-                                                .size(12.0),
-                                        );
-                                    });
-                                    ui.add_space(4.0);
-
-                                    // Render full message body (tool calls, thinking, content)
-                                    render_message_body(ui, msg, theme);
-                                });
-                        });
-                        continue;
-                    }
-
-                    // === LEFT-ALIGNED MESSAGES (default) ===
-                    
-                    // Highlight frame for scroll target
-                    let highlight_color = if is_scroll_target {
-                        theme.accent.linear_multiply(0.2)
-                    } else {
-                        Color32::TRANSPARENT
-                    };
-                    
-                    egui::Frame::none()
-                        .fill(highlight_color)
-                        .rounding(Rounding::same(6.0))
-                        .inner_margin(egui::Margin::symmetric(4.0, 2.0))
-                        .show(ui, |ui| {
-
-                    // Message header with bookmark button
-                    ui.horizontal(|ui| {
-                        ui.add_space(16.0);
-
-                        // Bookmark indicator/button - VISIBLE
-                        let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
-                        let bookmark_color = if is_bookmarked {
-                            Color32::from_rgb(255, 215, 0) // Gold
-                        } else {
-                            Color32::from_rgb(100, 100, 100) // Gray, visible
-                        };
-                        let bookmark_btn = ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new(bookmark_icon)
-                                        .color(bookmark_color)
-                                        .size(14.0), // Larger
-                                )
-                                .frame(false)
-                                .min_size(Vec2::new(20.0, 20.0)),
-                            )
-                            .on_hover_text(if is_bookmarked {
-                                "Remove bookmark"
-                            } else {
-                                "Add bookmark"
-                            });
-
-                        if bookmark_btn.hovered() {
-                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                        }
-
-                        if bookmark_btn.clicked() {
-                            if is_bookmarked {
-                                if let Some(bm) = bookmarks.iter().find(|b| b.message_id == msg_id)
-                                {
-                                    let bm_id = bm.id.clone();
-                                    bookmark_actions
-                                        .push(BookmarkAction::Remove(bm_id, conv_id_clone.clone()));
-                                }
-                            } else {
-                                bookmark_actions.push(BookmarkAction::Add(
-                                    conv_id_clone.clone(),
-                                    msg_id.clone(),
-                                    msg_seq,
-                                ));
-                            }
-                        }
-
-                        ui.label(
-                            RichText::new(format!("{} {}", icon, label))
-                                .color(color)
-                                .strong()
-                                .size(12.0),
-                        );
-                    });
-
-                    // Subtle separator line
-                    ui.add_space(2.0);
-                    ui.horizontal(|ui| {
-                        ui.add_space(16.0);
-                        let rect = ui.available_rect_before_wrap();
-                        let line_rect = egui::Rect::from_min_max(
-                            egui::pos2(rect.left(), rect.top()),
-                            egui::pos2(rect.left() + 400.0, rect.top() + 1.0),
-                        );
-                        ui.painter()
-                            .rect_filled(line_rect, Rounding::ZERO, theme.border);
-                    });
-                    ui.add_space(4.0);
-
-                    // Tool call details (if present)
-                    if let Some(tc) = &msg.tool_call {
-                        ui.horizontal(|ui| {
-                            ui.add_space(24.0);
-
-                            // Tool call box - uses theme colors
-                            egui::Frame::none()
-                                .fill(theme.sidebar_bg)
-                                .rounding(Rounding::same(4.0))
-                                .inner_margin(8.0)
-                                .stroke(Stroke::new(1.0, theme.border))
-                                .show(ui, |ui| {
-                                    ui.set_max_width(ui.available_width() - 48.0);
-
-                                    ui.label(
-                                        RichText::new(format!("{}()", tc.name))
-                                            .color(theme.syntax_function)
-                                            .family(egui::FontFamily::Monospace)
-                                            .size(12.0),
-                                    );
-
-                                    if !tc.args_preview.is_empty() {
-                                        ui.label(
-                                            RichText::new(&tc.args_preview)
-                                                .color(theme.fg_dim)
-                                                .family(egui::FontFamily::Monospace)
-                                                .size(11.0),
-                                        );
+                                    if bookmark_btn.hovered() {
+                                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                                     }
 
-                                    let status_color = match tc.status.as_str() {
-                                        "completed" => theme.success,
-                                        "error" | "failed" => theme.error,
-                                        _ => theme.warning,
-                                    };
+                                    if bookmark_btn.clicked() {
+                                        if is_bookmarked {
+                                            if let Some(bm) =
+                                                bookmarks.iter().find(|b| b.message_id == msg_id)
+                                            {
+                                                let bm_id = bm.id.clone();
+                                                bookmark_actions.push(BookmarkAction::Remove(
+                                                    bm_id,
+                                                    conv_id_clone.clone(),
+                                                ));
+                                            }
+                                        } else {
+                                            bookmark_actions.push(BookmarkAction::Add(
+                                                conv_id_clone.clone(),
+                                                msg_id.clone(),
+                                                msg_seq,
+                                            ));
+                                        }
+                                    }
+
                                     ui.label(
-                                        RichText::new(format!("Status: {}", tc.status))
-                                            .color(status_color)
-                                            .size(10.0),
+                                        RichText::new(format!("{} {}", icon, label))
+                                            .color(color)
+                                            .strong()
+                                            .size(11.0),
                                     );
                                 });
+
+                                ui.add_space(4.0);
+
+                                // Render full message body (tool calls, thinking, content)
+                                render_message_body(ui, msg, theme);
+                            });
+                    });
+                    continue; // Skip the rest for right-aligned messages
+                }
+
+                // === CENTER-ALIGNED MESSAGES ===
+                if use_center_align {
+                    ui.vertical_centered(|ui| {
+                        egui::Frame::none()
+                            .fill(theme.sidebar_bg)
+                            .rounding(Rounding::same(8.0))
+                            .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.set_max_width(max_width);
+
+                                // Header with bookmark
+                                ui.horizontal(|ui| {
+                                    // Bookmark button
+                                    let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
+                                    let bookmark_color = if is_bookmarked {
+                                        Color32::from_rgb(255, 215, 0)
+                                    } else {
+                                        Color32::from_rgb(100, 100, 100)
+                                    };
+                                    let bookmark_btn = ui.add(
+                                        egui::Button::new(
+                                            RichText::new(bookmark_icon)
+                                                .color(bookmark_color)
+                                                .size(14.0),
+                                        )
+                                        .frame(false)
+                                        .min_size(Vec2::new(20.0, 20.0)),
+                                    );
+                                    if bookmark_btn.clicked() {
+                                        if is_bookmarked {
+                                            if let Some(bm) =
+                                                bookmarks.iter().find(|b| b.message_id == msg_id)
+                                            {
+                                                bookmark_actions.push(BookmarkAction::Remove(
+                                                    bm.id.clone(),
+                                                    conv_id_clone.clone(),
+                                                ));
+                                            }
+                                        } else {
+                                            bookmark_actions.push(BookmarkAction::Add(
+                                                conv_id_clone.clone(),
+                                                msg_id.clone(),
+                                                msg_seq,
+                                            ));
+                                        }
+                                    }
+
+                                    ui.label(
+                                        RichText::new(format!("{} {}", icon, label))
+                                            .color(color)
+                                            .strong()
+                                            .size(12.0),
+                                    );
+                                });
+                                ui.add_space(4.0);
+
+                                // Render full message body (tool calls, thinking, content)
+                                render_message_body(ui, msg, theme);
+                            });
+                    });
+                    continue;
+                }
+
+                // === LEFT-ALIGNED MESSAGES (default) ===
+
+                // Highlight frame for scroll target
+                let highlight_color = if is_scroll_target {
+                    theme.accent.linear_multiply(0.2)
+                } else {
+                    Color32::TRANSPARENT
+                };
+
+                egui::Frame::none()
+                    .fill(highlight_color)
+                    .rounding(Rounding::same(6.0))
+                    .inner_margin(egui::Margin::symmetric(4.0, 2.0))
+                    .show(ui, |ui| {
+                        // Message header with bookmark button
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+
+                            // Bookmark indicator/button - VISIBLE
+                            let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
+                            let bookmark_color = if is_bookmarked {
+                                Color32::from_rgb(255, 215, 0) // Gold
+                            } else {
+                                Color32::from_rgb(100, 100, 100) // Gray, visible
+                            };
+                            let bookmark_btn = ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new(bookmark_icon)
+                                            .color(bookmark_color)
+                                            .size(14.0), // Larger
+                                    )
+                                    .frame(false)
+                                    .min_size(Vec2::new(20.0, 20.0)),
+                                )
+                                .on_hover_text(if is_bookmarked {
+                                    "Remove bookmark"
+                                } else {
+                                    "Add bookmark"
+                                });
+
+                            if bookmark_btn.hovered() {
+                                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                            }
+
+                            if bookmark_btn.clicked() {
+                                if is_bookmarked {
+                                    if let Some(bm) =
+                                        bookmarks.iter().find(|b| b.message_id == msg_id)
+                                    {
+                                        let bm_id = bm.id.clone();
+                                        bookmark_actions.push(BookmarkAction::Remove(
+                                            bm_id,
+                                            conv_id_clone.clone(),
+                                        ));
+                                    }
+                                } else {
+                                    bookmark_actions.push(BookmarkAction::Add(
+                                        conv_id_clone.clone(),
+                                        msg_id.clone(),
+                                        msg_seq,
+                                    ));
+                                }
+                            }
+
+                            ui.label(
+                                RichText::new(format!("{} {}", icon, label))
+                                    .color(color)
+                                    .strong()
+                                    .size(12.0),
+                            );
+                        });
+
+                        // Subtle separator line
+                        ui.add_space(2.0);
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+                            let rect = ui.available_rect_before_wrap();
+                            let line_rect = egui::Rect::from_min_max(
+                                egui::pos2(rect.left(), rect.top()),
+                                egui::pos2(rect.left() + 400.0, rect.top() + 1.0),
+                            );
+                            ui.painter()
+                                .rect_filled(line_rect, Rounding::ZERO, theme.border);
                         });
                         ui.add_space(4.0);
-                    }
 
-                    // Thinking block (if present) - custom collapsible with proper theme
-                    if let Some(thinking) = &msg.thinking {
-                        if !thinking.is_empty() {
-                            let thinking_id = ui.make_persistent_id(format!("thinking_{}", msg.id));
-                            let mut is_open =
-                                ui.data_mut(|d| d.get_temp::<bool>(thinking_id).unwrap_or(false));
-
+                        // Tool call details (if present)
+                        if let Some(tc) = &msg.tool_call {
                             ui.horizontal(|ui| {
                                 ui.add_space(24.0);
 
-                                // Custom toggle button with theme colors
-                                let toggle_text = if is_open {
-                                    "▼ 💭 Thinking"
-                                } else {
-                                    "▶ 💭 Thinking..."
-                                };
-                                let response = ui.add(
-                                    egui::Button::new(
-                                        RichText::new(toggle_text)
-                                            .color(theme.fg_dim)
-                                            .italics()
-                                            .size(11.0),
-                                    )
-                                    .fill(Color32::TRANSPARENT)
-                                    .stroke(Stroke::NONE),
-                                );
+                                // Tool call box - uses theme colors
+                                egui::Frame::none()
+                                    .fill(theme.sidebar_bg)
+                                    .rounding(Rounding::same(4.0))
+                                    .inner_margin(8.0)
+                                    .stroke(Stroke::new(1.0, theme.border))
+                                    .show(ui, |ui| {
+                                        ui.set_max_width(ui.available_width() - 48.0);
 
-                                if response.clicked() {
-                                    is_open = !is_open;
-                                    ui.data_mut(|d| d.insert_temp(thinking_id, is_open));
-                                }
-                            });
+                                        ui.label(
+                                            RichText::new(format!("{}()", tc.name))
+                                                .color(theme.syntax_function)
+                                                .family(egui::FontFamily::Monospace)
+                                                .size(12.0),
+                                        );
 
-                            if is_open {
-                                ui.horizontal(|ui| {
-                                    ui.add_space(32.0);
-                                    egui::Frame::none()
-                                        .fill(theme.sidebar_bg)
-                                        .rounding(Rounding::same(4.0))
-                                        .inner_margin(8.0)
-                                        .stroke(Stroke::new(1.0, theme.border))
-                                        .show(ui, |ui| {
-                                            ui.set_max_width(ui.available_width() - 48.0);
-
-                                            // Truncate very long thinking blocks (safely at char boundary)
-                                            let display_text = if thinking.chars().count() > 2000 {
-                                                let truncated: String =
-                                                    thinking.chars().take(2000).collect();
-                                                format!(
-                                                    "{}...\n\n[Truncated - {} chars total]",
-                                                    truncated,
-                                                    thinking.chars().count()
-                                                )
-                                            } else {
-                                                thinking.clone()
-                                            };
-
+                                        if !tc.args_preview.is_empty() {
                                             ui.label(
-                                                RichText::new(display_text)
+                                                RichText::new(&tc.args_preview)
                                                     .color(theme.fg_dim)
+                                                    .family(egui::FontFamily::Monospace)
                                                     .size(11.0),
                                             );
-                                        });
-                                });
-                            }
+                                        }
+
+                                        let status_color = match tc.status.as_str() {
+                                            "completed" => theme.success,
+                                            "error" | "failed" => theme.error,
+                                            _ => theme.warning,
+                                        };
+                                        ui.label(
+                                            RichText::new(format!("Status: {}", tc.status))
+                                                .color(status_color)
+                                                .size(10.0),
+                                        );
+                                    });
+                            });
                             ui.add_space(4.0);
                         }
-                    }
 
-                    // Main content - with code block rendering
-                    if !msg.content.is_empty() {
-                        ui.horizontal(|ui| {
-                            ui.add_space(16.0);
-                            ui.vertical(|ui| {
-                                ui.set_max_width(ui.available_width() - 32.0);
-                                render_markdown_content(ui, &msg.content, theme);
+                        // Thinking block (if present) - custom collapsible with proper theme
+                        if let Some(thinking) = &msg.thinking {
+                            if !thinking.is_empty() {
+                                let thinking_id =
+                                    ui.make_persistent_id(format!("thinking_{}", msg.id));
+                                let mut is_open = ui
+                                    .data_mut(|d| d.get_temp::<bool>(thinking_id).unwrap_or(false));
+
+                                ui.horizontal(|ui| {
+                                    ui.add_space(24.0);
+
+                                    // Custom toggle button with theme colors
+                                    let toggle_text = if is_open {
+                                        "▼ 💭 Thinking"
+                                    } else {
+                                        "▶ 💭 Thinking..."
+                                    };
+                                    let response = ui.add(
+                                        egui::Button::new(
+                                            RichText::new(toggle_text)
+                                                .color(theme.fg_dim)
+                                                .italics()
+                                                .size(11.0),
+                                        )
+                                        .fill(Color32::TRANSPARENT)
+                                        .stroke(Stroke::NONE),
+                                    );
+
+                                    if response.clicked() {
+                                        is_open = !is_open;
+                                        ui.data_mut(|d| d.insert_temp(thinking_id, is_open));
+                                    }
+                                });
+
+                                if is_open {
+                                    ui.horizontal(|ui| {
+                                        ui.add_space(32.0);
+                                        egui::Frame::none()
+                                            .fill(theme.sidebar_bg)
+                                            .rounding(Rounding::same(4.0))
+                                            .inner_margin(8.0)
+                                            .stroke(Stroke::new(1.0, theme.border))
+                                            .show(ui, |ui| {
+                                                ui.set_max_width(ui.available_width() - 48.0);
+
+                                                // Truncate very long thinking blocks (safely at char boundary)
+                                                let display_text =
+                                                    if thinking.chars().count() > 2000 {
+                                                        let truncated: String =
+                                                            thinking.chars().take(2000).collect();
+                                                        format!(
+                                                            "{}...\n\n[Truncated - {} chars total]",
+                                                            truncated,
+                                                            thinking.chars().count()
+                                                        )
+                                                    } else {
+                                                        thinking.clone()
+                                                    };
+
+                                                ui.label(
+                                                    RichText::new(display_text)
+                                                        .color(theme.fg_dim)
+                                                        .size(11.0),
+                                                );
+                                            });
+                                    });
+                                }
+                                ui.add_space(4.0);
+                            }
+                        }
+
+                        // Main content - with code block rendering
+                        if !msg.content.is_empty() {
+                            ui.horizontal(|ui| {
+                                ui.add_space(16.0);
+                                ui.vertical(|ui| {
+                                    ui.set_max_width(ui.available_width() - 32.0);
+                                    render_markdown_content(ui, &msg.content, theme);
+                                });
+                                ui.add_space(16.0);
                             });
-                            ui.add_space(16.0);
-                        });
-                    }
-
+                        }
                     }); // Close the highlight frame
 
-                    ui.add_space(8.0);
-                }
+                ui.add_space(8.0);
+            }
 
-                ui.add_space(16.0);
-            });
+            ui.add_space(16.0);
+        });
 
         // Process bookmark actions after UI rendering
         for action in bookmark_actions {
@@ -4160,7 +4346,7 @@ impl CursorStudio {
                 }
             }
         }
-        
+
         // Clear scroll target after rendering
         if self.scroll_to_message_id.is_some() {
             self.scroll_to_message_id = None;
@@ -4559,7 +4745,7 @@ fn render_code_block(ui: &mut egui::Ui, code: &str, lang: &str, theme: Theme) {
 }
 
 /// Render a single line of text with heading, inline code support
-/// 
+///
 /// # TODO(P0): Release v0.3.0 - Bold Text Rendering
 /// - [ ] Fix nested **bold** within larger text blocks
 /// - [ ] Handle bold + inline code mixing: **`code`** or `**bold**`
@@ -4740,4 +4926,3 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
         }
     }
 }
-

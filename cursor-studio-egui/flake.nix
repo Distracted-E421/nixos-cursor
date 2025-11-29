@@ -13,6 +13,14 @@
     rust-overlay,
     flake-utils,
   }:
+    # System-agnostic outputs
+    {
+      # Home Manager module for declarative configuration
+      homeManagerModules.default = import ./home-manager-module.nix;
+      homeManagerModules.cursor-studio = import ./home-manager-module.nix;
+    }
+    //
+    # Per-system outputs
     flake-utils.lib.eachDefaultSystem (
       system: let
         overlays = [(import rust-overlay)];
