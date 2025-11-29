@@ -788,6 +788,13 @@ impl CursorStudio {
     fn refresh_all(&mut self) {
         self.versions = self.db.get_versions().unwrap_or_default();
         self.conversations = self.db.get_conversations(50).unwrap_or_default();
+        
+        // Also refresh bookmarks if a conversation is currently open
+        if let Some(Tab::Conversation(conv_id)) = self.tabs.get(self.active_tab).cloned() {
+            self.current_bookmarks = self.db.get_bookmarks(&conv_id).unwrap_or_default();
+            self.current_messages = self.db.get_messages(&conv_id).unwrap_or_default();
+        }
+        
         self.set_status("✓ Refreshed all data");
     }
 
@@ -1261,20 +1268,40 @@ impl CursorStudio {
 
         if theme_name.contains("Light") {
             self.theme = Theme::light();
-            self.set_status(&format!("✓ Applied theme: {}", theme_name));
+            self.set_status(&format!("✓ Applied light theme: {}", theme_name));
         } else if let Some(path) = theme_path {
-            if let Some(loaded_theme) = Theme::from_vscode_file(path) {
-                self.theme = loaded_theme;
-                self.set_status(&format!("✓ Applied theme: {}", theme_name));
-            } else {
-                self.set_status(&format!("✗ Failed to load theme: {}", theme_name));
+            // Check if file exists first
+            if !path.exists() {
+                log::warn!("Theme file not found: {:?}", path);
+                self.set_status(&format!("✗ Theme file not found: {}", theme_name));
+                return;
+            }
+            
+            match Theme::from_vscode_file(path) {
+                Some(loaded_theme) => {
+                    self.theme = loaded_theme;
+                    // Recompute selected colors for proper contrast
+                    self.theme.compute_selected_colors();
+                    self.set_status(&format!("✓ Applied theme: {}", theme_name));
+                }
+                None => {
+                    log::warn!("Failed to parse theme: {:?}", path);
+                    // Fall back to dark theme but keep the name
+                    self.theme = Theme::dark();
+                    self.set_status(&format!(
+                        "⚠ Partial load: {} (using dark fallback)",
+                        theme_name
+                    ));
+                }
             }
         } else {
             self.theme = Theme::dark();
-            self.set_status(&format!("✓ Applied theme: {}", theme_name));
+            self.set_status(&format!("✓ Applied dark theme: {}", theme_name));
         }
 
         self.show_theme_picker = false;
+        // Force repaint to apply new theme immediately
+        // (handled by egui automatically)
     }
 
     fn set_default_version(&mut self, version: &str) {
@@ -2133,11 +2160,18 @@ impl CursorStudio {
                                             )
                                             .frame(false),
                                         )
-                                        .on_hover_text("Refresh theme list")
+                                        .on_hover_text("Refresh theme list from disk")
                                         .clicked()
                                     {
+                                        let old_count = self.available_themes.len();
                                         self.available_themes = Self::find_vscode_themes();
-                                        self.set_status("✓ Refreshed theme list");
+                                        let new_count = self.available_themes.len();
+                                        self.set_status(&format!(
+                                            "✓ Found {} themes (was {})",
+                                            new_count, old_count
+                                        ));
+                                        // Force UI refresh
+                                        ui.ctx().request_repaint();
                                     }
                                 },
                             );
@@ -3836,10 +3870,7 @@ impl CursorStudio {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             // Export button
                             if ui
-                                .add(
-                                    egui::Button::new(RichText::new("⬇").size(12.0))
-                                        .frame(false),
-                                )
+                                .add(egui::Button::new(RichText::new("⬇").size(12.0)).frame(false))
                                 .on_hover_text("Export conversation")
                                 .clicked()
                             {
@@ -3847,7 +3878,11 @@ impl CursorStudio {
                             }
 
                             // Bookmark panel toggle
-                            let bookmark_icon = if self.show_bookmark_panel { "📑" } else { "🔖" };
+                            let bookmark_icon = if self.show_bookmark_panel {
+                                "📑"
+                            } else {
+                                "🔖"
+                            };
                             if ui
                                 .add(
                                     egui::Button::new(RichText::new(bookmark_icon).size(12.0))
@@ -4566,7 +4601,7 @@ impl CursorStudio {
                         self.import_progress = None;
                         self.import_in_progress = false;
                         self.import_receiver = None;
-                        self.refresh_chats();
+                        self.refresh_all(); // Full refresh including bookmarks
 
                         // Reattach bookmarks and restore favorites if this was a clear & reimport
                         if self.import_needs_bookmark_reattach {
