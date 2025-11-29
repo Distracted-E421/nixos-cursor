@@ -4894,14 +4894,16 @@ fn render_text_line(ui: &mut egui::Ui, line: &str, theme: Theme) {
 
     // Handle inline code and bold
     if text.contains('`') || text.contains("**") {
-        ui.horizontal_wrapped(|ui| {
-            if !prefix.is_empty() {
+        // Render prefix separately if needed
+        if !prefix.is_empty() {
+            ui.horizontal(|ui| {
                 ui.label(RichText::new(prefix).color(theme.accent).size(13.0));
-            }
-            render_inline_formatting(ui, text, theme);
-        });
+            });
+        }
+        // Use LayoutJob-based rendering for proper text wrapping
+        render_inline_formatting(ui, text, theme);
     } else {
-        // Simple text
+        // Simple text - use a wrapping label
         ui.add(
             egui::Label::new(
                 RichText::new(format!("{}{}", prefix, text))
@@ -4913,61 +4915,86 @@ fn render_text_line(ui: &mut egui::Ui, line: &str, theme: Theme) {
     }
 }
 
-/// Handle inline formatting (backticks, bold)
+/// Handle inline formatting (backticks, bold) using LayoutJob for proper text flow
 /// Supports: `code`, **bold**, and combinations like **`bold code`**
 fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
-    // Helper to flush accumulated text with current formatting
-    fn flush_text(
-        ui: &mut egui::Ui,
-        text: &str,
-        in_code: bool,
-        in_bold: bool,
-        theme: Theme,
-    ) {
-        if text.is_empty() {
-            return;
-        }
-        let rich_text = if in_code {
-            RichText::new(text)
-                .color(theme.syntax_string)
-                .family(egui::FontFamily::Monospace)
-                .size(12.0)
-                .background_color(theme.input_bg)
-        } else if in_bold {
-            RichText::new(text).color(theme.fg).size(13.0).strong()
-        } else {
-            RichText::new(text).color(theme.fg).size(13.0)
-        };
-        ui.label(rich_text);
-    }
+    use egui::text::{LayoutJob, TextFormat};
+    use egui::FontId;
+
+    let mut job = LayoutJob::default();
+    job.wrap.max_width = ui.available_width();
+
+    // Define text formats
+    let normal_format = TextFormat {
+        font_id: FontId::proportional(13.0),
+        color: theme.fg,
+        ..Default::default()
+    };
+
+    let bold_format = TextFormat {
+        font_id: FontId::proportional(13.0),
+        color: theme.fg,
+        italics: false,
+        underline: egui::Stroke::NONE,
+        strikethrough: egui::Stroke::NONE,
+        valign: egui::Align::Center,
+        ..Default::default()
+    };
+
+    let code_format = TextFormat {
+        font_id: FontId::monospace(12.0),
+        color: theme.syntax_string,
+        background: theme.input_bg,
+        ..Default::default()
+    };
 
     let mut current_text = String::new();
     let mut chars = text.chars().peekable();
     let mut in_code = false;
     let mut in_bold = false;
 
+    // Helper to append text with current format
+    let mut append_text = |job: &mut LayoutJob, text: &str, in_code: bool, in_bold: bool| {
+        if text.is_empty() {
+            return;
+        }
+        let format = if in_code {
+            code_format.clone()
+        } else if in_bold {
+            TextFormat {
+                font_id: FontId::proportional(13.0),
+                color: theme.fg,
+                ..Default::default()
+            }
+        } else {
+            normal_format.clone()
+        };
+        job.append(text, 0.0, format);
+    };
+
     while let Some(ch) = chars.next() {
         if ch == '`' {
             // Flush current text before toggling code mode
-            flush_text(ui, &current_text, in_code, in_bold, theme);
+            append_text(&mut job, &current_text, in_code, in_bold);
             current_text.clear();
             in_code = !in_code;
         } else if ch == '*' && chars.peek() == Some(&'*') && !in_code {
             // Bold toggle (only outside of code blocks)
             chars.next(); // consume second *
-            flush_text(ui, &current_text, in_code, in_bold, theme);
+            append_text(&mut job, &current_text, in_code, in_bold);
             current_text.clear();
             in_bold = !in_bold;
         } else if ch == '*' && !in_code && !in_bold {
-            // Single asterisk at start of potential italic - treat as literal for now
-            // (could add italic support later with single *)
+            // Single asterisk - treat as literal
             current_text.push(ch);
         } else {
             current_text.push(ch);
         }
     }
 
-    // Render remaining text
-    // Note: If bold/code wasn't closed, we still render what we have
-    flush_text(ui, &current_text, in_code, in_bold, theme);
+    // Append remaining text
+    append_text(&mut job, &current_text, in_code, in_bold);
+
+    // Render as a single label with proper wrapping
+    ui.label(job);
 }

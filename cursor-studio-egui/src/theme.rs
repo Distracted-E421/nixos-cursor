@@ -225,10 +225,59 @@ impl Theme {
                 }
             }
 
-            // Accent / focus
-            if let Some(c) = colors.get("focusBorder") {
-                if let Some(color) = parse_color(c) {
-                    theme.accent = color;
+            // Accent / focus - try multiple VS Code properties
+            // Priority: button.background > focusBorder > list.activeSelectionBackground
+            let accent_sources = [
+                "button.background",
+                "button.hoverBackground", 
+                "focusBorder",
+                "list.activeSelectionBackground",
+                "activityBarBadge.background",
+            ];
+            for source in accent_sources {
+                if let Some(c) = colors.get(source) {
+                    if let Some(color) = parse_color(c) {
+                        // Only use if reasonably visible (not too dark or transparent)
+                        let brightness = (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
+                        if brightness > 40 && color.a() > 128 {
+                            theme.accent = color;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Selected state background - use list selection colors
+            let selection_sources = [
+                "list.activeSelectionBackground",
+                "list.inactiveSelectionBackground",
+                "button.background",
+                "editor.selectionBackground",
+            ];
+            for source in selection_sources {
+                if let Some(c) = colors.get(source) {
+                    if let Some(color) = parse_color(c) {
+                        let brightness = (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
+                        if brightness > 30 && color.a() > 100 {
+                            theme.selected_bg = color;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Selected state foreground - use list selection foreground
+            let fg_selection_sources = [
+                "list.activeSelectionForeground",
+                "button.foreground",
+                "list.focusForeground",
+            ];
+            for source in fg_selection_sources {
+                if let Some(c) = colors.get(source) {
+                    if let Some(color) = parse_color(c) {
+                        theme.selected_fg = color;
+                        break;
+                    }
                 }
             }
 
@@ -243,6 +292,13 @@ impl Theme {
             if let Some(c) = colors.get("panel.border") {
                 if let Some(color) = parse_color(c) {
                     theme.border = color;
+                }
+            }
+            
+            // Foreground dim - try VS Code's descriptionForeground
+            if let Some(c) = colors.get("descriptionForeground") {
+                if let Some(color) = parse_color(c) {
+                    theme.fg_dim = color;
                 }
             }
         }
