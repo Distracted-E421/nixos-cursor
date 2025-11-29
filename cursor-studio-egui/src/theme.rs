@@ -8,6 +8,10 @@ use std::path::Path;
 /// VS Code Dark+ inspired theme
 #[derive(Clone, Copy)]
 pub struct Theme {
+    // Computed indicator colors (for selected states)
+    // These are derived from the theme to ensure proper contrast
+    pub selected_bg: Color32,
+    pub selected_fg: Color32,
     pub bg: Color32,
     pub editor_bg: Color32,
     pub sidebar_bg: Color32,
@@ -49,16 +53,20 @@ pub struct Theme {
 impl Theme {
     pub fn dark() -> Self {
         Self {
-            bg: Color32::from_rgb(30, 30, 30),             // #1e1e1e
-            editor_bg: Color32::from_rgb(30, 30, 30),      // #1e1e1e
-            sidebar_bg: Color32::from_rgb(37, 37, 38),     // #252526
+            // Selected state colors - bright and visible on dark themes
+            selected_bg: Color32::from_rgb(0, 120, 212), // Blue accent background
+            selected_fg: Color32::from_rgb(255, 255, 255), // White text
+
+            bg: Color32::from_rgb(30, 30, 30),         // #1e1e1e
+            editor_bg: Color32::from_rgb(30, 30, 30),  // #1e1e1e
+            sidebar_bg: Color32::from_rgb(37, 37, 38), // #252526
             activitybar_bg: Color32::from_rgb(51, 51, 51), // #333333
-            statusbar_bg: Color32::from_rgb(0, 122, 204),  // #007acc
-            tab_bg: Color32::from_rgb(45, 45, 45),         // #2d2d2d
-            tab_active_bg: Color32::from_rgb(30, 30, 30),  // #1e1e1e
-            tab_hover_bg: Color32::from_rgb(55, 55, 55),   // #373737
-            input_bg: Color32::from_rgb(60, 60, 60),       // #3c3c3c
-            code_bg: Color32::from_rgb(26, 26, 26),        // #1a1a1a
+            statusbar_bg: Color32::from_rgb(0, 122, 204), // #007acc
+            tab_bg: Color32::from_rgb(45, 45, 45),     // #2d2d2d
+            tab_active_bg: Color32::from_rgb(30, 30, 30), // #1e1e1e
+            tab_hover_bg: Color32::from_rgb(55, 55, 55), // #373737
+            input_bg: Color32::from_rgb(60, 60, 60),   // #3c3c3c
+            code_bg: Color32::from_rgb(26, 26, 26),    // #1a1a1a
 
             fg: Color32::from_rgb(204, 204, 204),     // #cccccc
             fg_dim: Color32::from_rgb(128, 128, 128), // #808080
@@ -90,6 +98,10 @@ impl Theme {
 
     pub fn light() -> Self {
         Self {
+            // Selected state colors - visible on light themes  
+            selected_bg: Color32::from_rgb(0, 120, 212),   // Blue accent background
+            selected_fg: Color32::from_rgb(255, 255, 255), // White text
+            
             bg: Color32::from_rgb(255, 255, 255),            // #ffffff
             editor_bg: Color32::from_rgb(255, 255, 255),     // #ffffff
             sidebar_bg: Color32::from_rgb(243, 243, 243),    // #f3f3f3
@@ -235,6 +247,9 @@ impl Theme {
             }
         }
 
+        // Compute selected state colors based on theme brightness
+        theme.compute_selected_colors();
+
         // Parse token colors for syntax highlighting
         if let Some(token_colors) = &theme_json.token_colors {
             for token in token_colors {
@@ -277,6 +292,36 @@ impl Theme {
         }
 
         Some(theme)
+    }
+    
+    /// Compute selected state colors based on theme brightness
+    /// This ensures buttons/icons have proper contrast when selected
+    pub fn compute_selected_colors(&mut self) {
+        // Calculate background brightness (0-255 scale)
+        let bg_brightness = (self.bg.r() as u32 + self.bg.g() as u32 + self.bg.b() as u32) / 3;
+        
+        if bg_brightness > 128 {
+            // Light theme - use darker selected colors
+            self.selected_bg = Color32::from_rgb(0, 100, 180);   // Darker blue
+            self.selected_fg = Color32::from_rgb(255, 255, 255); // White
+        } else {
+            // Dark theme - use brighter selected colors
+            // If accent is very dark, override with a visible color
+            let accent_brightness = (self.accent.r() as u32 + self.accent.g() as u32 + self.accent.b() as u32) / 3;
+            if accent_brightness < 80 {
+                // Accent is too dark, use a default blue
+                self.selected_bg = Color32::from_rgb(30, 136, 229); // Bright blue
+            } else {
+                self.selected_bg = self.accent;
+            }
+            self.selected_fg = Color32::from_rgb(255, 255, 255); // White
+        }
+    }
+    
+    /// Check if this is a light theme
+    pub fn is_light(&self) -> bool {
+        let brightness = (self.bg.r() as u32 + self.bg.g() as u32 + self.bg.b() as u32) / 3;
+        brightness > 128
     }
 }
 

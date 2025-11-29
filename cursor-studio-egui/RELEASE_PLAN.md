@@ -99,6 +99,19 @@ All interfaces will read/write the same config schema
 
 ## 📊 Release Readiness Chart
 
+### Core Features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Chat import | ✅ Ready | Async with progress |
+| Chat viewing | ✅ Ready | Multiple alignments |
+| Bookmarks | ⚠️ **Tentative** | Works, needs more edge case testing |
+| Favorites | ⚠️ **Tentative** | Works, needs more edge case testing |
+| Theme support | ✅ Ready | VS Code themes + selected state contrast fix |
+| Settings persistence | ✅ Ready | Saves on exit |
+| Home Manager | ✅ Ready | Full options support |
+| Security scanning | ✅ Ready | Sensitive data + NPM |
+
 ```
 Feature Area              Status    Polish Level   Release Ready?
 ─────────────────────────────────────────────────────────────────

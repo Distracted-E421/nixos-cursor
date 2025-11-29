@@ -2392,11 +2392,6 @@ impl CursorStudio {
                         // Show buttons in order: left, center, right (reversed for RTL layout)
                         for align in ["right", "center", "left"].iter() {
                             let is_selected = current == *align;
-                            let btn_color = if is_selected {
-                                theme.accent
-                            } else {
-                                theme.fg_dim
-                            };
                             let icon = match *align {
                                 "left" => "◀ L",
                                 "center" => "◆ C",
@@ -2404,15 +2399,28 @@ impl CursorStudio {
                                 _ => "•",
                             };
 
-                            let btn = ui
-                                .add(
+                            // Use frame + background for selected state (theme-independent visibility)
+                            let btn = if is_selected {
+                                ui.add(
                                     egui::Button::new(
-                                        RichText::new(icon).color(btn_color).size(10.0),
+                                        RichText::new(icon)
+                                            .color(theme.selected_fg)
+                                            .size(10.0)
+                                            .strong(),
                                     )
-                                    .frame(false)
-                                    .min_size(Vec2::new(20.0, 20.0)),
+                                    .fill(theme.selected_bg)
+                                    .min_size(Vec2::new(28.0, 20.0)),
                                 )
-                                .on_hover_text(*align);
+                            } else {
+                                ui.add(
+                                    egui::Button::new(
+                                        RichText::new(icon).color(theme.fg_dim).size(10.0),
+                                    )
+                                    .fill(Color32::TRANSPARENT)
+                                    .min_size(Vec2::new(28.0, 20.0)),
+                                )
+                            }
+                            .on_hover_text(*align);
 
                             if btn.clicked() {
                                 pref_change = Some((content_type, *align));
@@ -2433,6 +2441,8 @@ impl CursorStudio {
                 } else {
                     self.display_prefs = self.db.get_display_preferences().unwrap_or_default();
                     self.set_status(&format!("✓ Alignment changed to {}", align));
+                    // Request repaint to update message display immediately
+                    ui.ctx().request_repaint();
                 }
             }
 
