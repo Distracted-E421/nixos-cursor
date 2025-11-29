@@ -33,7 +33,7 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: Run flake check
-        run: nix flake check --all-systems
+        run: nix flake check
 
   # Build default package (cursor 2.0.77)
   build-default:
