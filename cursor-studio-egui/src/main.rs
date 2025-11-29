@@ -3700,69 +3700,68 @@ impl CursorStudio {
 
             ui.add_space(32.0);
 
-            // Stats cards in a row
-            ui.horizontal(|ui| {
-                let card_width = 100.0;
-                ui.add_space((ui.available_width() - (card_width * 4.0 + 48.0)) / 2.0);
-                
-                // Conversations card
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
-                    .show(ui, |ui| {
-                        ui.set_min_width(card_width);
-                        ui.vertical_centered(|ui| {
-                            ui.label(RichText::new(format!("{}", total)).size(24.0).color(theme.accent).strong());
-                            ui.label(RichText::new("Chats").size(11.0).color(theme.fg_dim));
+            // Stats cards - centered grid
+            let version_count = self.versions.len();
+            ui.vertical_centered(|ui| {
+                ui.horizontal(|ui| {
+                    ui.add_space(8.0);
+                    
+                    // Chats card
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.label(RichText::new(format!("{}", total)).size(22.0).color(theme.accent).strong());
+                                ui.label(RichText::new("Chats").size(10.0).color(theme.fg_dim));
+                            });
                         });
-                    });
-                
-                ui.add_space(12.0);
-                
-                // Messages card
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
-                    .show(ui, |ui| {
-                        ui.set_min_width(card_width);
-                        ui.vertical_centered(|ui| {
-                            ui.label(RichText::new(format!("{}", messages)).size(24.0).color(theme.fg).strong());
-                            ui.label(RichText::new("Messages").size(11.0).color(theme.fg_dim));
+                    
+                    ui.add_space(8.0);
+                    
+                    // Messages card
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.label(RichText::new(format!("{}", messages)).size(22.0).color(theme.fg).strong());
+                                ui.label(RichText::new("Messages").size(10.0).color(theme.fg_dim));
+                            });
                         });
-                    });
-                
-                ui.add_space(12.0);
-                
-                // Favorites card  
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
-                    .show(ui, |ui| {
-                        ui.set_min_width(card_width);
-                        ui.vertical_centered(|ui| {
-                            ui.label(RichText::new(format!("{}", favorites)).size(24.0).color(Color32::from_rgb(255, 215, 0)).strong());
-                            ui.label(RichText::new("Favorites").size(11.0).color(theme.fg_dim));
+                    
+                    ui.add_space(8.0);
+                    
+                    // Favorites card  
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.label(RichText::new(format!("{}", favorites)).size(22.0).color(Color32::from_rgb(255, 215, 0)).strong());
+                                ui.label(RichText::new("Favorites").size(10.0).color(theme.fg_dim));
+                            });
                         });
-                    });
-                
-                ui.add_space(12.0);
-                
-                // Versions card
-                let version_count = self.versions.len();
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
-                    .show(ui, |ui| {
-                        ui.set_min_width(card_width);
-                        ui.vertical_centered(|ui| {
-                            ui.label(RichText::new(format!("{}", version_count)).size(24.0).color(theme.success).strong());
-                            ui.label(RichText::new("Versions").size(11.0).color(theme.fg_dim));
+                    
+                    ui.add_space(8.0);
+                    
+                    // Versions card
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.label(RichText::new(format!("{}", version_count)).size(22.0).color(theme.success).strong());
+                                ui.label(RichText::new("Versions").size(10.0).color(theme.fg_dim));
+                            });
                         });
-                    });
+                    
+                    ui.add_space(8.0);
+                });
             });
 
             // Show current launch version

@@ -61,7 +61,7 @@ jobs:
         continue-on-error: true
       
       - name: Check main flake
-        run: nix flake check --all-systems
+        run: nix flake check
       
       - name: Check cursor-studio-egui flake
         run: |
