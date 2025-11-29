@@ -1,11 +1,32 @@
 # nixos-cursor
 
-**Status**: v0.1.2 (Stable) - **48 Versions Available**  
+**Status**: v0.1.3 (Stable) - **48 Versions Available**  
 **License**: MIT  
 **Maintained by**: e421  
 **Credits**: Version tracking by [oslook](https://github.com/oslook)
 
-A production-ready NixOS package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **37 historical versions** spanning three eras for ultimate workflow stability.
+A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **48 historical versions** spanning four eras for ultimate workflow stability.
+
+---
+
+## 🆕 Cursor Studio v0.2.0-rc1 Now Available!
+
+> **NEW!** Try **Cursor Studio** - the Open Source Cursor IDE Manager:
+> - 📊 Modern Dashboard with stats and version management
+> - 🔐 Security scanning for API keys and sensitive data
+> - 🎨 Full VS Code theme support
+> - 🏠 Home Manager module for NixOS
+>
+> ```nix
+> # Add to flake inputs:
+> inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/pre-release";
+> # Then use:
+> environment.systemPackages = [ inputs.nixos-cursor.packages.${system}.cursor-studio ];
+> ```
+>
+> 📖 **[Full Documentation →](https://github.com/Distracted-E421/nixos-cursor/tree/pre-release/cursor-studio-egui)**
+
+---
 
 > **Why Multi-Version Support?**
 > With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
