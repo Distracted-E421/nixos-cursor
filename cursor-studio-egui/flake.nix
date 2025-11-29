@@ -47,7 +47,7 @@
           # Fonts for Unicode support
           dejavu_fonts
           noto-fonts
-          noto-fonts-emoji
+          noto-fonts-color-emoji
           jetbrains-mono
         ];
 
