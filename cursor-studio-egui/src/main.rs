@@ -3698,69 +3698,53 @@ impl CursorStudio {
                     .color(theme.accent.linear_multiply(0.7)),
             );
 
-            ui.add_space(32.0);
+            ui.add_space(24.0);
 
-            // Stats cards - centered grid
+            // Stats - use columns for reliable layout
             let version_count = self.versions.len();
-            ui.vertical_centered(|ui| {
-                ui.horizontal(|ui| {
-                    ui.add_space(8.0);
-                    
-                    // Chats card
-                    egui::Frame::none()
-                        .fill(theme.code_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
-                        .show(ui, |ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.label(RichText::new(format!("{}", total)).size(22.0).color(theme.accent).strong());
-                                ui.label(RichText::new("Chats").size(10.0).color(theme.fg_dim));
-                            });
-                        });
-                    
-                    ui.add_space(8.0);
-                    
-                    // Messages card
-                    egui::Frame::none()
-                        .fill(theme.code_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
-                        .show(ui, |ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.label(RichText::new(format!("{}", messages)).size(22.0).color(theme.fg).strong());
-                                ui.label(RichText::new("Messages").size(10.0).color(theme.fg_dim));
-                            });
-                        });
-                    
-                    ui.add_space(8.0);
-                    
-                    // Favorites card  
-                    egui::Frame::none()
-                        .fill(theme.code_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
-                        .show(ui, |ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.label(RichText::new(format!("{}", favorites)).size(22.0).color(Color32::from_rgb(255, 215, 0)).strong());
-                                ui.label(RichText::new("Favorites").size(10.0).color(theme.fg_dim));
-                            });
-                        });
-                    
-                    ui.add_space(8.0);
-                    
-                    // Versions card
-                    egui::Frame::none()
-                        .fill(theme.code_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(egui::Margin::symmetric(20.0, 12.0))
-                        .show(ui, |ui| {
-                            ui.vertical_centered(|ui| {
-                                ui.label(RichText::new(format!("{}", version_count)).size(22.0).color(theme.success).strong());
-                                ui.label(RichText::new("Versions").size(10.0).color(theme.fg_dim));
-                            });
-                        });
-                    
-                    ui.add_space(8.0);
+            ui.columns(4, |cols| {
+                // Chats
+                cols[0].vertical_centered(|ui| {
+                    ui.label(
+                        RichText::new(format!("{}", total))
+                            .size(28.0)
+                            .color(theme.accent)
+                            .strong(),
+                    );
+                    ui.label(RichText::new("Chats").size(11.0).color(theme.fg_dim));
+                });
+                
+                // Messages
+                cols[1].vertical_centered(|ui| {
+                    ui.label(
+                        RichText::new(format!("{}", messages))
+                            .size(28.0)
+                            .color(theme.fg)
+                            .strong(),
+                    );
+                    ui.label(RichText::new("Messages").size(11.0).color(theme.fg_dim));
+                });
+                
+                // Favorites
+                cols[2].vertical_centered(|ui| {
+                    ui.label(
+                        RichText::new(format!("{}", favorites))
+                            .size(28.0)
+                            .color(Color32::from_rgb(255, 215, 0))
+                            .strong(),
+                    );
+                    ui.label(RichText::new("Favorites").size(11.0).color(theme.fg_dim));
+                });
+                
+                // Versions
+                cols[3].vertical_centered(|ui| {
+                    ui.label(
+                        RichText::new(format!("{}", version_count))
+                            .size(28.0)
+                            .color(theme.success)
+                            .strong(),
+                    );
+                    ui.label(RichText::new("Versions").size(11.0).color(theme.fg_dim));
                 });
             });
 
@@ -3800,7 +3784,9 @@ impl CursorStudio {
                         {
                             if !self.import_warning_shown {
                                 self.import_warning_shown = true;
-                                self.set_status("⚠️ Import may take a moment - click again to proceed");
+                                self.set_status(
+                                    "⚠️ Import may take a moment - click again to proceed",
+                                );
                             } else {
                                 do_import = true;
                                 self.import_warning_shown = false;
@@ -3815,13 +3801,18 @@ impl CursorStudio {
 
                         ui.add_space(8.0);
 
-                        if styled_button_accent(ui, "▶ Launch Cursor", Vec2::new(130.0, 36.0), theme)
-                            .clicked()
+                        if styled_button_accent(
+                            ui,
+                            "▶ Launch Cursor",
+                            Vec2::new(130.0, 36.0),
+                            theme,
+                        )
+                        .clicked()
                         {
                             do_launch = true;
                         }
                     });
-                    
+
                     // Warning hint
                     if self.import_warning_shown {
                         ui.add_space(4.0);
@@ -4334,7 +4325,7 @@ impl CursorStudio {
                 // === CENTER-ALIGNED MESSAGES ===
                 if use_center_align {
                     let box_width = max_width.min(ui.available_width() * 0.66);
-                    
+
                     // Use vertical_centered for proper centering
                     ui.vertical_centered(|ui| {
                         egui::Frame::none()
@@ -4397,7 +4388,7 @@ impl CursorStudio {
                                 });
                             });
                     });
-                    
+
                     ui.add_space(message_spacing);
                     continue;
                 }
@@ -4433,8 +4424,7 @@ impl CursorStudio {
                             ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                                 // Header with bookmark
                                 ui.horizontal(|ui| {
-                                    let bookmark_icon =
-                                        if is_bookmarked { "🔖" } else { "⭐" };
+                                    let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
                                     let bookmark_color = if is_bookmarked {
                                         Color32::from_rgb(255, 215, 0)
                                     } else {
