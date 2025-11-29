@@ -1,0 +1,86 @@
+[package]
+name = "cursor-studio"
+version = "0.2.0"
+edition = "2021"
+authors = ["e421"]
+description = "Cursor version manager and chat library - built with egui"
+license = "MIT"
+rust-version = "1.75"
+
+[dependencies]
+# GUI - egui with eframe (native + Wayland support)
+eframe = { version = "0.29", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+    "x11",
+] }
+egui = "0.29"
+egui_extras = { version = "0.29", features = ["all_loaders"] }
+
+# Async runtime - minimal features for better build time
+tokio = { version = "1.0", features = ["rt", "fs", "process"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# File system
+dirs = "5.0"
+walkdir = "2.5"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+ureq = { version = "2.9", features = ["json"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11"
+
+# Image loading for icons
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[features]
+default = []
+
+# ============================================
+# Build Profiles - Optimized for different use cases
+# ============================================
+
+# Development: Fast builds, some optimization for usability
+[profile.dev]
+opt-level = 1
+debug = 1          # Minimal debug info
+incremental = true # Incremental compilation
+
+# Development with full debug
+[profile.dev-debug]
+inherits = "dev"
+opt-level = 0
+debug = 2
+
+# Fast release: Quick to build, decent performance
+[profile.release-fast]
+inherits = "release"
+opt-level = 2
+lto = "thin"         # Faster than full LTO
+codegen-units = 16   # Parallel codegen
+strip = true
+
+# Full release: Slow build, best performance (for distribution)
+[profile.release]
+opt-level = 3
+lto = true        # Full LTO for best optimization
+codegen-units = 1 # Single codegen unit for best optimization
+strip = true
+panic = "abort"   # Smaller binary
+
+# ============================================
+# Faster linking with mold (configured via .cargo/config.toml)
+# ============================================

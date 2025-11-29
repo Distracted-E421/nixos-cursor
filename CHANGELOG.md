@@ -5,6 +5,152 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-11-29
+
+### Added
+
+- **Jump-to-Message Functionality**:
+  - Click bookmark "→" button to scroll to message
+  - Click security finding "→" to jump to sensitive data
+  - Highlight animation for jumped-to messages
+  - Works across conversation tabs
+
+- **NPM Package Security Scanner**:
+  - Embedded blocklist of known malicious packages
+  - Shai-Hulud 2025 attack patterns
+  - Historical compromised packages (event-stream, flatmap-stream, etc.)
+  - Typosquatting package detection
+  - CVE tracking for blocked packages
+  - Directory scanning for package.json files
+  - Category breakdown (historical, typosquatting, etc.)
+
+- **Security Panel Enhancements**:
+  - Sensitive data scan results with jump-to buttons
+  - NPM Package Security section
+  - Blocklist database stats (version, last updated, totals)
+  - Scan path input for npm scanning
+  - Results display with file paths and package details
+
+- **Export to Markdown**:
+  - 📤 button in conversation toolbar
+  - Includes tool calls with JSON formatting
+  - Thinking blocks in collapsible `<details>` tags
+  - Auto-creates `~/Documents/cursor-studio-exports/`
+  - Filename sanitization
+
+- **In-Conversation Search**:
+  - 🔍 search box in conversation toolbar
+  - Searches content, thinking blocks, and tool calls
+  - Live search (triggers after 2 characters)
+  - ◀/▶ navigation between results
+  - Result counter (X/Y matches)
+  - Jump to matching messages
+
+## [0.2.0] - 2025-11-28
+
+### Added
+
+- **Cursor Studio (egui)**: New VS Code-like unified application
+  - Activity bar with sidebar toggles
+  - Dual sidebars (Version Manager left, Chat Library right)
+  - Tabbed interface for conversations
+  - VS Code theme parser and converter
+  - Modern toggle switches and dropdowns
+  - Animated import spinner
+  
+- **Chat Message Improvements**:
+  - Tool call rendering with status icons (✓/⏳/✗)
+  - Thinking blocks (custom collapsible, theme-aware)
+  - Code block syntax highlighting
+  - Markdown rendering (headings, bold, inline code, bullets)
+  - **Right-aligned user messages** (bubble style with accent background)
+  - Left-aligned AI responses
+  - Bookmark buttons on every message
+  
+- **Bookmark System** (Fully functional):
+  - Persistent bookmarks that survive cache clears
+  - Per-message bookmarks with labels, notes, colors (🔖 gold default)
+  - Bookmark panel toggle in conversation header
+  - Jump to bookmarked messages
+  - Auto-reattach bookmarks after reimport by sequence number
+  
+- **Display Preferences UI**:
+  - Configurable alignment per content type (◀ left / ▶ right / ◆ center)
+  - Live preview in Settings → Display section
+  - Supports: User Messages, AI Responses, Thinking Blocks, Tool Calls
+  - Persisted to database
+  
+- **Data Model Enhancements**:
+  - Content type detection (text, code, terminal, markdown, mixed)
+  - Request segments for grouping user turns
+  - Files edited tracking
+  
+- **Unicode Font Support**:
+  - Automatic font loading from system and Nix paths
+  - JetBrains Mono, DejaVu, Noto fonts
+  - NIX_PROFILES environment variable support
+  - Fonts bundled in Nix flake (dejavu, noto, jetbrains-mono)
+
+- **Live Display Preferences**:
+  - Message alignment updates immediately when changed in Settings
+  - Center alignment option with styled frame
+  - Each alignment type has distinct visual style
+
+- **Import Progress Warning**:
+  - Two-click import (first click shows warning)
+  - Clear warning about UI freeze for large histories
+  - Status bar feedback during import
+
+- **Analytics Dashboard** (Status Bar):
+  - Real-time message type breakdown
+  - Shows: chats, user messages, AI responses, tool calls, thinking blocks, code blocks, bookmarks
+  - Updates automatically after import
+
+- **Async Background Import**:
+  - Import runs in separate thread (doesn't freeze UI)
+  - Progress bar in status bar (X/Y databases, percentage)
+  - Spinner animation during import
+  - Two-click confirmation (warning then proceed)
+
+- **UI Appearance Customization**:
+  - Font scale slider (80%-150%)
+  - Message spacing slider (4px-32px)
+  - Status bar font size slider (8px-16px)
+  - All settings in Settings → Appearance
+
+- **Feature Roadmap** (`ROADMAP.md`):
+  - Comprehensive tracking of completed/planned features
+  - Known issues documented
+  - Future goals outlined
+
+- **Clear & Reimport**:
+  - New "🔄 Clear & Reimport" button in Dashboard
+  - Clears all cached conversations
+  - Preserves bookmarks (stored by message sequence)
+  - Reattaches bookmarks to reimported messages
+  - Shows success/failure count for bookmark reattachment
+
+- **Resource Allocation Settings** (Settings → Resources):
+  - CPU Threads slider (1 to max available cores)
+  - RAM Limit slider (512MB - 16GB)
+  - VRAM Limit slider (256MB - 32GB for future GPU features)
+  - Storage Limit slider (1GB - 100GB)
+  - Note: Limits are stored for future AI/caching features
+
+- **Tool Call Preview Enhancement**:
+  - Increased args preview from 3 to 5 fields
+  - Increased character limit from 50 to 100 chars
+  - Shows more useful context for tool calls
+
+### Fixed
+
+- Unicode character handling - safe truncation at character boundaries
+- Thinking block styling (replaced default egui CollapsingHeader with custom toggle)
+- Tab selection in editor area
+- Build performance with mold linker
+- Borrow checker issues in UI rendering (action queuing pattern)
+- Bookmark buttons now visible (⭐ instead of ☆, larger size, hover cursor)
+
 ## [0.1.2] - 2025-11-27
 
 ### Fixed
