@@ -3648,7 +3648,11 @@ impl CursorStudio {
             self.close_tab(i);
         }
         if let Some(i) = new_active {
-            self.active_tab = i;
+            if i != self.active_tab {
+                self.active_tab = i;
+                // Auto-refresh data when switching tabs
+                self.on_tab_switch();
+            }
         }
 
         ui.add(egui::Separator::default().spacing(0.0));
@@ -3681,31 +3685,91 @@ impl CursorStudio {
                     .color(theme.accent)
                     .strong(),
             );
-            ui.add_space(4.0);
+            ui.add_space(8.0);
             ui.label(
-                RichText::new("Version Manager & Chat Library")
-                    .size(13.0)
+                RichText::new("Open Source Cursor IDE Manager")
+                    .size(14.0)
                     .color(theme.fg_dim),
             );
             ui.add_space(4.0);
-            ui.label(RichText::new("v0.2.0").size(11.0).color(theme.fg_dim));
+            ui.label(
+                RichText::new("v0.2.0-rc1")
+                    .size(11.0)
+                    .color(theme.accent.linear_multiply(0.7)),
+            );
 
             ui.add_space(32.0);
 
-            ui.label(
-                RichText::new(format!(
-                    "📊 {} chats   💬 {} messages   ⭐ {} favorites",
-                    total, messages, favorites
-                ))
-                .size(14.0)
-                .color(theme.fg_dim),
-            );
+            // Stats cards in a row
+            ui.horizontal(|ui| {
+                let card_width = 100.0;
+                ui.add_space((ui.available_width() - (card_width * 4.0 + 48.0)) / 2.0);
+                
+                // Conversations card
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(card_width);
+                        ui.vertical_centered(|ui| {
+                            ui.label(RichText::new(format!("{}", total)).size(24.0).color(theme.accent).strong());
+                            ui.label(RichText::new("Chats").size(11.0).color(theme.fg_dim));
+                        });
+                    });
+                
+                ui.add_space(12.0);
+                
+                // Messages card
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(card_width);
+                        ui.vertical_centered(|ui| {
+                            ui.label(RichText::new(format!("{}", messages)).size(24.0).color(theme.fg).strong());
+                            ui.label(RichText::new("Messages").size(11.0).color(theme.fg_dim));
+                        });
+                    });
+                
+                ui.add_space(12.0);
+                
+                // Favorites card  
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(card_width);
+                        ui.vertical_centered(|ui| {
+                            ui.label(RichText::new(format!("{}", favorites)).size(24.0).color(Color32::from_rgb(255, 215, 0)).strong());
+                            ui.label(RichText::new("Favorites").size(11.0).color(theme.fg_dim));
+                        });
+                    });
+                
+                ui.add_space(12.0);
+                
+                // Versions card
+                let version_count = self.versions.len();
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                    .show(ui, |ui| {
+                        ui.set_min_width(card_width);
+                        ui.vertical_centered(|ui| {
+                            ui.label(RichText::new(format!("{}", version_count)).size(24.0).color(theme.success).strong());
+                            ui.label(RichText::new("Versions").size(11.0).color(theme.fg_dim));
+                        });
+                    });
+            });
 
             // Show current launch version
-            ui.add_space(8.0);
+            ui.add_space(16.0);
             let launch_display = Self::version_display_name(&self.launch_version);
             ui.label(
-                RichText::new(format!("🚀 Launch version: {}", launch_display))
+                RichText::new(format!("🚀 {}", launch_display))
                     .size(12.0)
                     .color(theme.accent),
             );
@@ -4624,6 +4688,26 @@ impl CursorStudio {
             self.tabs.remove(index);
             if self.active_tab >= self.tabs.len() {
                 self.active_tab = self.tabs.len().saturating_sub(1);
+            }
+        }
+    }
+
+    /// Called when switching between tabs - refreshes relevant data
+    fn on_tab_switch(&mut self) {
+        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+            match tab {
+                Tab::Dashboard => {
+                    // Refresh stats for dashboard
+                    self.conversations = self.db.get_conversations(50).unwrap_or_default();
+                }
+                Tab::Conversation(ref id) => {
+                    // Load messages and bookmarks for conversation
+                    self.current_messages = self.db.get_messages(id).unwrap_or_default();
+                    self.current_bookmarks = self.db.get_bookmarks(id).unwrap_or_default();
+                    // Clear search when switching conversations
+                    self.conv_search_query.clear();
+                    self.conv_search_results.clear();
+                }
             }
         }
     }

@@ -1,9 +1,10 @@
-# Cursor Studio v0.2.0 Release Plan
+# Cursor Studio v0.2.0-rc1 Release Plan
 
-## 🎯 Target Audience
+## 🎯 Product Identity
 
-**Primary:** NixOS users (declarative configuration)
-**Secondary:** macOS users (Nix/Homebrew)
+**Name:** Cursor Studio
+**Tagline:** Open Source Cursor IDE Manager
+**Target:** NixOS users (declarative), macOS users (Nix/Homebrew)
 **Future:** CLI/TUI interfaces for headless operation
 
 ## 🔄 CI/CD Pipeline (NixOS-Centric)
@@ -104,55 +105,62 @@ All interfaces will read/write the same config schema
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Chat import | ✅ Ready | Async with progress |
-| Chat viewing | ✅ Ready | Multiple alignments |
-| Bookmarks | ⚠️ **Tentative** | Works, needs more edge case testing |
-| Favorites | ⚠️ **Tentative** | Works, needs more edge case testing |
-| Theme support | ✅ Ready | VS Code themes + selected state contrast fix |
+| Chat viewing | ✅ Ready | Unified box-based rendering |
+| Message alignment | ✅ Ready | Left/Center/Right all consistent |
+| Bookmarks | ✅ Ready | Persists on reimport |
+| Favorites | ✅ Ready | Persists on clear/reimport |
+| Theme support | ✅ Ready | VS Code themes + contrast fix |
 | Settings persistence | ✅ Ready | Saves on exit |
+| Auto-refresh on tab switch | ✅ Ready | Data always current |
+| Dashboard | ✅ Ready | Stats cards, modern UI |
 | Home Manager | ✅ Ready | Full options support |
-| Security scanning | ✅ Ready | Sensitive data + NPM |
+| Security scanning | ✅ Ready | Sensitive data detection |
 
 ```
 Feature Area              Status    Polish Level   Release Ready?
 ─────────────────────────────────────────────────────────────────
 Core UI                   ✅ Done    █████████░ 90%    ✅ Ready
-Message Rendering         ✅ Done    █████████░ 90%    ✅ Ready (bold fixed)
+Message Rendering         ✅ Done    █████████░ 90%    ✅ Ready
 Bookmarks                 ✅ Done    █████████░ 90%    ✅ Ready
 Import System             ✅ Done    █████████░ 90%    ✅ Ready
-Settings Panel            ✅ Done    █████████░ 90%    ✅ Ready (persist fixed)
-Security Panel            ✅ Done    ████████░░ 80%    ⚠️ NPM wire
+Settings Panel            ✅ Done    █████████░ 90%    ✅ Ready
+Security Panel            ✅ Done    █████████░ 90%    ✅ Ready
 Search (In-Chat)          ✅ Done    █████████░ 90%    ✅ Ready
 Export (Markdown)         ✅ Done    █████████░ 90%    ✅ Ready
-Theme System              ✅ Done    █████████░ 90%    ✅ Ready (scrollbar)
+Theme System              ✅ Done    █████████░ 90%    ✅ Ready
+Dashboard                 ✅ Done    █████████░ 90%    ✅ Ready
 ─────────────────────────────────────────────────────────────────
-OVERALL                              █████████░ 89%    ✅ RC Ready
+OVERALL                              █████████░ 90%    ✅ RC1 Ready
 ```
 
 ## 🎯 Critical Path to Release
 
-### Phase 1: Bug Fixes (P0 - Must Have)
-| Task | File | Priority | Status |
-|------|------|----------|--------|
-| Fix **bold** text rendering | `main.rs:render_inline_formatting()` | P0 | ✅ Done |
-| Unicode font fallback | `main.rs:configure_fonts()` | P0 | ✅ Done |
-| Settings persistence on exit | `main.rs:on_exit()` | P0 | ✅ Done |
+### Phase 1: Bug Fixes (P0 - Must Have) ✅ COMPLETE
+| Task | Status |
+|------|--------|
+| Fix **bold** text rendering | ✅ Done |
+| Unicode font fallback | ✅ Done |
+| Settings persistence on exit | ✅ Done |
+| Unified message box rendering | ✅ Done |
+| Auto-refresh on tab switch | ✅ Done |
+| Dashboard revamp | ✅ Done |
 
-### Phase 2: Polish (P1 - Should Have)
-| Task | File | Priority | Est. Time |
-|------|------|----------|-----------|
-| Wire up NPM scan results | `main.rs:show_security_panel()` | P1 | 30m |
-| Jump-to from security findings | `main.rs:scroll_to_message()` | P1 | 20m |
-| Export JSON format | `main.rs:export_*` | P1 | 30m |
-| Global search across chats | `main.rs:global_search()` | P1 | 45m |
-| Remember window size | `main.rs:save_window_settings()` | P1 | 15m |
+### Phase 2: Polish (P1 - RC1 Ready)
+| Task | Status | Notes |
+|------|--------|-------|
+| Security scan wired up | ✅ Done | Scans chat history |
+| Jump-to from security findings | ✅ Done | Opens conversation + scrolls |
+| Theme contrast fix | ✅ Done | Dynamic selected colors |
+| Tab switch refresh | ✅ Done | Data always current |
 
-### Phase 3: Nice to Have (P2)
-| Task | File | Priority | Est. Time |
-|------|------|----------|-----------|
-| Export bookmarked only | `main.rs:export_bookmarks()` | P2 | 20m |
-| Filter by message type | `main.rs:show_search_panel()` | P2 | 30m |
-| Keyboard shortcuts | `main.rs:handle_input()` | P2 | 45m |
-| Better status bar stats | `main.rs:show_status_bar()` | P2 | 20m |
+### Phase 3: Future (Post-RC1)
+| Task | Priority | Notes |
+|------|----------|-------|
+| NPM package blocklist integration | P2 | Blocklist embedded |
+| Export JSON format | P2 | |
+| Global search across chats | P2 | |
+| Bookmark notes | P2 | |
+| Window size persistence | P2 | |
 
 ## 📁 Files to Modify
 
@@ -199,37 +207,22 @@ OVERALL                              █████████░ 89%    ✅ R
 - [ ] User guide for new features
 - [ ] Keyboard shortcuts reference
 
-## 🚀 Release Checklist
+## 🚀 RC1 Release Checklist
 
-1. [ ] All P0 tasks complete
-2. [ ] All P1 tasks complete or deferred
-3. [ ] Build passes on Linux x86_64
-4. [ ] Nix flake builds cleanly
-5. [ ] No critical warnings in cargo check
-6. [ ] README updated
-7. [ ] CHANGELOG updated
-8. [ ] Version bumped in Cargo.toml
-9. [ ] Git tag created
-10. [ ] Release branch merged to main
-
----
-
-## 📅 Suggested Timeline
-
-```
-Day 1: Phase 1 (Bug Fixes)
-  └── Bold text fix, Unicode fonts, Settings persist
-
-Day 2: Phase 2 (Polish)  
-  └── NPM wiring, Jump-to, Export JSON, Global search
-
-Day 3: Testing & Documentation
-  └── Full test pass, README, CHANGELOG
-
-Day 4: Release
-  └── Final review, tag, merge
-```
+- [x] All P0 tasks complete
+- [x] Core rendering unified (left/center/right)
+- [x] Auto-refresh on tab switch
+- [x] Dashboard with stats cards
+- [x] Subtitle: "Open Source Cursor IDE Manager"
+- [x] Version: v0.2.0-rc1
+- [x] Builds on Linux x86_64
+- [x] Nix flake builds cleanly
+- [ ] README updated
+- [ ] CHANGELOG updated
+- [ ] Version bumped in Cargo.toml
+- [ ] Create pre-release branch
+- [ ] Git tag v0.2.0-rc1
 
 ---
 
-*Last updated: 2025-11-29*
+*Last updated: 2025-11-29 - RC1 Ready*
