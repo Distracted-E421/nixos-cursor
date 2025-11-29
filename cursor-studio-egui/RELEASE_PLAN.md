@@ -115,27 +115,27 @@ All interfaces will read/write the same config schema
 ```
 Feature Area              Status    Polish Level   Release Ready?
 ─────────────────────────────────────────────────────────────────
-Core UI                   ✅ Done    ████████░░ 80%    ⚠️ Minor
-Message Rendering         ✅ Done    ███████░░░ 70%    ⚠️ Bold fix
+Core UI                   ✅ Done    █████████░ 90%    ✅ Ready
+Message Rendering         ✅ Done    █████████░ 90%    ✅ Ready (bold fixed)
 Bookmarks                 ✅ Done    █████████░ 90%    ✅ Ready
 Import System             ✅ Done    █████████░ 90%    ✅ Ready
-Settings Panel            ✅ Done    ████████░░ 80%    ⚠️ Persist
-Security Panel            ✅ Done    ███████░░░ 70%    ⚠️ NPM wire
+Settings Panel            ✅ Done    █████████░ 90%    ✅ Ready (persist fixed)
+Security Panel            ✅ Done    ████████░░ 80%    ⚠️ NPM wire
 Search (In-Chat)          ✅ Done    █████████░ 90%    ✅ Ready
 Export (Markdown)         ✅ Done    █████████░ 90%    ✅ Ready
-Theme System              ✅ Done    █████████░ 90%    ✅ Ready
+Theme System              ✅ Done    █████████░ 90%    ✅ Ready (scrollbar)
 ─────────────────────────────────────────────────────────────────
-OVERALL                              ████████░░ 83%    🔶 Almost
+OVERALL                              █████████░ 89%    ✅ RC Ready
 ```
 
 ## 🎯 Critical Path to Release
 
 ### Phase 1: Bug Fixes (P0 - Must Have)
-| Task | File | Priority | Est. Time |
-|------|------|----------|-----------|
-| Fix nested **bold** in markdown | `main.rs:render_text_line()` | P0 | 30m |
-| Unicode font fallback | `main.rs:configure_fonts()` | P0 | 45m |
-| Settings persistence on exit | `main.rs:on_close_event()` | P0 | 20m |
+| Task | File | Priority | Status |
+|------|------|----------|--------|
+| Fix **bold** text rendering | `main.rs:render_inline_formatting()` | P0 | ✅ Done |
+| Unicode font fallback | `main.rs:configure_fonts()` | P0 | ✅ Done |
+| Settings persistence on exit | `main.rs:on_exit()` | P0 | ✅ Done |
 
 ### Phase 2: Polish (P1 - Should Have)
 | Task | File | Priority | Est. Time |

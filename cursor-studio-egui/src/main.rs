@@ -4969,13 +4969,12 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
         ..Default::default()
     };
 
+    // Bold format - use underline as visual indicator since egui doesn't have font weights
+    // Alternative: could use color differentiation or stronger fonts
     let bold_format = TextFormat {
         font_id: FontId::proportional(13.0),
-        color: theme.fg,
-        italics: false,
-        underline: egui::Stroke::NONE,
-        strikethrough: egui::Stroke::NONE,
-        valign: egui::Align::Center,
+        color: theme.fg_bright, // Brighter color for emphasis
+        underline: egui::Stroke::new(1.0, theme.fg_dim), // Subtle underline for bold
         ..Default::default()
     };
 
@@ -4992,20 +4991,22 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
     let mut in_bold = false;
 
     // Helper to append text with current format
-    let mut append_text = |job: &mut LayoutJob, text: &str, in_code: bool, in_bold: bool| {
+    let append_text = |job: &mut LayoutJob,
+                       text: &str,
+                       in_code: bool,
+                       in_bold: bool,
+                       normal: &TextFormat,
+                       bold: &TextFormat,
+                       code: &TextFormat| {
         if text.is_empty() {
             return;
         }
         let format = if in_code {
-            code_format.clone()
+            code.clone()
         } else if in_bold {
-            TextFormat {
-                font_id: FontId::proportional(13.0),
-                color: theme.fg,
-                ..Default::default()
-            }
+            bold.clone()
         } else {
-            normal_format.clone()
+            normal.clone()
         };
         job.append(text, 0.0, format);
     };
@@ -5013,13 +5014,29 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
     while let Some(ch) = chars.next() {
         if ch == '`' {
             // Flush current text before toggling code mode
-            append_text(&mut job, &current_text, in_code, in_bold);
+            append_text(
+                &mut job,
+                &current_text,
+                in_code,
+                in_bold,
+                &normal_format,
+                &bold_format,
+                &code_format,
+            );
             current_text.clear();
             in_code = !in_code;
         } else if ch == '*' && chars.peek() == Some(&'*') && !in_code {
             // Bold toggle (only outside of code blocks)
             chars.next(); // consume second *
-            append_text(&mut job, &current_text, in_code, in_bold);
+            append_text(
+                &mut job,
+                &current_text,
+                in_code,
+                in_bold,
+                &normal_format,
+                &bold_format,
+                &code_format,
+            );
             current_text.clear();
             in_bold = !in_bold;
         } else if ch == '*' && !in_code && !in_bold {
@@ -5031,7 +5048,15 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
     }
 
     // Append remaining text
-    append_text(&mut job, &current_text, in_code, in_bold);
+    append_text(
+        &mut job,
+        &current_text,
+        in_code,
+        in_bold,
+        &normal_format,
+        &bold_format,
+        &code_format,
+    );
 
     // Render as a single label with proper wrapping
     ui.label(job);
