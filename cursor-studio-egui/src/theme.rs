@@ -98,20 +98,20 @@ impl Theme {
 
     pub fn light() -> Self {
         Self {
-            // Selected state colors - visible on light themes  
-            selected_bg: Color32::from_rgb(0, 120, 212),   // Blue accent background
+            // Selected state colors - visible on light themes
+            selected_bg: Color32::from_rgb(0, 120, 212), // Blue accent background
             selected_fg: Color32::from_rgb(255, 255, 255), // White text
-            
-            bg: Color32::from_rgb(255, 255, 255),            // #ffffff
-            editor_bg: Color32::from_rgb(255, 255, 255),     // #ffffff
-            sidebar_bg: Color32::from_rgb(243, 243, 243),    // #f3f3f3
-            activitybar_bg: Color32::from_rgb(51, 51, 51),   // #333333
-            statusbar_bg: Color32::from_rgb(0, 122, 204),    // #007acc
-            tab_bg: Color32::from_rgb(236, 236, 236),        // #ececec
+
+            bg: Color32::from_rgb(255, 255, 255), // #ffffff
+            editor_bg: Color32::from_rgb(255, 255, 255), // #ffffff
+            sidebar_bg: Color32::from_rgb(243, 243, 243), // #f3f3f3
+            activitybar_bg: Color32::from_rgb(51, 51, 51), // #333333
+            statusbar_bg: Color32::from_rgb(0, 122, 204), // #007acc
+            tab_bg: Color32::from_rgb(236, 236, 236), // #ececec
             tab_active_bg: Color32::from_rgb(255, 255, 255), // #ffffff
-            tab_hover_bg: Color32::from_rgb(220, 220, 220),  // #dcdcdc
-            input_bg: Color32::from_rgb(255, 255, 255),      // #ffffff
-            code_bg: Color32::from_rgb(248, 248, 248),       // #f8f8f8
+            tab_hover_bg: Color32::from_rgb(220, 220, 220), // #dcdcdc
+            input_bg: Color32::from_rgb(255, 255, 255), // #ffffff
+            code_bg: Color32::from_rgb(248, 248, 248), // #f8f8f8
 
             fg: Color32::from_rgb(51, 51, 51),        // #333333
             fg_dim: Color32::from_rgb(128, 128, 128), // #808080
@@ -152,16 +152,36 @@ impl Theme {
         // VS Code themes can have comments, so we need to strip them
         let cleaned = strip_json_comments(json_content);
 
-        let theme_json: VSCodeTheme = serde_json::from_str(&cleaned).ok()?;
+        let theme_json: VSCodeTheme = match serde_json::from_str(&cleaned) {
+            Ok(t) => t,
+            Err(e) => {
+                log::warn!("Failed to parse theme JSON: {}", e);
+                return None;
+            }
+        };
 
-        let mut theme = if theme_json.theme_type.as_deref() == Some("light") {
+        // Determine if light or dark theme based on type field or name
+        let is_light = theme_json.theme_type.as_deref() == Some("light")
+            || theme_json.theme_type.as_deref() == Some("hc-light")
+            || theme_json
+                .name
+                .as_ref()
+                .map(|n| n.to_lowercase().contains("light"))
+                .unwrap_or(false);
+
+        let mut theme = if is_light {
             Self::light()
         } else {
             Self::dark()
         };
 
+        // Track if we loaded any colors
+        let mut loaded_colors = false;
+
         // Parse colors from the theme
         if let Some(colors) = &theme_json.colors {
+            loaded_colors = true;
+            
             // Editor colors
             if let Some(c) = colors.get("editor.background") {
                 if let Some(color) = parse_color(c) {
@@ -174,6 +194,17 @@ impl Theme {
             if let Some(c) = colors.get("editor.foreground") {
                 if let Some(color) = parse_color(c) {
                     theme.fg = color;
+                }
+            }
+            
+            // Additional fallback: try "foreground" if editor.foreground not found
+            if let Some(c) = colors.get("foreground") {
+                if let Some(color) = parse_color(c) {
+                    theme.fg_bright = color;
+                    // Only set fg if not already set
+                    if theme.fg == Theme::dark().fg {
+                        theme.fg = color;
+                    }
                 }
             }
 
@@ -229,7 +260,7 @@ impl Theme {
             // Priority: button.background > focusBorder > list.activeSelectionBackground
             let accent_sources = [
                 "button.background",
-                "button.hoverBackground", 
+                "button.hoverBackground",
                 "focusBorder",
                 "list.activeSelectionBackground",
                 "activityBarBadge.background",
@@ -238,7 +269,8 @@ impl Theme {
                 if let Some(c) = colors.get(source) {
                     if let Some(color) = parse_color(c) {
                         // Only use if reasonably visible (not too dark or transparent)
-                        let brightness = (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
+                        let brightness =
+                            (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
                         if brightness > 40 && color.a() > 128 {
                             theme.accent = color;
                             break;
@@ -257,7 +289,8 @@ impl Theme {
             for source in selection_sources {
                 if let Some(c) = colors.get(source) {
                     if let Some(color) = parse_color(c) {
-                        let brightness = (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
+                        let brightness =
+                            (color.r() as u32 + color.g() as u32 + color.b() as u32) / 3;
                         if brightness > 30 && color.a() > 100 {
                             theme.selected_bg = color;
                             break;
@@ -294,7 +327,7 @@ impl Theme {
                     theme.border = color;
                 }
             }
-            
+
             // Foreground dim - try VS Code's descriptionForeground
             if let Some(c) = colors.get("descriptionForeground") {
                 if let Some(color) = parse_color(c) {
@@ -346,24 +379,30 @@ impl Theme {
                 }
             }
         }
+        
+        // Log if no colors were found
+        if !loaded_colors {
+            log::info!("Theme has no 'colors' section, using defaults with token colors only");
+        }
 
         Some(theme)
     }
-    
+
     /// Compute selected state colors based on theme brightness
     /// This ensures buttons/icons have proper contrast when selected
     pub fn compute_selected_colors(&mut self) {
         // Calculate background brightness (0-255 scale)
         let bg_brightness = (self.bg.r() as u32 + self.bg.g() as u32 + self.bg.b() as u32) / 3;
-        
+
         if bg_brightness > 128 {
             // Light theme - use darker selected colors
-            self.selected_bg = Color32::from_rgb(0, 100, 180);   // Darker blue
+            self.selected_bg = Color32::from_rgb(0, 100, 180); // Darker blue
             self.selected_fg = Color32::from_rgb(255, 255, 255); // White
         } else {
             // Dark theme - use brighter selected colors
             // If accent is very dark, override with a visible color
-            let accent_brightness = (self.accent.r() as u32 + self.accent.g() as u32 + self.accent.b() as u32) / 3;
+            let accent_brightness =
+                (self.accent.r() as u32 + self.accent.g() as u32 + self.accent.b() as u32) / 3;
             if accent_brightness < 80 {
                 // Accent is too dark, use a default blue
                 self.selected_bg = Color32::from_rgb(30, 136, 229); // Bright blue
@@ -373,7 +412,7 @@ impl Theme {
             self.selected_fg = Color32::from_rgb(255, 255, 255); // White
         }
     }
-    
+
     /// Check if this is a light theme
     pub fn is_light(&self) -> bool {
         let brightness = (self.bg.r() as u32 + self.bg.g() as u32 + self.bg.b() as u32) / 3;
@@ -384,6 +423,7 @@ impl Theme {
 /// VS Code theme JSON structure
 #[derive(Debug, Deserialize)]
 struct VSCodeTheme {
+    name: Option<String>,
     #[serde(rename = "type")]
     theme_type: Option<String>,
     colors: Option<HashMap<String, String>>,

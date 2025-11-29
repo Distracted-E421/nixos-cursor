@@ -132,14 +132,36 @@ fn extract_message_content(data: &Value) -> (String, Option<ToolCallInfo>, Optio
 /// Extract plain text from Lexical editor JSON format
 fn extract_lexical_text(root: &Value) -> String {
     let mut parts = Vec::new();
-    extract_lexical_text_recursive(root, &mut parts);
-    parts.join("")
+    extract_lexical_text_recursive(root, &mut parts, false);
+    
+    // Clean up: remove excessive newlines and merge adjacent text
+    let result = parts.join("");
+    
+    // Replace 3+ consecutive newlines with just 2
+    let mut cleaned = String::new();
+    let mut newline_count = 0;
+    
+    for ch in result.chars() {
+        if ch == '\n' {
+            newline_count += 1;
+            if newline_count <= 2 {
+                cleaned.push(ch);
+            }
+        } else {
+            newline_count = 0;
+            cleaned.push(ch);
+        }
+    }
+    
+    cleaned
 }
 
-fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>) {
+fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>, in_paragraph: bool) {
     // If this node has "text" field, it's a text node
     if let Some(text) = node.get("text").and_then(|v| v.as_str()) {
-        parts.push(text.to_string());
+        if !text.is_empty() {
+            parts.push(text.to_string());
+        }
     }
 
     // Check for code block
@@ -149,20 +171,49 @@ fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>) {
                 let lang = node.get("language").and_then(|v| v.as_str()).unwrap_or("");
                 parts.push(format!("\n```{}\n{}\n```\n", lang, code));
             }
+            return; // Don't recurse into code blocks
         }
+    }
+
+    let is_paragraph = node
+        .get("type")
+        .and_then(|v| v.as_str())
+        .map(|t| t == "paragraph")
+        .unwrap_or(false);
+    
+    let is_linebreak = node
+        .get("type")
+        .and_then(|v| v.as_str())
+        .map(|t| t == "linebreak")
+        .unwrap_or(false);
+    
+    // Handle explicit linebreaks
+    if is_linebreak {
+        parts.push("\n".to_string());
+        return;
     }
 
     // Recurse into children
     if let Some(children) = node.get("children").and_then(|v| v.as_array()) {
+        // Count non-empty text content in this paragraph
+        let has_substantial_content = children.iter().any(|c| {
+            c.get("text")
+                .and_then(|v| v.as_str())
+                .map(|t| t.len() > 1)
+                .unwrap_or(false)
+        });
+        
         for child in children {
-            extract_lexical_text_recursive(child, parts);
+            extract_lexical_text_recursive(child, parts, is_paragraph);
         }
-    }
-
-    // Add newline after paragraphs
-    if let Some(node_type) = node.get("type").and_then(|v| v.as_str()) {
-        if node_type == "paragraph" {
+        
+        // Only add newline after paragraphs with substantial content
+        // This prevents the vertical column issue from single-char paragraphs
+        if is_paragraph && has_substantial_content {
             parts.push("\n".to_string());
+        } else if is_paragraph && !children.is_empty() {
+            // For short paragraphs, just add a space to separate
+            parts.push(" ".to_string());
         }
     }
 }

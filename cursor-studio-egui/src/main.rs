@@ -266,7 +266,11 @@ fn configure_fonts(ctx: &egui::Context) {
         }
     }
 
-    log::debug!("Loaded {} custom fonts: {:?}", loaded_fonts.len(), loaded_fonts);
+    log::debug!(
+        "Loaded {} custom fonts: {:?}",
+        loaded_fonts.len(),
+        loaded_fonts
+    );
     ctx.set_fonts(fonts);
 }
 
@@ -2116,55 +2120,89 @@ impl CursorStudio {
                     .stroke(Stroke::new(1.0, theme.border))
                     .inner_margin(egui::Margin::same(6.0))
                     .show(ui, |ui| {
-                        let themes = self.available_themes.clone();
-                        let mut selected_theme: Option<(String, Option<PathBuf>)> = None;
-
-                        for (theme_name, theme_path) in &themes {
-                            let is_current = &self.current_theme_name == theme_name;
-                            let is_hovered = self.hovered_theme.as_ref() == Some(theme_name);
-
-                            let bg = if is_current {
-                                theme.selection
-                            } else if is_hovered {
-                                theme.list_hover
-                            } else {
-                                Color32::TRANSPARENT
-                            };
-
-                            egui::Frame::none()
-                                .fill(bg)
-                                .rounding(Rounding::same(4.0))
-                                .inner_margin(egui::Margin::symmetric(8.0, 4.0))
-                                .show(ui, |ui| {
-                                    let btn = ui.add(
+                        // Refresh button at top
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new("Themes")
+                                    .color(theme.fg_dim)
+                                    .size(10.0),
+                            );
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if ui
+                                    .add(
                                         egui::Button::new(
-                                            RichText::new(theme_name)
-                                                .color(if is_current {
-                                                    theme.accent
-                                                } else {
-                                                    theme.fg
-                                                })
-                                                .size(12.0),
+                                            RichText::new("↻").color(theme.fg_dim).size(12.0),
                                         )
-                                        .frame(false)
-                                        .min_size(Vec2::new(ui.available_width() - 16.0, 22.0)),
-                                    );
+                                        .frame(false),
+                                    )
+                                    .on_hover_text("Refresh theme list")
+                                    .clicked()
+                                {
+                                    self.available_themes = Self::find_vscode_themes();
+                                    self.set_status("✓ Refreshed theme list");
+                                }
+                            });
+                        });
+                        ui.add_space(4.0);
+                        ui.separator();
+                        ui.add_space(4.0);
 
-                                    if btn.hovered() {
-                                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                                        self.hovered_theme = Some(theme_name.clone());
-                                    }
+                        // Scrollable theme list
+                        let max_height = 300.0;
+                        egui::ScrollArea::vertical()
+                            .max_height(max_height)
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                let themes = self.available_themes.clone();
+                                let mut selected_theme: Option<(String, Option<PathBuf>)> = None;
 
-                                    if btn.clicked() {
-                                        selected_theme =
-                                            Some((theme_name.clone(), theme_path.clone()));
-                                    }
-                                });
-                        }
+                                for (theme_name, theme_path) in &themes {
+                                    let is_current = &self.current_theme_name == theme_name;
+                                    let is_hovered = self.hovered_theme.as_ref() == Some(theme_name);
 
-                        if let Some((name, path)) = selected_theme {
-                            self.apply_theme(&name, path.as_ref());
-                        }
+                                    let bg = if is_current {
+                                        theme.selection
+                                    } else if is_hovered {
+                                        theme.list_hover
+                                    } else {
+                                        Color32::TRANSPARENT
+                                    };
+
+                                    egui::Frame::none()
+                                        .fill(bg)
+                                        .rounding(Rounding::same(4.0))
+                                        .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                                        .show(ui, |ui| {
+                                            let btn = ui.add(
+                                                egui::Button::new(
+                                                    RichText::new(theme_name)
+                                                        .color(if is_current {
+                                                            theme.accent
+                                                        } else {
+                                                            theme.fg
+                                                        })
+                                                        .size(12.0),
+                                                )
+                                                .frame(false)
+                                                .min_size(Vec2::new(ui.available_width() - 16.0, 22.0)),
+                                            );
+
+                                            if btn.hovered() {
+                                                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                                                self.hovered_theme = Some(theme_name.clone());
+                                            }
+
+                                            if btn.clicked() {
+                                                selected_theme =
+                                                    Some((theme_name.clone(), theme_path.clone()));
+                                            }
+                                        });
+                                }
+
+                                if let Some((name, path)) = selected_theme {
+                                    self.apply_theme(&name, path.as_ref());
+                                }
+                            });
                     });
             } else {
                 self.hovered_theme = None;
