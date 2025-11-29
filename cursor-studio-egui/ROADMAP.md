@@ -1,6 +1,6 @@
 # Cursor Studio Roadmap
 
-> **See also:** [RELEASE_PLAN.md](./RELEASE_PLAN.md) for v0.3.0 release checklist
+> **See also:** [RELEASE_PLAN.md](./RELEASE_PLAN.md) for v0.2.0 release checklist
 
 ## ✅ Completed Features (v0.2.x)
 
@@ -58,7 +58,7 @@
 
 ---
 
-## 🎯 v0.3.0 Release Focus
+## 🎯 v0.2.0 Release Focus
 
 ### P0 - Must Fix
 - [ ] **Bold text rendering** - Nested bold in markdown
@@ -90,9 +90,9 @@
 ## 🔮 Future Goals
 
 ### v0.4.0 - Unified Configuration
-- [x] Home Manager module for cursor-studio ✅ DONE (v0.3.0)
-- [x] `programs.cursor-studio` options in home.nix ✅ DONE (v0.3.0)
-- [x] Shared config schema (JSON) ✅ DONE (v0.3.0)
+- [x] Home Manager module for cursor-studio ✅ DONE (v0.2.0)
+- [x] `programs.cursor-studio` options in home.nix ✅ DONE (v0.2.0)
+- [x] Shared config schema (JSON) ✅ DONE (v0.2.0)
 - [ ] CLI interface (`cursor-studio-cli`)
 - [ ] TUI interface (`cursor-studio-tui`)
 - [ ] TOML config support

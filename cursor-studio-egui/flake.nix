@@ -13,7 +13,7 @@
     rust-overlay,
     flake-utils,
   }:
-    # System-agnostic outputs
+  # System-agnostic outputs
     {
       # Home Manager module for declarative configuration
       homeManagerModules.default = import ./home-manager-module.nix;

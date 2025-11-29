@@ -111,35 +111,43 @@ impl SecurityScanner {
         scanner.load_embedded_blocklist();
         scanner
     }
-    
+
     /// Load the embedded blocklist from the binary or file
     fn load_embedded_blocklist(&mut self) {
         // Try to load from embedded data first
         let blocklist_json = include_str!("../security/known-malicious.json");
-        
+
         if let Ok(blocklist) = serde_json::from_str::<Blocklist>(blocklist_json) {
             // Extract all blocked package names
-            self.blocked_packages = blocklist.packages
+            self.blocked_packages = blocklist
+                .packages
                 .values()
                 .flat_map(|cat| cat.packages.iter().map(|p| p.name.clone()))
                 .collect();
             self.blocklist = Some(blocklist);
         }
     }
-    
+
     /// Check if a package is blocked
-    pub fn is_blocked(&self, package_name: &str, version: Option<&str>) -> Option<PackageScanResult> {
+    pub fn is_blocked(
+        &self,
+        package_name: &str,
+        version: Option<&str>,
+    ) -> Option<PackageScanResult> {
         let blocklist = self.blocklist.as_ref()?;
-        
+
         for (category_name, category) in &blocklist.packages {
             for pkg in &category.packages {
                 if pkg.name == package_name {
                     // Check version
                     let version_match = match version {
-                        Some(v) => pkg.versions.contains(&"*".to_string()) || pkg.versions.contains(&v.to_string()),
+                        Some(v) => {
+                            pkg.versions.contains(&"*".to_string())
+                                || pkg.versions.contains(&v.to_string())
+                        }
                         None => true, // If no version specified, assume blocked
                     };
-                    
+
                     if version_match {
                         return Some(PackageScanResult {
                             package_name: package_name.to_string(),
@@ -154,17 +162,17 @@ impl SecurityScanner {
                 }
             }
         }
-        
+
         None
     }
-    
+
     /// Scan a package.json file for blocked packages
     pub fn scan_package_json(&self, path: &PathBuf) -> Result<Vec<PackageScanResult>> {
         let content = std::fs::read_to_string(path)?;
         let package: serde_json::Value = serde_json::from_str(&content)?;
-        
+
         let mut results = Vec::new();
-        
+
         // Check dependencies
         if let Some(deps) = package.get("dependencies").and_then(|d| d.as_object()) {
             for (name, version) in deps {
@@ -174,7 +182,7 @@ impl SecurityScanner {
                 }
             }
         }
-        
+
         // Check devDependencies
         if let Some(deps) = package.get("devDependencies").and_then(|d| d.as_object()) {
             for (name, version) in deps {
@@ -184,14 +192,14 @@ impl SecurityScanner {
                 }
             }
         }
-        
+
         Ok(results)
     }
-    
+
     /// Scan a directory for package.json files
     pub fn scan_directory(&self, path: &PathBuf) -> Result<Vec<(PathBuf, Vec<PackageScanResult>)>> {
         let mut all_results = Vec::new();
-        
+
         // Find all package.json files
         for entry in walkdir::WalkDir::new(path)
             .follow_links(true)
@@ -206,17 +214,17 @@ impl SecurityScanner {
                 }
             }
         }
-        
+
         Ok(all_results)
     }
-    
+
     /// Get blocklist statistics
     pub fn get_blocklist_stats(&self) -> BlocklistStats {
         let blocklist = match &self.blocklist {
             Some(b) => b,
             None => return BlocklistStats::default(),
         };
-        
+
         let mut stats = BlocklistStats {
             version: blocklist.version.clone(),
             last_updated: blocklist.last_updated.clone(),
@@ -224,22 +232,22 @@ impl SecurityScanner {
             categories: HashMap::new(),
             packages_with_cve: 0,
         };
-        
+
         for (name, category) in &blocklist.packages {
             let count = category.packages.len();
             stats.total_packages += count;
             stats.categories.insert(name.clone(), count);
-            
+
             for pkg in &category.packages {
                 if pkg.cve.is_some() {
                     stats.packages_with_cve += 1;
                 }
             }
         }
-        
+
         stats
     }
-    
+
     /// Get all blocked packages (for display)
     pub fn get_all_blocked(&self) -> Vec<&BlockedPackage> {
         self.blocklist
@@ -252,7 +260,7 @@ impl SecurityScanner {
             })
             .unwrap_or_default()
     }
-    
+
     /// Get blocklist sources
     pub fn get_sources(&self) -> Vec<String> {
         self.blocklist
@@ -278,32 +286,38 @@ pub async fn fetch_cve_info(cve_id: &str) -> Result<Option<CveInfo>> {
         "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={}",
         cve_id
     );
-    
+
     // Note: This is a simplified implementation
     // In production, you'd want proper rate limiting and caching
     let response = ureq::get(&url)
         .timeout(std::time::Duration::from_secs(10))
         .call();
-    
+
     match response {
         Ok(resp) => {
             let body: serde_json::Value = resp.into_json()?;
-            
-            if let Some(vuln) = body.get("vulnerabilities")
+
+            if let Some(vuln) = body
+                .get("vulnerabilities")
                 .and_then(|v| v.as_array())
                 .and_then(|arr| arr.first())
             {
                 let cve = vuln.get("cve").unwrap_or(&serde_json::Value::Null);
-                
-                let description = cve.get("descriptions")
+
+                let description = cve
+                    .get("descriptions")
                     .and_then(|d| d.as_array())
-                    .and_then(|arr| arr.iter().find(|d| d.get("lang").and_then(|l| l.as_str()) == Some("en")))
+                    .and_then(|arr| {
+                        arr.iter()
+                            .find(|d| d.get("lang").and_then(|l| l.as_str()) == Some("en"))
+                    })
                     .and_then(|d| d.get("value"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("No description available")
                     .to_string();
-                
-                let severity = cve.get("metrics")
+
+                let severity = cve
+                    .get("metrics")
                     .and_then(|m| m.get("cvssMetricV31"))
                     .and_then(|v| v.as_array())
                     .and_then(|arr| arr.first())
@@ -312,12 +326,13 @@ pub async fn fetch_cve_info(cve_id: &str) -> Result<Option<CveInfo>> {
                     .and_then(|s| s.as_str())
                     .unwrap_or("UNKNOWN")
                     .to_string();
-                
-                let published = cve.get("published")
+
+                let published = cve
+                    .get("published")
                     .and_then(|p| p.as_str())
                     .unwrap_or("")
                     .to_string();
-                
+
                 return Ok(Some(CveInfo {
                     id: cve_id.to_string(),
                     description,
@@ -326,7 +341,7 @@ pub async fn fetch_cve_info(cve_id: &str) -> Result<Option<CveInfo>> {
                     affected_packages: Vec::new(),
                 }));
             }
-            
+
             Ok(None)
         }
         Err(_) => Ok(None),
@@ -343,13 +358,13 @@ pub fn check_socket_dev(package_name: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_scanner_loads_blocklist() {
         let scanner = SecurityScanner::new();
         assert!(scanner.blocklist.is_some());
     }
-    
+
     #[test]
     fn test_blocked_package() {
         let scanner = SecurityScanner::new();
@@ -357,7 +372,7 @@ mod tests {
         assert!(result.is_some());
         assert!(result.unwrap().is_blocked);
     }
-    
+
     #[test]
     fn test_safe_package() {
         let scanner = SecurityScanner::new();

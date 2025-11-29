@@ -433,17 +433,17 @@ impl ChatDatabase {
             data_dir,
         })
     }
-    
+
     /// Get the path to the database file
     pub fn get_path(&self) -> PathBuf {
         self.data_dir.join("studio.db")
     }
-    
+
     /// Open an existing database (for use in background threads)
     pub fn open(path: &PathBuf) -> Result<Self> {
         let data_dir = path.parent().unwrap_or(path).to_path_buf();
         let conn = Connection::open(path)?;
-        
+
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
             data_dir,
@@ -745,7 +745,7 @@ impl ChatDatabase {
     /// Clear all imported data (for re-import)
     pub fn clear_all(&self) -> Result<()> {
         let conn = self.conn.lock().unwrap();
-        
+
         // First, save favorites to a temp structure
         let mut favorites: Vec<String> = Vec::new();
         {
@@ -755,7 +755,7 @@ impl ChatDatabase {
                 favorites.push(id);
             }
         }
-        
+
         // Store favorites in config table for persistence
         if !favorites.is_empty() {
             let favorites_json = serde_json::to_string(&favorites).unwrap_or_default();
@@ -764,24 +764,23 @@ impl ChatDatabase {
                 [&favorites_json],
             )?;
         }
-        
+
         conn.execute("DELETE FROM messages", [])?;
         conn.execute("DELETE FROM conversations", [])?;
         // Note: Bookmarks are NOT cleared - they persist across cache clears
         Ok(())
     }
-    
+
     // ==================== CONFIG/SETTINGS ====================
-    
+
     pub fn get_config(&self, key: &str) -> Option<String> {
         let conn = self.conn.lock().unwrap();
-        conn.query_row(
-            "SELECT value FROM config WHERE key = ?1",
-            [key],
-            |row| row.get(0),
-        ).ok()
+        conn.query_row("SELECT value FROM config WHERE key = ?1", [key], |row| {
+            row.get(0)
+        })
+        .ok()
     }
-    
+
     pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -790,19 +789,19 @@ impl ChatDatabase {
         )?;
         Ok(())
     }
-    
+
     pub fn get_config_f32(&self, key: &str, default: f32) -> f32 {
         self.get_config(key)
             .and_then(|s| s.parse().ok())
             .unwrap_or(default)
     }
-    
+
     pub fn get_config_usize(&self, key: &str, default: usize) -> usize {
         self.get_config(key)
             .and_then(|s| s.parse().ok())
             .unwrap_or(default)
     }
-    
+
     pub fn get_config_bool(&self, key: &str, default: bool) -> bool {
         self.get_config(key)
             .map(|s| s == "true" || s == "1")
@@ -812,7 +811,7 @@ impl ChatDatabase {
     /// Restore favorites after reimport
     pub fn restore_favorites(&self) -> Result<usize> {
         let conn = self.conn.lock().unwrap();
-        
+
         // Get preserved favorites from config
         let favorites_json: Option<String> = conn
             .query_row(
@@ -821,15 +820,18 @@ impl ChatDatabase {
                 |row| row.get(0),
             )
             .ok();
-        
+
         let mut restored = 0;
         if let Some(json) = favorites_json {
             if let Ok(favorites) = serde_json::from_str::<Vec<String>>(&json) {
                 for conv_id in favorites {
-                    if conn.execute(
-                        "UPDATE conversations SET is_favorite = 1 WHERE id = ?1",
-                        [&conv_id],
-                    ).is_ok() {
+                    if conn
+                        .execute(
+                            "UPDATE conversations SET is_favorite = 1 WHERE id = ?1",
+                            [&conv_id],
+                        )
+                        .is_ok()
+                    {
                         restored += 1;
                     }
                 }
@@ -837,7 +839,7 @@ impl ChatDatabase {
             // Clear the preserved favorites after restoring
             let _ = conn.execute("DELETE FROM config WHERE key = 'preserved_favorites'", []);
         }
-        
+
         Ok(restored)
     }
 
@@ -1199,7 +1201,8 @@ mod tests {
     use super::*;
 
     fn create_test_db() -> ChatDatabase {
-        let temp_dir = std::env::temp_dir().join(format!("cursor-studio-test-{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("cursor-studio-test-{}", uuid::Uuid::new_v4()));
         ChatDatabase::new_with_path(temp_dir).unwrap()
     }
 
@@ -1212,10 +1215,10 @@ mod tests {
     #[test]
     fn test_config_get_set() {
         let db = create_test_db();
-        
+
         // Set a config value
         db.set_config("test.key", "test_value").unwrap();
-        
+
         // Get it back
         let value = db.get_config("test.key");
         assert_eq!(value, Some("test_value".to_string()));
@@ -1224,14 +1227,14 @@ mod tests {
     #[test]
     fn test_config_f32() {
         let db = create_test_db();
-        
+
         // Set a float config
         db.set_config("test.float", "3.14").unwrap();
-        
+
         // Get it back
         let value = db.get_config_f32("test.float", 0.0);
         assert!((value - 3.14).abs() < 0.001);
-        
+
         // Default for missing key
         let default = db.get_config_f32("missing.key", 42.0);
         assert!((default - 42.0).abs() < 0.001);
@@ -1240,12 +1243,12 @@ mod tests {
     #[test]
     fn test_config_usize() {
         let db = create_test_db();
-        
+
         db.set_config("test.count", "100").unwrap();
-        
+
         let value = db.get_config_usize("test.count", 0);
         assert_eq!(value, 100);
-        
+
         let default = db.get_config_usize("missing.key", 50);
         assert_eq!(default, 50);
     }
@@ -1253,13 +1256,13 @@ mod tests {
     #[test]
     fn test_config_bool() {
         let db = create_test_db();
-        
+
         db.set_config("test.enabled", "true").unwrap();
         assert!(db.get_config_bool("test.enabled", false));
-        
+
         db.set_config("test.disabled", "false").unwrap();
         assert!(!db.get_config_bool("test.disabled", true));
-        
+
         // Default for missing
         assert!(db.get_config_bool("missing.key", true));
     }
@@ -1267,10 +1270,11 @@ mod tests {
     #[test]
     fn test_display_preferences() {
         let db = create_test_db();
-        
+
         // Set a preference (content_type, alignment, style, collapsed)
-        db.set_display_preference("user", "right", "default", false).unwrap();
-        
+        db.set_display_preference("user", "right", "default", false)
+            .unwrap();
+
         // Get all preferences
         let prefs = db.get_display_preferences().unwrap();
         let user_pref = prefs.iter().find(|p| p.content_type == "user");
@@ -1281,18 +1285,11 @@ mod tests {
     #[test]
     fn test_bookmarks() {
         let db = create_test_db();
-        
+
         // Add a bookmark (conv_id, msg_id, msg_seq, label, note, color)
-        let result = db.add_bookmark(
-            "conv123", 
-            "msg456", 
-            1, 
-            Some("Test Label"), 
-            None, 
-            "gold"
-        );
+        let result = db.add_bookmark("conv123", "msg456", 1, Some("Test Label"), None, "gold");
         assert!(result.is_ok());
-        
+
         // Get bookmarks
         let bookmarks = db.get_bookmarks("conv123").unwrap();
         assert_eq!(bookmarks.len(), 1);
@@ -1304,18 +1301,19 @@ mod tests {
     #[test]
     fn test_delete_bookmark() {
         let db = create_test_db();
-        
+
         // Add a bookmark
-        db.add_bookmark("conv123", "msg456", 1, None, None, "gold").unwrap();
-        
+        db.add_bookmark("conv123", "msg456", 1, None, None, "gold")
+            .unwrap();
+
         // Verify it exists
         let bookmarks = db.get_bookmarks("conv123").unwrap();
         assert_eq!(bookmarks.len(), 1);
         let bookmark_id = &bookmarks[0].id;
-        
+
         // Delete it
         db.delete_bookmark(bookmark_id).unwrap();
-        
+
         // Verify it's gone
         let bookmarks = db.get_bookmarks("conv123").unwrap();
         assert_eq!(bookmarks.len(), 0);

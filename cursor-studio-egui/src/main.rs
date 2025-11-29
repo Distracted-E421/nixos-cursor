@@ -67,7 +67,9 @@ struct ExternalResourceConfig {
 impl ExternalConfig {
     /// Load config from ~/.config/cursor-studio/config.json if it exists
     fn load() -> Option<Self> {
-        let config_path = dirs::config_dir()?.join("cursor-studio").join("config.json");
+        let config_path = dirs::config_dir()?
+            .join("cursor-studio")
+            .join("config.json");
         if config_path.exists() {
             let content = std::fs::read_to_string(&config_path).ok()?;
             match serde_json::from_str(&content) {
@@ -126,58 +128,94 @@ fn main() -> eframe::Result<()> {
 }
 
 /// Configure fonts with proper Unicode support for terminal characters
-///
-/// # TODO(P0): Release v0.3.0 - Unicode Font Support
-/// - [ ] Add Nerd Font paths for terminal symbols (❯, ⚡, , etc.)
-/// - [ ] Try: ~/.local/share/fonts/NerdFonts/
-/// - [ ] Try: /nix/store/*nerd-fonts*/share/fonts/
-/// - [ ] Improve fallback chain order (monospace → symbols → emoji)
-/// - [ ] Add config option for custom font paths
-/// - [ ] Test with common shell prompts (starship, powerlevel10k)
 fn configure_fonts(ctx: &egui::Context) {
     use egui::{FontData, FontDefinitions, FontFamily};
 
     let mut fonts = FontDefinitions::default();
+    let mut loaded_fonts: Vec<String> = vec![];
 
-    // Try to load system fonts with good Unicode coverage
-    // These are common paths on Linux systems and Nix
-    let mut font_paths: Vec<String> = vec![
-        // NixOS font paths (check /run first as they're more reliable)
+    // Collect all potential font paths
+    let mut font_paths: Vec<String> = vec![];
+
+    // 1. NixOS system fonts (highest priority for NixOS users)
+    font_paths.extend([
         "/run/current-system/sw/share/X11/fonts/JetBrainsMono-Regular.ttf".to_string(),
         "/run/current-system/sw/share/X11/fonts/DejaVuSansMono.ttf".to_string(),
-        // Nerd Font variants (best for terminal symbols)
-        "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf".to_string(),
-        "/usr/share/fonts/truetype/jetbrains-mono/JetBrainsMono-Regular.ttf".to_string(),
-        // Fallback monospace fonts
+        "/run/current-system/sw/share/X11/fonts/NotoColorEmoji.ttf".to_string(),
+        "/run/current-system/sw/share/fonts/truetype/NotoColorEmoji.ttf".to_string(),
+        "/run/current-system/sw/share/fonts/truetype/DejaVuSansMono.ttf".to_string(),
+        "/run/current-system/sw/share/fonts/truetype/JetBrainsMono-Regular.ttf".to_string(),
+    ]);
+
+    // 2. User fonts (~/.local/share/fonts/)
+    if let Some(home) = dirs::home_dir() {
+        let user_fonts = home.join(".local/share/fonts");
+        if user_fonts.exists() {
+            // Check for common font files
+            for font_name in [
+                "JetBrainsMono-Regular.ttf",
+                "JetBrainsMonoNerdFont-Regular.ttf",
+                "DejaVuSansMono.ttf",
+                "NotoColorEmoji.ttf",
+            ] {
+                font_paths.push(user_fonts.join(font_name).to_string_lossy().to_string());
+            }
+            // Check NerdFonts subdirectory
+            let nerd_fonts = user_fonts.join("NerdFonts");
+            if nerd_fonts.exists() {
+                for font_name in [
+                    "JetBrainsMonoNerdFont-Regular.ttf",
+                    "JetBrainsMonoNerdFontMono-Regular.ttf",
+                ] {
+                    font_paths.push(nerd_fonts.join(font_name).to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // 3. Nix profile fonts (from NIX_PROFILES env var)
+    if let Ok(nix_profiles) = std::env::var("NIX_PROFILES") {
+        for profile in nix_profiles.split(':') {
+            if profile.is_empty() {
+                continue;
+            }
+            // Try multiple possible locations within each profile
+            for subpath in [
+                "share/fonts/truetype/JetBrainsMono-Regular.ttf",
+                "share/fonts/truetype/DejaVuSansMono.ttf",
+                "share/fonts/truetype/NotoColorEmoji.ttf",
+                "share/fonts/opentype/NotoSansSymbols2-Regular.otf",
+                "share/X11/fonts/JetBrainsMono-Regular.ttf",
+                "share/X11/fonts/DejaVuSansMono.ttf",
+            ] {
+                font_paths.push(format!("{}/{}", profile, subpath));
+            }
+        }
+    }
+
+    // 4. XDG data dirs (for flatpak, etc.)
+    if let Ok(xdg_data) = std::env::var("XDG_DATA_DIRS") {
+        for dir in xdg_data.split(':') {
+            if dir.is_empty() {
+                continue;
+            }
+            font_paths.push(format!("{}/fonts/truetype/DejaVuSansMono.ttf", dir));
+            font_paths.push(format!("{}/fonts/truetype/JetBrainsMono-Regular.ttf", dir));
+        }
+    }
+
+    // 5. Standard Linux paths (fallback)
+    font_paths.extend([
         "/usr/share/fonts/TTF/DejaVuSansMono.ttf".to_string(),
         "/usr/share/fonts/dejavu/DejaVuSansMono.ttf".to_string(),
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf".to_string(),
-        // Ubuntu/Debian paths
+        "/usr/share/fonts/truetype/jetbrains-mono/JetBrainsMono-Regular.ttf".to_string(),
+        "/usr/share/fonts/TTF/JetBrainsMonoNerdFont-Regular.ttf".to_string(),
         "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf".to_string(),
-        // Symbols and emoji fonts
-        "/usr/share/fonts/TTF/Symbola.ttf".to_string(),
-        "/usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf".to_string(),
         "/usr/share/fonts/noto-emoji/NotoColorEmoji.ttf".to_string(),
         "/usr/share/fonts/google-noto-emoji/NotoColorEmoji.ttf".to_string(),
-    ];
-
-    // Add fonts from nix store if we're in a nix environment
-    if let Ok(nix_path) = std::env::var("NIX_PROFILES") {
-        for profile in nix_path.split(':') {
-            font_paths.push(format!(
-                "{}/share/fonts/truetype/JetBrainsMono-Regular.ttf",
-                profile
-            ));
-            font_paths.push(format!(
-                "{}/share/fonts/truetype/DejaVuSansMono.ttf",
-                profile
-            ));
-            font_paths.push(format!(
-                "{}/share/fonts/opentype/NotoSansSymbols2-Regular.otf",
-                profile
-            ));
-        }
-    }
+        "/usr/share/fonts/TTF/Symbola.ttf".to_string(),
+    ]);
 
     // Load available fonts
     for path in &font_paths {
@@ -187,10 +225,16 @@ fn configure_fonts(ctx: &egui::Context) {
                 .and_then(|s| s.to_str())
                 .unwrap_or("CustomFont");
 
+            // Skip if we already loaded a font with this name
+            if loaded_fonts.contains(&font_name.to_string()) {
+                continue;
+            }
+
             fonts.font_data.insert(
                 font_name.to_string(),
                 FontData::from_owned(font_data).into(),
             );
+            loaded_fonts.push(font_name.to_string());
 
             // Add to appropriate families based on font type
             if font_name.contains("Mono") || font_name.contains("JetBrains") {
@@ -201,18 +245,28 @@ fn configure_fonts(ctx: &egui::Context) {
                     .push(font_name.to_string());
             }
 
-            // Add all fonts to proportional as fallbacks
-            fonts
-                .families
-                .entry(FontFamily::Proportional)
-                .or_default()
-                .push(font_name.to_string());
+            // Add symbol/emoji fonts to proportional for fallback
+            if font_name.contains("Emoji")
+                || font_name.contains("Symbola")
+                || font_name.contains("Symbol")
+            {
+                fonts
+                    .families
+                    .entry(FontFamily::Proportional)
+                    .or_default()
+                    .push(font_name.to_string());
+            } else {
+                // Regular fonts go to proportional
+                fonts
+                    .families
+                    .entry(FontFamily::Proportional)
+                    .or_default()
+                    .push(font_name.to_string());
+            }
         }
     }
 
-    // Ensure default fonts are still available as final fallback
-    // by keeping them at the end of the font lists
-
+    log::debug!("Loaded {} custom fonts: {:?}", loaded_fonts.len(), loaded_fonts);
     ctx.set_fonts(fonts);
 }
 
@@ -1371,6 +1425,13 @@ fn toggle_switch(ui: &mut egui::Ui, on: &mut bool, theme: Theme) -> egui::Respon
 }
 
 impl eframe::App for CursorStudio {
+    /// Save settings when the app is about to exit
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        log::info!("Saving settings on exit...");
+        self.save_settings();
+        log::info!("Settings saved successfully");
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let theme = self.theme;
 
@@ -4843,7 +4904,33 @@ fn render_text_line(ui: &mut egui::Ui, line: &str, theme: Theme) {
 }
 
 /// Handle inline formatting (backticks, bold)
+/// Supports: `code`, **bold**, and combinations like **`bold code`**
 fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
+    // Helper to flush accumulated text with current formatting
+    fn flush_text(
+        ui: &mut egui::Ui,
+        text: &str,
+        in_code: bool,
+        in_bold: bool,
+        theme: Theme,
+    ) {
+        if text.is_empty() {
+            return;
+        }
+        let rich_text = if in_code {
+            RichText::new(text)
+                .color(theme.syntax_string)
+                .family(egui::FontFamily::Monospace)
+                .size(12.0)
+                .background_color(theme.input_bg)
+        } else if in_bold {
+            RichText::new(text).color(theme.fg).size(13.0).strong()
+        } else {
+            RichText::new(text).color(theme.fg).size(13.0)
+        };
+        ui.label(rich_text);
+    }
+
     let mut current_text = String::new();
     let mut chars = text.chars().peekable();
     let mut in_code = false;
@@ -4851,78 +4938,26 @@ fn render_inline_formatting(ui: &mut egui::Ui, text: &str, theme: Theme) {
 
     while let Some(ch) = chars.next() {
         if ch == '`' {
-            // Flush current text
-            if !current_text.is_empty() {
-                if in_code {
-                    ui.label(
-                        RichText::new(&current_text)
-                            .color(theme.syntax_string)
-                            .family(egui::FontFamily::Monospace)
-                            .size(12.0)
-                            .background_color(theme.input_bg),
-                    );
-                } else if in_bold {
-                    ui.label(
-                        RichText::new(&current_text)
-                            .color(theme.fg)
-                            .size(13.0)
-                            .strong(),
-                    );
-                } else {
-                    ui.label(RichText::new(&current_text).color(theme.fg).size(13.0));
-                }
-                current_text.clear();
-            }
+            // Flush current text before toggling code mode
+            flush_text(ui, &current_text, in_code, in_bold, theme);
+            current_text.clear();
             in_code = !in_code;
-        } else if ch == '*' && chars.peek() == Some(&'*') {
+        } else if ch == '*' && chars.peek() == Some(&'*') && !in_code {
+            // Bold toggle (only outside of code blocks)
             chars.next(); // consume second *
-                          // Flush current text
-            if !current_text.is_empty() {
-                if in_code {
-                    ui.label(
-                        RichText::new(&current_text)
-                            .color(theme.syntax_string)
-                            .family(egui::FontFamily::Monospace)
-                            .size(12.0)
-                            .background_color(theme.input_bg),
-                    );
-                } else if in_bold {
-                    ui.label(
-                        RichText::new(&current_text)
-                            .color(theme.fg)
-                            .size(13.0)
-                            .strong(),
-                    );
-                } else {
-                    ui.label(RichText::new(&current_text).color(theme.fg).size(13.0));
-                }
-                current_text.clear();
-            }
+            flush_text(ui, &current_text, in_code, in_bold, theme);
+            current_text.clear();
             in_bold = !in_bold;
+        } else if ch == '*' && !in_code && !in_bold {
+            // Single asterisk at start of potential italic - treat as literal for now
+            // (could add italic support later with single *)
+            current_text.push(ch);
         } else {
             current_text.push(ch);
         }
     }
 
     // Render remaining text
-    if !current_text.is_empty() {
-        if in_code {
-            ui.label(
-                RichText::new(&current_text)
-                    .color(theme.syntax_string)
-                    .family(egui::FontFamily::Monospace)
-                    .size(12.0)
-                    .background_color(theme.input_bg),
-            );
-        } else if in_bold {
-            ui.label(
-                RichText::new(&current_text)
-                    .color(theme.fg)
-                    .size(13.0)
-                    .strong(),
-            );
-        } else {
-            ui.label(RichText::new(&current_text).color(theme.fg).size(13.0));
-        }
-    }
+    // Note: If bold/code wasn't closed, we still render what we have
+    flush_text(ui, &current_text, in_code, in_bold, theme);
 }
