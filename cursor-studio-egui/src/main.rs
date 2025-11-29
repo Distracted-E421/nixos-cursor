@@ -788,13 +788,13 @@ impl CursorStudio {
     fn refresh_all(&mut self) {
         self.versions = self.db.get_versions().unwrap_or_default();
         self.conversations = self.db.get_conversations(50).unwrap_or_default();
-        
+
         // Also refresh bookmarks if a conversation is currently open
         if let Some(Tab::Conversation(conv_id)) = self.tabs.get(self.active_tab).cloned() {
             self.current_bookmarks = self.db.get_bookmarks(&conv_id).unwrap_or_default();
             self.current_messages = self.db.get_messages(&conv_id).unwrap_or_default();
         }
-        
+
         self.set_status("✓ Refreshed all data");
     }
 
@@ -1276,7 +1276,7 @@ impl CursorStudio {
                 self.set_status(&format!("✗ Theme file not found: {}", theme_name));
                 return;
             }
-            
+
             match Theme::from_vscode_file(path) {
                 Some(loaded_theme) => {
                     self.theme = loaded_theme;
@@ -4214,75 +4214,70 @@ impl CursorStudio {
                             .show(ui, |ui| {
                                 ui.set_max_width(box_width);
                                 // Force left-to-right layout inside the box
-                                ui.with_layout(
-                                    egui::Layout::top_down(egui::Align::LEFT),
-                                    |ui| {
-                                        // Header row with bookmark button
-                                        ui.horizontal(|ui| {
-                                            // Bookmark indicator/button
-                                            let bookmark_icon =
-                                                if is_bookmarked { "🔖" } else { "⭐" };
-                                            let bookmark_color = if is_bookmarked {
-                                                Color32::from_rgb(255, 215, 0)
-                                            } else {
-                                                Color32::from_rgb(100, 100, 100)
-                                            };
-                                            let bookmark_btn = ui
-                                                .add(
-                                                    egui::Button::new(
-                                                        RichText::new(bookmark_icon)
-                                                            .color(bookmark_color)
-                                                            .size(14.0),
-                                                    )
-                                                    .frame(false)
-                                                    .min_size(Vec2::new(20.0, 20.0)),
+                                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                                    // Header row with bookmark button
+                                    ui.horizontal(|ui| {
+                                        // Bookmark indicator/button
+                                        let bookmark_icon =
+                                            if is_bookmarked { "🔖" } else { "⭐" };
+                                        let bookmark_color = if is_bookmarked {
+                                            Color32::from_rgb(255, 215, 0)
+                                        } else {
+                                            Color32::from_rgb(100, 100, 100)
+                                        };
+                                        let bookmark_btn = ui
+                                            .add(
+                                                egui::Button::new(
+                                                    RichText::new(bookmark_icon)
+                                                        .color(bookmark_color)
+                                                        .size(14.0),
                                                 )
-                                                .on_hover_text(if is_bookmarked {
-                                                    "Remove bookmark"
-                                                } else {
-                                                    "Add bookmark"
-                                                });
+                                                .frame(false)
+                                                .min_size(Vec2::new(20.0, 20.0)),
+                                            )
+                                            .on_hover_text(if is_bookmarked {
+                                                "Remove bookmark"
+                                            } else {
+                                                "Add bookmark"
+                                            });
 
-                                            if bookmark_btn.hovered() {
-                                                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                                            }
+                                        if bookmark_btn.hovered() {
+                                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                                        }
 
-                                            if bookmark_btn.clicked() {
-                                                if is_bookmarked {
-                                                    if let Some(bm) = bookmarks
-                                                        .iter()
-                                                        .find(|b| b.message_id == msg_id)
-                                                    {
-                                                        bookmark_actions.push(
-                                                            BookmarkAction::Remove(
-                                                                bm.id.clone(),
-                                                                conv_id_clone.clone(),
-                                                            ),
-                                                        );
-                                                    }
-                                                } else {
-                                                    bookmark_actions.push(BookmarkAction::Add(
+                                        if bookmark_btn.clicked() {
+                                            if is_bookmarked {
+                                                if let Some(bm) = bookmarks
+                                                    .iter()
+                                                    .find(|b| b.message_id == msg_id)
+                                                {
+                                                    bookmark_actions.push(BookmarkAction::Remove(
+                                                        bm.id.clone(),
                                                         conv_id_clone.clone(),
-                                                        msg_id.clone(),
-                                                        msg_seq,
                                                     ));
                                                 }
+                                            } else {
+                                                bookmark_actions.push(BookmarkAction::Add(
+                                                    conv_id_clone.clone(),
+                                                    msg_id.clone(),
+                                                    msg_seq,
+                                                ));
                                             }
+                                        }
 
-                                            ui.label(
-                                                RichText::new(format!("{} {}", icon, label))
-                                                    .color(color)
-                                                    .strong()
-                                                    .size(11.0),
-                                            );
-                                        });
+                                        ui.label(
+                                            RichText::new(format!("{} {}", icon, label))
+                                                .color(color)
+                                                .strong()
+                                                .size(11.0),
+                                        );
+                                    });
 
-                                        ui.add_space(4.0);
+                                    ui.add_space(4.0);
 
-                                        // Render full message body (tool calls, thinking, content)
-                                        render_message_body(ui, msg, theme);
-                                    },
-                                );
+                                    // Render full message body (tool calls, thinking, content)
+                                    render_message_body(ui, msg, theme);
+                                });
                             });
 
                         ui.add_space(16.0);
@@ -4327,8 +4322,9 @@ impl CursorStudio {
                                         );
                                         if bookmark_btn.clicked() {
                                             if is_bookmarked {
-                                                if let Some(bm) =
-                                                    bookmarks.iter().find(|b| b.message_id == msg_id)
+                                                if let Some(bm) = bookmarks
+                                                    .iter()
+                                                    .find(|b| b.message_id == msg_id)
                                                 {
                                                     bookmark_actions.push(BookmarkAction::Remove(
                                                         bm.id.clone(),
@@ -4361,223 +4357,100 @@ impl CursorStudio {
                     continue;
                 }
 
-                // === LEFT-ALIGNED MESSAGES (default) ===
+                // === LEFT-ALIGNED MESSAGES ===
+                // Same box-based approach as center/right, but positioned on left
+                ui.horizontal(|ui| {
+                    // Small left margin for left-aligned messages
+                    ui.add_space(16.0);
 
-                // Highlight frame for scroll target
-                let highlight_color = if is_scroll_target {
-                    theme.accent.linear_multiply(0.2)
-                } else {
-                    Color32::TRANSPARENT
-                };
+                    let available = ui.available_width();
+                    let box_width = max_width.min(available * 0.66); // 2/3 width rule
 
-                egui::Frame::none()
-                    .fill(highlight_color)
-                    .rounding(Rounding::same(6.0))
-                    .inner_margin(egui::Margin::symmetric(4.0, 2.0))
-                    .show(ui, |ui| {
-                        // Message header with bookmark button
-                        ui.horizontal(|ui| {
-                            ui.add_space(16.0);
+                    // Highlight for scroll target
+                    let box_fill = if is_scroll_target {
+                        theme.sidebar_bg.linear_multiply(1.2)
+                    } else {
+                        theme.sidebar_bg
+                    };
 
-                            // Bookmark indicator/button - VISIBLE
-                            let bookmark_icon = if is_bookmarked { "🔖" } else { "⭐" };
-                            let bookmark_color = if is_bookmarked {
-                                Color32::from_rgb(255, 215, 0) // Gold
-                            } else {
-                                Color32::from_rgb(100, 100, 100) // Gray, visible
-                            };
-                            let bookmark_btn = ui
-                                .add(
-                                    egui::Button::new(
-                                        RichText::new(bookmark_icon)
-                                            .color(bookmark_color)
-                                            .size(14.0), // Larger
-                                    )
-                                    .frame(false)
-                                    .min_size(Vec2::new(20.0, 20.0)),
-                                )
-                                .on_hover_text(if is_bookmarked {
-                                    "Remove bookmark"
-                                } else {
-                                    "Add bookmark"
-                                });
-
-                            if bookmark_btn.hovered() {
-                                ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
-                            }
-
-                            if bookmark_btn.clicked() {
-                                if is_bookmarked {
-                                    if let Some(bm) =
-                                        bookmarks.iter().find(|b| b.message_id == msg_id)
-                                    {
-                                        let bm_id = bm.id.clone();
-                                        bookmark_actions.push(BookmarkAction::Remove(
-                                            bm_id,
-                                            conv_id_clone.clone(),
-                                        ));
-                                    }
-                                } else {
-                                    bookmark_actions.push(BookmarkAction::Add(
-                                        conv_id_clone.clone(),
-                                        msg_id.clone(),
-                                        msg_seq,
-                                    ));
-                                }
-                            }
-
-                            ui.label(
-                                RichText::new(format!("{} {}", icon, label))
-                                    .color(color)
-                                    .strong()
-                                    .size(12.0),
-                            );
-                        });
-
-                        // Subtle separator line
-                        ui.add_space(2.0);
-                        ui.horizontal(|ui| {
-                            ui.add_space(16.0);
-                            let rect = ui.available_rect_before_wrap();
-                            let line_rect = egui::Rect::from_min_max(
-                                egui::pos2(rect.left(), rect.top()),
-                                egui::pos2(rect.left() + 400.0, rect.top() + 1.0),
-                            );
-                            ui.painter()
-                                .rect_filled(line_rect, Rounding::ZERO, theme.border);
-                        });
-                        ui.add_space(4.0);
-
-                        // Tool call details (if present)
-                        if let Some(tc) = &msg.tool_call {
-                            ui.horizontal(|ui| {
-                                ui.add_space(24.0);
-
-                                // Tool call box - uses theme colors
-                                egui::Frame::none()
-                                    .fill(theme.sidebar_bg)
-                                    .rounding(Rounding::same(4.0))
-                                    .inner_margin(8.0)
-                                    .stroke(Stroke::new(1.0, theme.border))
-                                    .show(ui, |ui| {
-                                        ui.set_max_width(ui.available_width() - 48.0);
-
-                                        ui.label(
-                                            RichText::new(format!("{}()", tc.name))
-                                                .color(theme.syntax_function)
-                                                .family(egui::FontFamily::Monospace)
-                                                .size(12.0),
-                                        );
-
-                                        if !tc.args_preview.is_empty() {
-                                            ui.label(
-                                                RichText::new(&tc.args_preview)
-                                                    .color(theme.fg_dim)
-                                                    .family(egui::FontFamily::Monospace)
-                                                    .size(11.0),
-                                            );
-                                        }
-
-                                        let status_color = match tc.status.as_str() {
-                                            "completed" => theme.success,
-                                            "error" | "failed" => theme.error,
-                                            _ => theme.warning,
-                                        };
-                                        ui.label(
-                                            RichText::new(format!("Status: {}", tc.status))
-                                                .color(status_color)
-                                                .size(10.0),
-                                        );
-                                    });
-                            });
-                            ui.add_space(4.0);
-                        }
-
-                        // Thinking block (if present) - custom collapsible with proper theme
-                        if let Some(thinking) = &msg.thinking {
-                            if !thinking.is_empty() {
-                                let thinking_id =
-                                    ui.make_persistent_id(format!("thinking_{}", msg.id));
-                                let mut is_open = ui
-                                    .data_mut(|d| d.get_temp::<bool>(thinking_id).unwrap_or(false));
-
+                    egui::Frame::none()
+                        .fill(box_fill)
+                        .rounding(Rounding::same(8.0))
+                        .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+                        .stroke(if is_scroll_target {
+                            Stroke::new(2.0, theme.accent)
+                        } else {
+                            Stroke::NONE
+                        })
+                        .show(ui, |ui| {
+                            ui.set_max_width(box_width);
+                            // Force left-to-right layout inside
+                            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                                // Header with bookmark
                                 ui.horizontal(|ui| {
-                                    ui.add_space(24.0);
-
-                                    // Custom toggle button with theme colors
-                                    let toggle_text = if is_open {
-                                        "▼ 💭 Thinking"
+                                    let bookmark_icon =
+                                        if is_bookmarked { "🔖" } else { "⭐" };
+                                    let bookmark_color = if is_bookmarked {
+                                        Color32::from_rgb(255, 215, 0)
                                     } else {
-                                        "▶ 💭 Thinking..."
+                                        Color32::from_rgb(100, 100, 100)
                                     };
-                                    let response = ui.add(
-                                        egui::Button::new(
-                                            RichText::new(toggle_text)
-                                                .color(theme.fg_dim)
-                                                .italics()
-                                                .size(11.0),
+                                    let bookmark_btn = ui
+                                        .add(
+                                            egui::Button::new(
+                                                RichText::new(bookmark_icon)
+                                                    .color(bookmark_color)
+                                                    .size(14.0),
+                                            )
+                                            .frame(false)
+                                            .min_size(Vec2::new(20.0, 20.0)),
                                         )
-                                        .fill(Color32::TRANSPARENT)
-                                        .stroke(Stroke::NONE),
-                                    );
+                                        .on_hover_text(if is_bookmarked {
+                                            "Remove bookmark"
+                                        } else {
+                                            "Add bookmark"
+                                        });
 
-                                    if response.clicked() {
-                                        is_open = !is_open;
-                                        ui.data_mut(|d| d.insert_temp(thinking_id, is_open));
+                                    if bookmark_btn.hovered() {
+                                        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                                     }
+
+                                    if bookmark_btn.clicked() {
+                                        if is_bookmarked {
+                                            if let Some(bm) =
+                                                bookmarks.iter().find(|b| b.message_id == msg_id)
+                                            {
+                                                bookmark_actions.push(BookmarkAction::Remove(
+                                                    bm.id.clone(),
+                                                    conv_id_clone.clone(),
+                                                ));
+                                            }
+                                        } else {
+                                            bookmark_actions.push(BookmarkAction::Add(
+                                                conv_id_clone.clone(),
+                                                msg_id.clone(),
+                                                msg_seq,
+                                            ));
+                                        }
+                                    }
+
+                                    ui.label(
+                                        RichText::new(format!("{} {}", icon, label))
+                                            .color(color)
+                                            .strong()
+                                            .size(12.0),
+                                    );
                                 });
 
-                                if is_open {
-                                    ui.horizontal(|ui| {
-                                        ui.add_space(32.0);
-                                        egui::Frame::none()
-                                            .fill(theme.sidebar_bg)
-                                            .rounding(Rounding::same(4.0))
-                                            .inner_margin(8.0)
-                                            .stroke(Stroke::new(1.0, theme.border))
-                                            .show(ui, |ui| {
-                                                ui.set_max_width(ui.available_width() - 48.0);
-
-                                                // Truncate very long thinking blocks (safely at char boundary)
-                                                let display_text =
-                                                    if thinking.chars().count() > 2000 {
-                                                        let truncated: String =
-                                                            thinking.chars().take(2000).collect();
-                                                        format!(
-                                                            "{}...\n\n[Truncated - {} chars total]",
-                                                            truncated,
-                                                            thinking.chars().count()
-                                                        )
-                                                    } else {
-                                                        thinking.clone()
-                                                    };
-
-                                                ui.label(
-                                                    RichText::new(display_text)
-                                                        .color(theme.fg_dim)
-                                                        .size(11.0),
-                                                );
-                                            });
-                                    });
-                                }
                                 ui.add_space(4.0);
-                            }
-                        }
 
-                        // Main content - with code block rendering
-                        if !msg.content.is_empty() {
-                            ui.horizontal(|ui| {
-                                ui.add_space(16.0);
-                                ui.vertical(|ui| {
-                                    ui.set_max_width(ui.available_width() - 32.0);
-                                    render_markdown_content(ui, &msg.content, theme);
-                                });
-                                ui.add_space(16.0);
+                                // Render full message body (tool calls, thinking, content)
+                                render_message_body(ui, msg, theme);
                             });
-                        }
-                    }); // Close the highlight frame
+                        });
+                });
 
-                ui.add_space(8.0);
+                ui.add_space(message_spacing);
             }
 
             ui.add_space(16.0);
