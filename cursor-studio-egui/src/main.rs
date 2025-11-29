@@ -2122,26 +2122,25 @@ impl CursorStudio {
                     .show(ui, |ui| {
                         // Refresh button at top
                         ui.horizontal(|ui| {
-                            ui.label(
-                                RichText::new("Themes")
-                                    .color(theme.fg_dim)
-                                    .size(10.0),
-                            );
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if ui
-                                    .add(
-                                        egui::Button::new(
-                                            RichText::new("↻").color(theme.fg_dim).size(12.0),
+                            ui.label(RichText::new("Themes").color(theme.fg_dim).size(10.0));
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if ui
+                                        .add(
+                                            egui::Button::new(
+                                                RichText::new("↻").color(theme.fg_dim).size(12.0),
+                                            )
+                                            .frame(false),
                                         )
-                                        .frame(false),
-                                    )
-                                    .on_hover_text("Refresh theme list")
-                                    .clicked()
-                                {
-                                    self.available_themes = Self::find_vscode_themes();
-                                    self.set_status("✓ Refreshed theme list");
-                                }
-                            });
+                                        .on_hover_text("Refresh theme list")
+                                        .clicked()
+                                    {
+                                        self.available_themes = Self::find_vscode_themes();
+                                        self.set_status("✓ Refreshed theme list");
+                                    }
+                                },
+                            );
                         });
                         ui.add_space(4.0);
                         ui.separator();
@@ -2158,7 +2157,8 @@ impl CursorStudio {
 
                                 for (theme_name, theme_path) in &themes {
                                     let is_current = &self.current_theme_name == theme_name;
-                                    let is_hovered = self.hovered_theme.as_ref() == Some(theme_name);
+                                    let is_hovered =
+                                        self.hovered_theme.as_ref() == Some(theme_name);
 
                                     let bg = if is_current {
                                         theme.selection
@@ -2184,7 +2184,10 @@ impl CursorStudio {
                                                         .size(12.0),
                                                 )
                                                 .frame(false)
-                                                .min_size(Vec2::new(ui.available_width() - 16.0, 22.0)),
+                                                .min_size(Vec2::new(
+                                                    ui.available_width() - 16.0,
+                                                    22.0,
+                                                )),
                                             );
 
                                             if btn.hovered() {
@@ -3795,59 +3798,137 @@ impl CursorStudio {
             self.current_bookmarks = self.db.get_bookmarks(conv_id).unwrap_or_default();
         }
 
-        ui.add_space(8.0);
-
-        // Conversation header with bookmark count
+        // Conversation header - modern card style
         let bookmark_count = self.current_bookmarks.len();
+        let message_count = self.current_messages.len();
 
-        if let Some(conv) = self.conversations.iter().find(|c| c.id == conv_id) {
-            ui.horizontal(|ui| {
-                ui.add_space(16.0);
-                ui.label(
-                    RichText::new(&conv.title)
-                        .size(15.0)
-                        .color(theme.fg)
-                        .strong(),
-                );
-                ui.add_space(8.0);
-                ui.label(
-                    RichText::new(format!("• {} messages", conv.message_count))
-                        .color(theme.fg_dim)
-                        .size(12.0),
-                );
+        // Clone conversation data to avoid borrow conflicts in closures
+        let conv_data = self
+            .conversations
+            .iter()
+            .find(|c| c.id == conv_id)
+            .map(|c| (c.title.clone(), c.source_version.clone(), c.is_favorite));
 
-                // Show bookmark count if any
-                if bookmark_count > 0 {
-                    ui.label(
-                        RichText::new(format!("• 🔖 {}", bookmark_count))
-                            .color(Color32::from_rgb(255, 215, 0)) // Gold
-                            .size(12.0),
-                    );
-                }
+        let mut toggle_favorite = false;
+        let mut do_export_header = false;
 
-                // Toggle bookmark panel button
-                let panel_btn = ui
-                    .add(
-                        egui::Button::new(
-                            RichText::new(if self.show_bookmark_panel {
-                                "📑"
+        if let Some((conv_title, conv_source, is_favorite)) = conv_data {
+            egui::Frame::none()
+                .fill(theme.sidebar_bg)
+                .inner_margin(egui::Margin::symmetric(16.0, 12.0))
+                .stroke(Stroke::new(1.0, theme.border))
+                .show(ui, |ui| {
+                    // Top row: Title and actions
+                    ui.horizontal(|ui| {
+                        // Title (truncated if needed)
+                        let title: String = if conv_title.len() > 50 {
+                            format!("{}...", conv_title.chars().take(50).collect::<String>())
+                        } else {
+                            conv_title.clone()
+                        };
+                        ui.label(
+                            RichText::new(title)
+                                .size(14.0)
+                                .color(theme.fg_bright)
+                                .strong(),
+                        );
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            // Export button
+                            if ui
+                                .add(
+                                    egui::Button::new(RichText::new("⬇").size(12.0))
+                                        .frame(false),
+                                )
+                                .on_hover_text("Export conversation")
+                                .clicked()
+                            {
+                                self.export_conversation_to_markdown(conv_id);
+                            }
+
+                            // Bookmark panel toggle
+                            let bookmark_icon = if self.show_bookmark_panel { "📑" } else { "🔖" };
+                            if ui
+                                .add(
+                                    egui::Button::new(RichText::new(bookmark_icon).size(12.0))
+                                        .frame(false),
+                                )
+                                .on_hover_text(if self.show_bookmark_panel {
+                                    "Hide bookmarks"
+                                } else {
+                                    "Show bookmarks"
+                                })
+                                .clicked()
+                            {
+                                self.show_bookmark_panel = !self.show_bookmark_panel;
+                            }
+
+                            // Favorite toggle
+                            let fav_icon = if is_favorite { "★" } else { "☆" };
+                            let fav_color = if is_favorite {
+                                Color32::from_rgb(255, 215, 0)
                             } else {
-                                "🔖"
-                            })
-                            .size(14.0),
-                        )
-                        .frame(false),
-                    )
-                    .on_hover_text(if self.show_bookmark_panel {
-                        "Hide bookmarks"
-                    } else {
-                        "Show bookmarks"
+                                theme.fg_dim
+                            };
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new(fav_icon).color(fav_color).size(12.0),
+                                    )
+                                    .frame(false),
+                                )
+                                .on_hover_text(if is_favorite {
+                                    "Remove from favorites"
+                                } else {
+                                    "Add to favorites"
+                                })
+                                .clicked()
+                            {
+                                toggle_favorite = true;
+                            }
+                        });
                     });
 
-                if panel_btn.clicked() {
-                    self.show_bookmark_panel = !self.show_bookmark_panel;
-                }
-            });
+                    ui.add_space(6.0);
+
+                    // Stats row
+                    ui.horizontal(|ui| {
+                        // Message count
+                        ui.label(
+                            RichText::new(format!("💬 {}", message_count))
+                                .color(theme.fg_dim)
+                                .size(11.0),
+                        );
+
+                        ui.add_space(12.0);
+
+                        // Bookmark count (with loading indicator if 0 but might be loading)
+                        if bookmark_count > 0 {
+                            ui.label(
+                                RichText::new(format!("🔖 {}", bookmark_count))
+                                    .color(Color32::from_rgb(255, 215, 0))
+                                    .size(11.0),
+                            );
+                        }
+
+                        ui.add_space(12.0);
+
+                        // Source version
+                        ui.label(
+                            RichText::new(format!("📁 {}", conv_source))
+                                .color(theme.fg_dim)
+                                .size(10.0),
+                        );
+                    });
+                });
+
+            // Handle actions outside the closure to avoid borrow issues
+            if toggle_favorite {
+                let _ = self.db.toggle_favorite(conv_id);
+                self.conversations = self.db.get_conversations(50).unwrap_or_default();
+            }
+
+            ui.add_space(8.0);
         }
 
         // Toolbar: Export and Search

@@ -133,14 +133,14 @@ fn extract_message_content(data: &Value) -> (String, Option<ToolCallInfo>, Optio
 fn extract_lexical_text(root: &Value) -> String {
     let mut parts = Vec::new();
     extract_lexical_text_recursive(root, &mut parts, false);
-    
+
     // Clean up: remove excessive newlines and merge adjacent text
     let result = parts.join("");
-    
+
     // Replace 3+ consecutive newlines with just 2
     let mut cleaned = String::new();
     let mut newline_count = 0;
-    
+
     for ch in result.chars() {
         if ch == '\n' {
             newline_count += 1;
@@ -152,7 +152,7 @@ fn extract_lexical_text(root: &Value) -> String {
             cleaned.push(ch);
         }
     }
-    
+
     cleaned
 }
 
@@ -180,13 +180,13 @@ fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>, in_para
         .and_then(|v| v.as_str())
         .map(|t| t == "paragraph")
         .unwrap_or(false);
-    
+
     let is_linebreak = node
         .get("type")
         .and_then(|v| v.as_str())
         .map(|t| t == "linebreak")
         .unwrap_or(false);
-    
+
     // Handle explicit linebreaks
     if is_linebreak {
         parts.push("\n".to_string());
@@ -202,11 +202,11 @@ fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>, in_para
                 .map(|t| t.len() > 1)
                 .unwrap_or(false)
         });
-        
+
         for child in children {
             extract_lexical_text_recursive(child, parts, is_paragraph);
         }
-        
+
         // Only add newline after paragraphs with substantial content
         // This prevents the vertical column issue from single-char paragraphs
         if is_paragraph && has_substantial_content {
