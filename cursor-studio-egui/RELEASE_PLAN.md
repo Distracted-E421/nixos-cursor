@@ -136,6 +136,7 @@ OVERALL                              █████████░ 90%    ✅ R
 ## 🎯 Critical Path to Release
 
 ### Phase 1: Bug Fixes (P0 - Must Have) ✅ COMPLETE
+
 | Task | Status |
 |------|--------|
 | Fix **bold** text rendering | ✅ Done |
@@ -146,6 +147,7 @@ OVERALL                              █████████░ 90%    ✅ R
 | Dashboard revamp | ✅ Done |
 
 ### Phase 2: Polish (P1 - RC1 Ready)
+
 | Task | Status | Notes |
 |------|--------|-------|
 | Security scan wired up | ✅ Done | Scans chat history |
@@ -154,6 +156,7 @@ OVERALL                              █████████░ 90%    ✅ R
 | Tab switch refresh | ✅ Done | Data always current |
 
 ### Phase 3: Future (Post-RC1)
+
 | Task | Priority | Notes |
 |------|----------|-------|
 | NPM package blocklist integration | P2 | Blocklist embedded |
@@ -165,6 +168,7 @@ OVERALL                              █████████░ 90%    ✅ R
 ## 📁 Files to Modify
 
 ### `src/main.rs`
+
 - [ ] `configure_fonts()` - Add Nerd Font paths, improve fallback chain
 - [ ] `render_text_line()` - Fix bold parsing for nested/complex cases
 - [ ] `show_security_panel()` - Wire NPM scan results to UI
@@ -174,16 +178,19 @@ OVERALL                              █████████░ 90%    ✅ R
 - [ ] `save_window_settings()` - Persist on app close
 
 ### `src/database.rs`
+
 - [ ] `extract_message_content()` - Parse files_edited from tool calls
 - [ ] Window settings config keys
 
 ### `src/security.rs`
+
 - [ ] `scan_directory()` - Verify recursive scanning works
 - [ ] Add more blocklist sources
 
 ## 🔄 Testing Checklist
 
 ### Before Release
+
 - [ ] Import 100+ conversations - check performance
 - [ ] Test all export formats (MD, JSON, bookmarks)
 - [ ] Verify bookmarks persist across clear/reimport
@@ -194,6 +201,7 @@ OVERALL                              █████████░ 90%    ✅ R
 - [ ] Check memory usage over time
 
 ### UI/UX Review
+
 - [ ] All buttons have hover states
 - [ ] All inputs have placeholder text
 - [ ] Error messages are clear
