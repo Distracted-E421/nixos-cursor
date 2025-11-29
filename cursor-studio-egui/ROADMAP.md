@@ -89,12 +89,47 @@
 
 ## 🔮 Future Goals
 
-### Post v0.3.0
+### v0.4.0 - Unified Configuration
+- [ ] Home Manager module for cursor-studio
+- [ ] CLI interface (`cursor-studio-cli`)
+- [ ] TUI interface (`cursor-studio-tui`)
+- [ ] Shared config schema (JSON/TOML) across all interfaces
+- [ ] `programs.cursor-studio` options in home.nix
+
+### Post v0.4.0
 - GPUI migration (Zed's framework)
 - Plugin system
 - Multi-device sync
 - AI integration (auto-titles, summaries)
 - Data playground (charts, heatmaps)
+
+### Configuration Vision
+
+```nix
+# Future home.nix
+programs.cursor-studio = {
+  enable = true;
+  
+  ui = {
+    theme = "dark";
+    fontScale = 1.0;
+    messageSpacing = 12;
+  };
+  
+  security = {
+    npmScanning = true;
+    sensitiveDataScan = true;
+    blocklist.autoUpdate = true;
+  };
+  
+  export = {
+    defaultFormat = "markdown";
+    includeThinking = false;
+  };
+};
+```
+
+This config will be readable by GUI, CLI, and TUI
 
 ---
 
