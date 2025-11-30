@@ -23,8 +23,8 @@
 | Device ID | ✅ Implemented | Persists to ~/.config/cursor-studio/device_id |
 | **Server Mode** | ✅ Implemented | REST API with axum (health, stats, conversations, sync) |
 | **HTTP Client** | ✅ Implemented | Pull/push/sync from server |
+| **P2P Networking** | ✅ Implemented | libp2p with mDNS, Noise encryption, request/response |
 | egui Integration | 🚧 Not Started | Next phase |
-| P2P Networking | 🚧 Not Started | libp2p planned |
 
 ### CLI Usage
 
@@ -60,6 +60,25 @@ cargo run --bin sync-server -- --import --port 8080
 #   POST /sync          - Bidirectional sync
 #   POST /sync/push     - Push to server
 #   GET  /sync/pull     - Pull from server
+```
+
+### P2P Usage
+
+```bash
+# Start P2P daemon with auto-discovery
+cargo run --bin p2p-sync
+
+# Custom port + import local chats
+cargo run --bin p2p-sync -- --import --port 4001
+
+# With custom device name
+cargo run --bin p2p-sync -- --import --name "my-laptop"
+
+# P2P features:
+# - mDNS auto-discovery on local network
+# - Noise encryption for secure connections
+# - Request/response protocol for syncing
+# - Automatic peer connection
 ```
 
 ---

@@ -28,6 +28,19 @@ tower-http = { version = "0.5", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# P2P networking (libp2p)
+libp2p = { version = "0.54", features = [
+    "tokio",
+    "noise",
+    "yamux", 
+    "tcp",
+    "mdns",
+    "request-response",
+    "macros",
+    "json",
+    "identify",
+] }
+
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -55,6 +68,7 @@ thiserror = "1.0"
 anyhow = "1.0"
 log = "0.4"
 env_logger = "0.11"
+hostname = "0.4"
 
 [dev-dependencies]
 tempfile = "3.10"
@@ -73,6 +87,10 @@ path = "src/bin/sync_cli.rs"
 [[bin]]
 name = "sync-server"
 path = "src/bin/sync_server.rs"
+
+[[bin]]
+name = "p2p-sync"
+path = "src/bin/p2p_sync.rs"
 
 [lib]
 name = "cursor_studio"
