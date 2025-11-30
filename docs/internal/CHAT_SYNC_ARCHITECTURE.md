@@ -1,12 +1,13 @@
 # Cursor Chat Sync Architecture
 
 > **Goal**: Sync Cursor IDE chat history across devices with two modes:
-> 1. **Self-hosted server** - Central hub with Cursor Studio web UI
+> 1. **Self-hosted server** - Central hub with native egui/GPUI interface
 > 2. **Peer-to-peer** - Direct device sync for serverless setups
 
 **Status**: Design Phase  
 **Database**: SurrealDB (multi-model, real-time sync, Rust-native)  
-**Languages**: Rust (core library, P2P daemon), Elixir (server), TypeScript (web UI)
+**Languages**: Rust (everything - library, daemon, UI, server)  
+**UI Framework**: egui (immediate mode, 60fps, single binary) or GPUI (future)
 
 ---
 
@@ -23,6 +24,14 @@
 
 ## 🏗️ System Architecture
 
+### The Key Insight: One Binary, Three Modes
+
+Instead of separate components, **cursor-studio** is a single Rust binary that operates in three modes:
+
+1. **GUI Mode** (default) - Full egui interface for browsing/searching chats
+2. **Daemon Mode** - Headless background sync
+3. **Server Mode** - Accept connections from other devices (headless or with GUI)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              USER'S DEVICES                                  │
@@ -34,45 +43,63 @@
 │  │  │  Cursor IDE   │   │  │  │  Cursor IDE   │   │  │  │ Cursor IDE  │  │  │
 │  │  │  (SQLite)     │   │  │  │  (SQLite)     │   │  │  │ (SQLite)    │  │  │
 │  │  └───────┬───────┘   │  │  └───────┬───────┘   │  │  └──────┬──────┘  │  │
-│  │          │           │  │          │           │  │         │         │  │
+│  │          │ inotify   │  │          │ inotify   │  │         │ FSEvent │  │
 │  │          ▼           │  │          ▼           │  │         ▼         │  │
 │  │  ┌───────────────┐   │  │  ┌───────────────┐   │  │  ┌─────────────┐  │  │
-│  │  │ cursor-sync   │   │  │  │ cursor-sync   │   │  │  │cursor-sync  │  │  │
-│  │  │   daemon      │   │  │  │   daemon      │   │  │  │  daemon     │  │  │
-│  │  │ (Rust+Surreal)│   │  │  │ (Rust+Surreal)│   │  │  │(Rust+Surreal│  │  │
+│  │  │cursor-studio  │   │  │  │cursor-studio  │   │  │  │cursor-studio│  │  │
+│  │  │  (Rust+egui)  │   │  │  │  (Rust+egui)  │   │  │  │ (Rust+egui) │  │  │
+│  │  │               │   │  │  │               │   │  │  │             │  │  │
+│  │  │ ┌───────────┐ │   │  │  │ ┌───────────┐ │   │  │  │┌───────────┐│  │  │
+│  │  │ │ SurrealDB │ │   │  │  │ │ SurrealDB │ │   │  │  ││ SurrealDB ││  │  │
+│  │  │ │(embedded) │ │   │  │  │ │(embedded) │ │   │  │  ││(embedded) ││  │  │
+│  │  │ └───────────┘ │   │  │  │ └───────────┘ │   │  │  │└───────────┘│  │  │
 │  │  └───────┬───────┘   │  │  └───────┬───────┘   │  │  └──────┬──────┘  │  │
 │  │          │           │  │          │           │  │         │         │  │
 │  └──────────┼───────────┘  └──────────┼───────────┘  └─────────┼─────────┘  │
 │             │                         │                        │            │
 └─────────────┼─────────────────────────┼────────────────────────┼────────────┘
               │                         │                        │
-              │         ┌───────────────┴────────────────┐       │
-              │         │                                │       │
-              ▼         ▼                                ▼       ▼
-     ┌────────────────────────────┐              ┌───────────────────────────┐
-     │  MODE A: P2P (libp2p)      │              │  MODE B: Self-Hosted Hub  │
-     │  ┌──────────────────────┐  │              │  ┌─────────────────────┐  │
-     │  │ mDNS local discovery │  │              │  │  pi-server / VPS    │  │
-     │  │ DHT for remote peers │  │              │  │  ┌───────────────┐  │  │
-     │  │ NAT hole punching    │  │              │  │  │ Cursor Studio │  │  │
-     │  │ Direct encrypted     │  │              │  │  │ Server        │  │  │
-     │  │ device-to-device     │  │              │  │  │ (Elixir)      │  │  │
-     │  └──────────────────────┘  │              │  │  └───────┬───────┘  │  │
-     └────────────────────────────┘              │  │          │          │  │
-                                                 │  │  ┌───────▼───────┐  │  │
-                                                 │  │  │  SurrealDB    │  │  │
-                                                 │  │  │  (Central)    │  │  │
-                                                 │  │  └───────────────┘  │  │
-                                                 │  │          │          │  │
-                                                 │  │  ┌───────▼───────┐  │  │
-                                                 │  │  │  Web UI       │  │  │
-                                                 │  │  │  (Search,     │  │  │
-                                                 │  │  │   Browse,     │  │  │
-                                                 │  │  │   Export)     │  │  │
-                                                 │  │  └───────────────┘  │  │
-                                                 │  └─────────────────────┘  │
-                                                 └───────────────────────────┘
+              └─────────────────────────┼────────────────────────┘
+                                        │
+              ┌─────────────────────────┴─────────────────────────┐
+              │                                                   │
+              ▼                                                   ▼
+     ┌────────────────────────────┐              ┌────────────────────────────┐
+     │  MODE A: P2P (libp2p)      │              │  MODE B: Central Hub       │
+     │  ┌──────────────────────┐  │              │  ┌──────────────────────┐  │
+     │  │ mDNS local discovery │  │              │  │  pi-server / VPS     │  │
+     │  │ DHT for remote peers │  │              │  │  ┌────────────────┐  │  │
+     │  │ NAT hole punching    │  │              │  │  │ cursor-studio  │  │  │
+     │  │ QUIC transport       │  │              │  │  │ --server-mode  │  │  │
+     │  │                      │  │              │  │  │                │  │  │
+     │  │ Direct encrypted     │  │              │  │  │ ┌────────────┐ │  │  │
+     │  │ device-to-device     │  │              │  │  │ │ SurrealDB  │ │  │  │
+     │  └──────────────────────┘  │              │  │  │ │ (central)  │ │  │  │
+     └────────────────────────────┘              │  │  │ └────────────┘ │  │  │
+                                                 │  │  │                │  │  │
+                                                 │  │  │ REST + gRPC    │  │  │
+                                                 │  │  │ API only       │  │  │
+                                                 │  │  └────────────────┘  │  │
+                                                 │  └──────────────────────┘  │
+                                                 │                            │
+                                                 │  Optional: Run with GUI    │
+                                                 │  for admin dashboard       │
+                                                 └────────────────────────────┘
 ```
+
+### Why Single Binary?
+
+| Approach | Binaries | Dependencies | Complexity |
+|----------|----------|--------------|------------|
+| **Old (Web)** | Rust daemon + Elixir server + Node.js UI | 3 runtimes | High |
+| **New (Native)** | Just `cursor-studio` | 1 binary | Low |
+
+Benefits:
+- **One thing to package** - Single Nix derivation
+- **One thing to deploy** - Copy binary, done
+- **Consistent UX** - Same interface everywhere
+- **Offline-capable** - No server dependencies for local use
+- **Resource efficient** - No Electron, no BEAM, no V8
 
 ---
 
@@ -172,57 +199,105 @@ pub enum SyncMode {
 7. Optionally write back to Cursor SQLite (for search in IDE)
 ```
 
-### 3. `cursor-studio-server` (Elixir/Phoenix)
+### 3. `cursor-studio` Binary Modes
 
-**Purpose**: Central hub with web UI, API, and aggregated search
+**Purpose**: Single binary that does everything
 
-```elixir
-# Main application supervisor
-defmodule CursorStudio.Application do
-  use Application
-  
-  def start(_type, _args) do
-    children = [
-      # Web endpoint
-      CursorStudioWeb.Endpoint,
-      
-      # SurrealDB connection pool
-      {CursorStudio.Repo, []},
-      
-      # Device connection manager
-      CursorStudio.DeviceManager,
-      
-      # Real-time sync coordinator
-      CursorStudio.SyncCoordinator,
-      
-      # Search indexer
-      CursorStudio.SearchIndexer,
-      
-      # Background jobs (cleanup, analytics)
-      {Oban, Application.fetch_env!(:cursor_studio, Oban)}
-    ]
+```rust
+// CLI interface
+#[derive(Parser)]
+pub struct Args {
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand)]
+pub enum Command {
+    /// Launch GUI (default if no command)
+    Gui,
     
-    Supervisor.start_link(children, strategy: :one_for_one)
-  end
-end
+    /// Run as background daemon (no GUI)
+    Daemon {
+        /// Also accept incoming sync connections
+        #[arg(long)]
+        server: bool,
+        
+        /// Port for server mode
+        #[arg(long, default_value = "7890")]
+        port: u16,
+    },
+    
+    /// Run as dedicated server (for pi-server/VPS)
+    Server {
+        #[arg(long, default_value = "0.0.0.0:7890")]
+        bind: String,
+        
+        /// Show GUI admin dashboard (optional)
+        #[arg(long)]
+        gui: bool,
+    },
+    
+    /// CLI operations
+    Sync {
+        #[command(subcommand)]
+        action: SyncAction,
+    },
+    
+    /// Export conversations
+    Export {
+        #[arg(long)]
+        format: ExportFormat,
+        
+        #[arg(long)]
+        output: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SyncAction {
+    /// Sync now (one-shot)
+    Now,
+    /// Show sync status
+    Status,
+    /// Add a peer by ID
+    AddPeer { peer_id: String },
+    /// List known peers
+    ListPeers,
+}
 ```
 
-**API Endpoints:**
-```
-POST   /api/v1/sync           # Push conversation deltas
-GET    /api/v1/sync           # Pull conversation deltas since timestamp
-GET    /api/v1/conversations  # List all conversations (paginated)
-GET    /api/v1/search         # Full-text search across all chats
-WS     /api/v1/live           # Real-time sync via WebSocket
+**Usage Examples:**
+```bash
+# GUI mode (default)
+cursor-studio
+
+# Background daemon with P2P
+cursor-studio daemon
+
+# Background daemon that also accepts connections
+cursor-studio daemon --server --port 7890
+
+# Dedicated server on pi-server
+cursor-studio server --bind 0.0.0.0:7890
+
+# Server with admin GUI (for desktop server)
+cursor-studio server --gui
+
+# CLI operations
+cursor-studio sync now
+cursor-studio sync status
+cursor-studio sync add-peer QmXyz...
+cursor-studio export --format markdown --output ~/chats/
 ```
 
-**Web UI Features:**
+**egui Interface Features:**
 - 📊 Dashboard (total chats, tokens used, device status)
-- 🔍 Full-text search across ALL conversations
+- 🔍 Full-text search across ALL conversations (instant, local)
 - 📁 Browse by workspace/project
-- 📱 Device management (see all connected devices)
+- 📱 Device management (see connected peers/server)
 - 📤 Export (JSON, Markdown, PDF)
-- 🔐 Optional E2E encryption management
+- ⚙️ Settings (sync mode, encryption, appearance)
+- 🔐 Optional E2E encryption key management
 
 ### 4. P2P Layer (libp2p)
 
@@ -313,57 +388,89 @@ FETCH conversation;
 
 ## 🚀 User Setup Experience
 
-### Mode A: P2P Only (Simplest)
+### Mode A: P2P Only (Simplest - No Server Needed)
 
-```bash
-# Install on each device (NixOS)
-nix profile install github:Distracted-E421/nixos-cursor#cursor-sync
-
-# Or via Home Manager
-programs.cursor-sync = {
+```nix
+# In home.nix or configuration.nix
+programs.cursor-studio = {
   enable = true;
-  mode = "p2p";
-  deviceName = "obsidian";  # Human-readable
+  sync = {
+    enable = true;
+    mode = "p2p";
+    deviceName = "obsidian";  # Human-readable
+  };
 };
 
-# That's it! Devices on same network auto-discover
-# For remote sync, exchange peer IDs once:
-cursor-sync peer add <peer-id-from-other-device>
+# That's it! Devices on same network auto-discover via mDNS
+```
+
+```bash
+# Or install directly
+nix profile install github:Distracted-E421/nixos-cursor#cursor-studio
+
+# Run the GUI
+cursor-studio
+
+# Add remote peer (one-time, for non-local devices)
+cursor-studio sync add-peer Qm...peerIdFromOtherDevice
 ```
 
 ### Mode B: Self-Hosted Server
 
 ```bash
-# On pi-server or VPS
-docker compose up -d
-# OR
-nix run github:Distracted-E421/nixos-cursor#cursor-studio-server
+# On pi-server or VPS - single command
+cursor-studio server --bind 0.0.0.0:7890
 
-# On each device
-programs.cursor-sync = {
+# Or as systemd service (NixOS)
+services.cursor-studio-server = {
   enable = true;
-  mode = "server";
-  serverUrl = "https://cursor.yourdomain.com";
-  # OR for local network:
-  serverUrl = "http://pi-server:8080";
+  bind = "0.0.0.0:7890";
+};
+```
+
+```nix
+# On each device
+programs.cursor-studio = {
+  enable = true;
+  sync = {
+    enable = true;
+    mode = "server";
+    serverUrl = "http://pi-server:7890";
+    # OR with Tailscale:
+    serverUrl = "http://pi-server.tailnet-name.ts.net:7890";
+  };
 };
 ```
 
 ### Mode C: Hybrid (Best of Both)
 
 ```nix
-programs.cursor-sync = {
+programs.cursor-studio = {
   enable = true;
-  mode = "hybrid";
-  server = {
-    url = "https://cursor.yourdomain.com";
-    fallbackToP2P = true;  # If server unreachable
-  };
-  p2p = {
-    enableMdns = true;     # Local network
-    enableDht = false;     # Disable internet-wide (privacy)
+  sync = {
+    enable = true;
+    mode = "hybrid";
+    server = {
+      url = "http://pi-server:7890";
+      fallbackToP2P = true;  # If server unreachable, use P2P
+    };
+    p2p = {
+      enableMdns = true;     # Auto-discover on local network
+      enableDht = false;     # Disable internet-wide (privacy)
+    };
   };
 };
+```
+
+### One-Line Docker Deploy (For Non-NixOS)
+
+```bash
+# Pull and run (no Nix required)
+docker run -d --name cursor-studio-server \
+  -p 7890:7890 \
+  -v cursor-data:/data \
+  ghcr.io/distracted-e421/cursor-studio:latest \
+  server --bind 0.0.0.0:7890
 ```
 
 ---
@@ -452,101 +559,185 @@ fn merge_conversations(local: &Conversation, remote: &Conversation) -> Conversat
 ## 📁 Project Structure
 
 ```
-cursor-studio/
-├── crates/
-│   ├── cursor-chat-lib/       # Core Rust library
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── models.rs      # Data structures
-│   │   │   ├── cursor_store.rs # Read from Cursor SQLite
-│   │   │   ├── surreal_store.rs
-│   │   │   ├── crdt.rs        # Vector clocks, merge
-│   │   │   └── search.rs
-│   │   └── Cargo.toml
+cursor-studio-egui/
+├── Cargo.toml                 # Workspace root
+├── Cargo.lock                 # Locked deps (reproducible)
+├── flake.nix                  # Nix packaging
+├── home-manager-module.nix    # NixOS integration
+│
+├── src/
+│   ├── main.rs                # Entry point, CLI parsing
+│   ├── app.rs                 # egui application state
 │   │
-│   ├── cursor-sync/           # Daemon
-│   │   ├── src/
-│   │   │   ├── main.rs
-│   │   │   ├── config.rs
-│   │   │   ├── watcher.rs     # File system watching
-│   │   │   ├── p2p.rs         # libp2p networking
-│   │   │   └── server.rs      # Server mode client
-│   │   └── Cargo.toml
+│   ├── ui/                    # egui interface
+│   │   ├── mod.rs
+│   │   ├── dashboard.rs       # Main dashboard view
+│   │   ├── conversation.rs    # Conversation browser
+│   │   ├── search.rs          # Search interface
+│   │   ├── settings.rs        # Configuration UI
+│   │   ├── devices.rs         # Peer/server management
+│   │   └── theme.rs           # VS Code theme support
 │   │
-│   └── cursor-sync-cli/       # CLI tools
-│       └── ...
+│   ├── chat/                  # Chat data handling
+│   │   ├── mod.rs
+│   │   ├── models.rs          # Conversation, Message structs
+│   │   ├── cursor_parser.rs   # Parse Cursor's SQLite
+│   │   ├── surreal.rs         # SurrealDB operations
+│   │   └── crdt.rs            # Vector clocks, merge logic
+│   │
+│   ├── sync/                  # Synchronization
+│   │   ├── mod.rs
+│   │   ├── watcher.rs         # File system watching (inotify/FSEvents)
+│   │   ├── protocol.rs        # Sync protocol (deltas)
+│   │   ├── p2p.rs             # libp2p networking
+│   │   └── server.rs          # Server mode (accept connections)
+│   │
+│   ├── export/                # Export functionality
+│   │   ├── mod.rs
+│   │   ├── markdown.rs
+│   │   ├── json.rs
+│   │   └── pdf.rs             # Optional, via printpdf
+│   │
+│   └── security/              # Security features (existing)
+│       ├── mod.rs
+│       ├── scanner.rs
+│       └── blocklist.rs
 │
-├── server/                    # Elixir server
-│   ├── lib/
-│   │   ├── cursor_studio/
-│   │   │   ├── application.ex
-│   │   │   ├── sync_coordinator.ex
-│   │   │   └── ...
-│   │   └── cursor_studio_web/
-│   │       ├── router.ex
-│   │       ├── live/          # LiveView UI
-│   │       └── ...
-│   ├── mix.exs
-│   └── ...
+├── assets/                    # Embedded resources
+│   ├── icons/
+│   └── fonts/
 │
-├── web/                       # Web UI (if separate from Phoenix)
-│   └── ...
-│
-├── nix/
-│   ├── cursor-sync.nix        # Daemon package
-│   ├── cursor-studio.nix      # Server package
-│   └── module.nix             # NixOS/Home Manager module
-│
-└── docker/
-    ├── Dockerfile.server
-    └── docker-compose.yml
+└── tests/
+    ├── cursor_parser_test.rs
+    ├── sync_protocol_test.rs
+    └── crdt_test.rs
+```
+
+### Key Dependencies (Cargo.toml)
+
+```toml
+[package]
+name = "cursor-studio"
+version = "0.3.0"
+
+[dependencies]
+# UI
+eframe = "0.29"
+egui = "0.29"
+egui_extras = { version = "0.29", features = ["image"] }
+
+# Database
+surrealdb = { version = "2", features = ["kv-rocksdb"] }  # Embedded mode
+rusqlite = "0.32"  # Read Cursor's SQLite
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# P2P networking
+libp2p = { version = "0.54", features = [
+    "tokio",
+    "dns",
+    "mdns",
+    "noise",
+    "tcp",
+    "quic",
+    "identify",
+    "kad",  # DHT
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# IDs
+ulid = "1"
+
+# File watching
+notify = "6"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Crypto (for E2E encryption)
+ed25519-dalek = "2"
+x25519-dalek = "2"
+chacha20poly1305 = "0.10"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[features]
+default = ["gui"]
+gui = []           # Build with egui (can disable for server-only)
+pdf-export = ["printpdf"]
 ```
 
 ---
 
 ## 🗓️ Implementation Roadmap
 
-### Phase 1: Foundation (Week 1-2)
-- [ ] `cursor-chat-lib`: Parse Cursor SQLite
-- [ ] `cursor-chat-lib`: SurrealDB store implementation
-- [ ] `cursor-chat-lib`: Basic CRDT merge
-- [ ] Nix packaging for SurrealDB
+### Phase 1: Core Library (Week 1-2)
+- [ ] Parse Cursor SQLite (`cursor_parser.rs`)
+  - [ ] Read `bubbleId:*` entries from cursorDiskKV
+  - [ ] Parse Lexical richText JSON
+  - [ ] Extract conversations, messages, metadata
+- [ ] Define data models (`models.rs`)
+- [ ] SurrealDB embedded store (`surreal.rs`)
+- [ ] Basic CRDT vector clocks (`crdt.rs`)
 
-### Phase 2: Local Sync (Week 3-4)
-- [ ] `cursor-sync` daemon: File watching
-- [ ] `cursor-sync` daemon: Local SurrealDB sync
-- [ ] CLI for manual sync/export
-- [ ] Home Manager module (local mode)
+### Phase 2: egui Integration (Week 3-4)
+- [ ] Conversation browser UI
+- [ ] Full-text search with instant results
+- [ ] File watching for live updates
+- [ ] CLI commands (export, sync status)
 
-### Phase 3: P2P (Week 5-6)
-- [ ] libp2p integration
-- [ ] mDNS discovery
-- [ ] Basic P2P sync protocol
-- [ ] Peer management CLI
+### Phase 3: P2P Sync (Week 5-6)
+- [ ] libp2p integration (`p2p.rs`)
+- [ ] mDNS auto-discovery
+- [ ] Sync protocol (delta-based)
+- [ ] Peer management UI
 
-### Phase 4: Server (Week 7-8)
-- [ ] Elixir Phoenix server scaffold
-- [ ] SurrealDB connection
-- [ ] Sync API endpoints
-- [ ] Basic web UI (list conversations)
+### Phase 4: Server Mode (Week 7-8)
+- [ ] Server mode (`--server`)
+- [ ] Client connection to server
+- [ ] Hybrid mode (P2P + server fallback)
+- [ ] Device authentication
 
 ### Phase 5: Polish (Week 9-10)
-- [ ] Full-text search UI
-- [ ] Export functionality
-- [ ] E2E encryption (optional)
-- [ ] Docker packaging
-- [ ] Documentation
+- [ ] E2E encryption (optional feature)
+- [ ] Export (Markdown, JSON, PDF)
+- [ ] Home Manager module refinement
+- [ ] systemd service for daemon mode
+- [ ] Documentation and examples
 
 ---
 
 ## 🔗 Related Documents
 
-- [CURSOR_MANAGER_REDESIGN.md](CURSOR_MANAGER_REDESIGN.md) - UI integration plans
-- [SCRIPTING_ARCHITECTURE.md](SCRIPTING_ARCHITECTURE.md) - Language choices
-- [NPM_SECURITY_ARCHITECTURE.md](NPM_SECURITY_ARCHITECTURE.md) - Security patterns
+- [CURSOR_MANAGER_REDESIGN.md](CURSOR_MANAGER_REDESIGN.md) - UI integration
+- [cursor-studio-egui README](../../../cursor-studio-egui/README.md) - Current implementation
 
 ---
 
-**Status**: 📝 Architecture Design Complete  
-**Next**: Implement `cursor-chat-lib` Phase 1  
-**Questions**: Should we prototype the SQLite parser first to validate data model?
+## 🎯 GPUI Future Path
+
+egui is our immediate choice because:
+- Already working in cursor-studio-egui
+- Good enough performance (60fps)
+- Single-file binary possible
+- Well-documented
+
+**GPUI consideration for v2.0:**
+- Even faster (GPU-accelerated)
+- Zed-proven at scale
+- Better text rendering
+- More complex to set up (pre-1.0)
+
+Decision point: After v1.0 stable, evaluate GPUI migration if performance needs increase.
+
+---
+
+**Status**: 📝 Architecture Refined (All-Rust, Native UI)  
+**Next**: Implement Cursor SQLite parser to validate data extraction  
+**Milestone**: v0.3.0 with chat sync (P2P + Server)
