@@ -56,6 +56,18 @@ tempfile = "3.10"
 # Image loading for icons
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+[[bin]]
+name = "cursor-studio"
+path = "src/main.rs"
+
+[[bin]]
+name = "sync-cli"
+path = "src/bin/sync_cli.rs"
+
+[lib]
+name = "cursor_studio"
+path = "src/lib.rs"
+
 [features]
 default = []
 # Enable RocksDB for persistent storage (larger binary, slower compile)
