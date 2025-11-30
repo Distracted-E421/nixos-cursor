@@ -3615,11 +3615,7 @@ impl CursorStudio {
                             let hostname = hostname::get()
                                 .map(|h| h.to_string_lossy().to_string())
                                 .unwrap_or_else(|_| "unknown".to_string());
-                            ui.label(
-                                RichText::new(&hostname)
-                                    .color(theme.fg_dim)
-                                    .size(11.0),
-                            );
+                            ui.label(RichText::new(&hostname).color(theme.fg_dim).size(11.0));
                         });
                     });
                 });
@@ -3662,7 +3658,10 @@ impl CursorStudio {
                 theme.fg_dim
             };
             let status_text = if self.sync_server_connected {
-                format!("✓ Connected ({} conversations)", self.sync_conversation_count)
+                format!(
+                    "✓ Connected ({} conversations)",
+                    self.sync_conversation_count
+                )
             } else {
                 "○ Not connected".to_string()
             };
@@ -3723,7 +3722,7 @@ impl CursorStudio {
                             .size(12.0),
                     );
                     ui.add_space(4.0);
-                    
+
                     if self.sync_p2p_peers.is_empty() {
                         ui.label(
                             RichText::new("No peers discovered yet")
@@ -3785,15 +3784,15 @@ impl CursorStudio {
     }
 
     fn check_server_status(&mut self) {
-        use chat::SyncClient;
         use chat::ClientConfig;
-        
+        use chat::SyncClient;
+
         let config = ClientConfig {
             server_url: self.sync_server_url.clone(),
             device_id: "cursor-studio".to_string(),
         };
         let client = SyncClient::new(config);
-        
+
         match client.health() {
             Ok(health) => {
                 self.sync_server_connected = true;
@@ -3814,15 +3813,15 @@ impl CursorStudio {
     }
 
     fn pull_from_server(&mut self) {
-        use chat::SyncClient;
         use chat::ClientConfig;
-        
+        use chat::SyncClient;
+
         let config = ClientConfig {
             server_url: self.sync_server_url.clone(),
             device_id: "cursor-studio".to_string(),
         };
         let client = SyncClient::new(config);
-        
+
         match client.pull(Some(100)) {
             Ok(conversations) => {
                 let count = conversations.len();
