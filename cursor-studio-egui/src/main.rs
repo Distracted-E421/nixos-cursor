@@ -286,6 +286,7 @@ enum SidebarMode {
 enum RightSidebarMode {
     ChatLibrary,
     Security,
+    Sync,
 }
 
 #[derive(Clone)]
@@ -401,6 +402,13 @@ struct CursorStudio {
     conv_search_query: String,
     conv_search_results: Vec<usize>, // indices of matching messages
     conv_search_index: usize,        // current result index
+
+    // Sync state
+    sync_server_url: String,
+    sync_server_connected: bool,
+    sync_last_status: Option<String>,
+    sync_conversation_count: usize,
+    sync_p2p_peers: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -580,6 +588,13 @@ impl CursorStudio {
             conv_search_query: String::new(),
             conv_search_results: Vec::new(),
             conv_search_index: 0,
+
+            // Sync state
+            sync_server_url: "http://localhost:8420".to_string(),
+            sync_server_connected: false,
+            sync_last_status: None,
+            sync_conversation_count: 0,
+            sync_p2p_peers: Vec::new(),
         }
     }
 
@@ -1584,12 +1599,35 @@ impl eframe::App for CursorStudio {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
+                        // Sync button
+                        let sync_selected = self.right_mode == RightSidebarMode::Sync;
+                        let sync_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("🔄").size(16.0).color(
+                                    if sync_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Sync");
+                        if sync_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Sync;
+                        }
+                        if sync_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
                         // Underline indicator for selected mode
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
                             let mode_label = match self.right_mode {
                                 RightSidebarMode::ChatLibrary => "CHATS",
                                 RightSidebarMode::Security => "SECURITY",
+                                RightSidebarMode::Sync => "SYNC",
                             };
                             ui.label(
                                 RichText::new(mode_label)
@@ -1607,6 +1645,7 @@ impl eframe::App for CursorStudio {
                     match self.right_mode {
                         RightSidebarMode::ChatLibrary => self.show_chat_library(ui, theme),
                         RightSidebarMode::Security => self.show_security_panel(ui, theme),
+                        RightSidebarMode::Sync => self.show_sync_panel(ui, theme),
                     }
                 });
         }
@@ -3540,6 +3579,262 @@ impl CursorStudio {
 
                 ui.add_space(20.0);
             });
+    }
+
+    fn show_sync_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        ui.vertical(|ui| {
+            ui.add_space(12.0);
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("SYNC STATUS")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+            });
+            ui.add_space(8.0);
+
+            // Device Info Card
+            egui::Frame::none()
+                .fill(theme.code_bg)
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("📱").size(20.0));
+                        ui.add_space(8.0);
+                        ui.vertical(|ui| {
+                            ui.label(
+                                RichText::new("This Device")
+                                    .color(theme.fg)
+                                    .strong()
+                                    .size(13.0),
+                            );
+                            // Get hostname
+                            let hostname = hostname::get()
+                                .map(|h| h.to_string_lossy().to_string())
+                                .unwrap_or_else(|_| "unknown".to_string());
+                            ui.label(
+                                RichText::new(&hostname)
+                                    .color(theme.fg_dim)
+                                    .size(11.0),
+                            );
+                        });
+                    });
+                });
+            ui.add_space(16.0);
+
+            // Server Connection
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("SERVER SYNC")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+            });
+            ui.add_space(8.0);
+
+            // Server URL input
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(RichText::new("Server URL:").color(theme.fg).size(12.0));
+            });
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.sync_server_url)
+                        .desired_width(ui.available_width() - 32.0)
+                        .margin(egui::Margin::symmetric(8.0, 6.0)),
+                );
+                if response.changed() {
+                    self.sync_server_connected = false;
+                }
+            });
+            ui.add_space(8.0);
+
+            // Connection status
+            let status_color = if self.sync_server_connected {
+                theme.success
+            } else {
+                theme.fg_dim
+            };
+            let status_text = if self.sync_server_connected {
+                format!("✓ Connected ({} conversations)", self.sync_conversation_count)
+            } else {
+                "○ Not connected".to_string()
+            };
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(RichText::new(&status_text).color(status_color).size(11.0));
+            });
+            ui.add_space(8.0);
+
+            // Server actions
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                if styled_button(ui, "🔌 Connect", Vec2::new(100.0, 28.0)).clicked() {
+                    self.check_server_status();
+                }
+                ui.add_space(4.0);
+                if self.sync_server_connected {
+                    if styled_button(ui, "📥 Pull", Vec2::new(80.0, 28.0))
+                        .on_hover_text("Pull conversations from server")
+                        .clicked()
+                    {
+                        self.pull_from_server();
+                    }
+                }
+            });
+
+            // Last status message
+            if let Some(ref status) = self.sync_last_status {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(RichText::new(status).color(theme.fg_dim).size(10.0));
+                });
+            }
+
+            ui.add_space(16.0);
+
+            // P2P Section
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("PEER-TO-PEER")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+            });
+            ui.add_space(8.0);
+
+            egui::Frame::none()
+                .fill(theme.code_bg)
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new("🔗 Local Network Discovery")
+                            .color(theme.fg)
+                            .size(12.0),
+                    );
+                    ui.add_space(4.0);
+                    
+                    if self.sync_p2p_peers.is_empty() {
+                        ui.label(
+                            RichText::new("No peers discovered yet")
+                                .color(theme.fg_dim)
+                                .size(11.0)
+                                .italics(),
+                        );
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new("Run p2p-sync daemon on other devices")
+                                .color(theme.fg_dim)
+                                .size(10.0),
+                        );
+                    } else {
+                        for peer in &self.sync_p2p_peers {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("• ").color(theme.accent));
+                                ui.label(RichText::new(peer).color(theme.fg).size(11.0));
+                            });
+                        }
+                    }
+                });
+            ui.add_space(8.0);
+
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("Tip: Use 'cargo run --bin p2p-sync' to start P2P daemon")
+                        .color(theme.fg_dim)
+                        .size(10.0)
+                        .italics(),
+                );
+            });
+
+            ui.add_space(16.0);
+
+            // Quick Actions
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("QUICK ACTIONS")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+            });
+            ui.add_space(8.0);
+
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                if styled_button(ui, "📤 Export All", Vec2::new(100.0, 28.0))
+                    .on_hover_text("Export all conversations to JSON")
+                    .clicked()
+                {
+                    self.set_status("Export coming soon...");
+                }
+            });
+        });
+    }
+
+    fn check_server_status(&mut self) {
+        use chat::SyncClient;
+        use chat::ClientConfig;
+        
+        let config = ClientConfig {
+            server_url: self.sync_server_url.clone(),
+            device_id: "cursor-studio".to_string(),
+        };
+        let client = SyncClient::new(config);
+        
+        match client.health() {
+            Ok(health) => {
+                self.sync_server_connected = true;
+                self.sync_conversation_count = health.conversations;
+                self.sync_last_status = Some(format!(
+                    "Server v{} • {} conversations",
+                    health.version, health.conversations
+                ));
+                self.set_status(&format!("✓ Connected to {}", self.sync_server_url));
+            }
+            Err(e) => {
+                self.sync_server_connected = false;
+                self.sync_conversation_count = 0;
+                self.sync_last_status = Some(format!("Connection failed: {}", e));
+                self.set_status(&format!("✗ Failed to connect: {}", e));
+            }
+        }
+    }
+
+    fn pull_from_server(&mut self) {
+        use chat::SyncClient;
+        use chat::ClientConfig;
+        
+        let config = ClientConfig {
+            server_url: self.sync_server_url.clone(),
+            device_id: "cursor-studio".to_string(),
+        };
+        let client = SyncClient::new(config);
+        
+        match client.pull(Some(100)) {
+            Ok(conversations) => {
+                let count = conversations.len();
+                self.sync_last_status = Some(format!("Pulled {} conversations", count));
+                self.set_status(&format!("✓ Pulled {} conversations from server", count));
+                // TODO: Merge into local database
+            }
+            Err(e) => {
+                self.sync_last_status = Some(format!("Pull failed: {}", e));
+                self.set_status(&format!("✗ Pull failed: {}", e));
+            }
+        }
     }
 
     fn show_editor_area(&mut self, ui: &mut egui::Ui, theme: Theme) {

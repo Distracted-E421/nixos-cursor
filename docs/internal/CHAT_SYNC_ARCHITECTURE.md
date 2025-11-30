@@ -24,7 +24,7 @@
 | **Server Mode** | ✅ Implemented | REST API with axum (health, stats, conversations, sync) |
 | **HTTP Client** | ✅ Implemented | Pull/push/sync from server |
 | **P2P Networking** | ✅ Implemented | libp2p with mDNS, Noise encryption, request/response |
-| egui Integration | 🚧 Not Started | Next phase |
+| **egui Integration** | ✅ Implemented | Sync panel in right sidebar (server + P2P status) |
 
 ### CLI Usage
 
