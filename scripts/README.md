@@ -35,7 +35,7 @@ nix develop --command nu scripts/nu/disk-usage.nu
 nix develop --command python scripts/python/compute_hashes.py --help
 ```
 
-See [docs/SCRIPTING_ARCHITECTURE.md](../docs/SCRIPTING_ARCHITECTURE.md) for the full rationale.
+See [docs/internal/SCRIPTING_ARCHITECTURE.md](../docs/internal/SCRIPTING_ARCHITECTURE.md) for the full rationale.
 
 ---
 

@@ -1,0 +1,99 @@
+# ============================================================
+# Cursor IDE Index Exclusions for nixos-cursor
+# ============================================================
+# This file prevents ~18,000+ build artifacts from being indexed
+# Without this, Cursor indexes 22,500+ files instead of ~700
+
+# ============================================================
+# Rust Build Artifacts (CRITICAL - 18,000+ files!)
+# ============================================================
+# All Rust target directories anywhere in the repo
+**/target/
+target/
+
+# Specific known locations
+cursor-studio/target/
+cursor-studio-egui/target/
+scripts/rust/cursor-manager/target/
+
+# Cargo artifacts
+Cargo.lock
+# Note: cursor-studio-egui/Cargo.lock is intentionally tracked (binary reproducibility)
+
+# ============================================================
+# Nix Build Outputs
+# ============================================================
+# Symlinks to /nix/store
+result
+result-*
+
+# direnv
+.direnv/
+
+# ============================================================
+# Python Artifacts
+# ============================================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+*.egg
+
+# ============================================================
+# Node.js / NPM
+# ============================================================
+node_modules/
+.npm/
+package-lock.json
+
+# ============================================================
+# Editor & IDE
+# ============================================================
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# ============================================================
+# OS Artifacts
+# ============================================================
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# ============================================================
+# Large Binary Files
+# ============================================================
+*.AppImage
+*.dmg
+*.zip
+*.tar.gz
+*.tar.xz
+*.deb
+*.rpm
+
+# ============================================================
+# Elixir/Erlang Build
+# ============================================================
+_build/
+deps/
+.elixir_ls/
+*.beam
+
+# ============================================================
+# Git Submodules (vendor directories)
+# ============================================================
+cursor-studio/vendor/
+
+# ============================================================
+# Test Outputs & Coverage
+# ============================================================
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
