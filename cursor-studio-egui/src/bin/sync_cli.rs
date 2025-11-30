@@ -1,12 +1,14 @@
 //! CLI tool for testing chat sync functionality.
 //!
 //! Usage:
-//!   cargo run --bin sync_cli -- import    # Import from Cursor SQLite
-//!   cargo run --bin sync_cli -- stats     # Show sync store stats
-//!   cargo run --bin sync_cli -- list      # List conversations
-//!   cargo run --bin sync_cli -- search <query>  # Search conversations
+//!   cargo run --bin sync-cli -- import    # Import from Cursor SQLite
+//!   cargo run --bin sync-cli -- stats     # Show sync store stats
+//!   cargo run --bin sync-cli -- list      # List conversations
+//!   cargo run --bin sync-cli -- search <query>  # Search conversations
+//!   cargo run --bin sync-cli -- server-status <url>  # Check server health
+//!   cargo run --bin sync-cli -- pull <url>  # Pull from server
 
-use cursor_studio::chat::SyncService;
+use cursor_studio::chat::{SyncService, SyncClient, ClientConfig};
 use std::env;
 
 #[tokio::main]
@@ -19,6 +21,20 @@ async fn main() -> anyhow::Result<()> {
     println!("🔄 Cursor Chat Sync CLI");
     println!("========================\n");
 
+    // Server commands don't need local store
+    match command {
+        "server-status" | "server-stats" | "pull" => {
+            let server_url = args.get(2)
+                .map(|s| s.as_str())
+                .unwrap_or("http://localhost:8420");
+            
+            run_server_command(command, server_url)?;
+            return Ok(());
+        }
+        _ => {}
+    }
+
+    // Local commands need the store
     let mut service = SyncService::new();
     println!("Device ID: {}", service.device_id());
 
@@ -74,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
         "search" => {
             let query = args.get(2).map(|s| s.as_str()).unwrap_or("");
             if query.is_empty() {
-                println!("Usage: sync_cli search <query>");
+                println!("Usage: sync-cli search <query>");
                 return Ok(());
             }
 
@@ -97,16 +113,91 @@ async fn main() -> anyhow::Result<()> {
         }
 
         "help" | _ => {
-            println!("Commands:");
-            println!("  import  - Import conversations from Cursor SQLite");
-            println!("  stats   - Show statistics about synced conversations");
-            println!("  list    - List recent conversations");
-            println!("  search  - Search conversations by title");
-            println!("\nExample:");
-            println!("  cargo run --bin sync_cli -- import");
-            println!("  cargo run --bin sync_cli -- search nixos");
+            print_help();
         }
     }
 
     Ok(())
+}
+
+fn run_server_command(command: &str, server_url: &str) -> anyhow::Result<()> {
+    let config = ClientConfig {
+        server_url: server_url.to_string(),
+        device_id: "cli-client".to_string(),
+    };
+    let client = SyncClient::new(config);
+
+    match command {
+        "server-status" => {
+            println!("📡 Checking server at {}...\n", server_url);
+            match client.health() {
+                Ok(health) => {
+                    println!("✓ Server is healthy!");
+                    println!("  Version: {}", health.version);
+                    println!("  Device ID: {}", health.device_id);
+                    println!("  Conversations: {}", health.conversations);
+                }
+                Err(e) => {
+                    println!("✗ Server unreachable: {}", e);
+                }
+            }
+        }
+
+        "server-stats" => {
+            println!("📊 Fetching server stats from {}...\n", server_url);
+            match client.stats() {
+                Ok(stats) => {
+                    println!("{}", serde_json::to_string_pretty(&stats)?);
+                }
+                Err(e) => {
+                    println!("✗ Failed to get stats: {}", e);
+                }
+            }
+        }
+
+        "pull" => {
+            println!("📥 Pulling from server {}...\n", server_url);
+            match client.pull(Some(10)) {
+                Ok(conversations) => {
+                    println!("✓ Pulled {} conversations", conversations.len());
+                    for (i, conv) in conversations.iter().take(5).enumerate() {
+                        let title = conv.conversation.title.as_deref().unwrap_or("(untitled)");
+                        let truncated: String = title.chars().take(50).collect();
+                        println!("  {}. {}", i + 1, truncated);
+                    }
+                    if conversations.len() > 5 {
+                        println!("  ... and {} more", conversations.len() - 5);
+                    }
+                }
+                Err(e) => {
+                    println!("✗ Failed to pull: {}", e);
+                }
+            }
+        }
+
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn print_help() {
+    println!("Commands:");
+    println!();
+    println!("  LOCAL OPERATIONS:");
+    println!("    import           Import conversations from Cursor SQLite");
+    println!("    stats            Show statistics about synced conversations");
+    println!("    list             List recent conversations");
+    println!("    search <query>   Search conversations by title");
+    println!();
+    println!("  SERVER OPERATIONS:");
+    println!("    server-status [url]  Check server health (default: localhost:8420)");
+    println!("    server-stats [url]   Get server statistics");
+    println!("    pull [url]           Pull conversations from server");
+    println!();
+    println!("Examples:");
+    println!("  sync-cli import");
+    println!("  sync-cli search nixos");
+    println!("  sync-cli server-status http://192.168.1.100:8420");
+    println!("  sync-cli pull http://framework:8420");
 }

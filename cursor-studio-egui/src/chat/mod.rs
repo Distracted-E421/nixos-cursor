@@ -20,14 +20,18 @@
 //!                                                 └─────────────────┘
 //! ```
 
+pub mod client;
 pub mod crdt;
 pub mod cursor_parser;
 pub mod models;
+pub mod server;
 pub mod surreal;
 pub mod sync_service;
 
+pub use client::{ClientConfig, SyncClient};
 pub use crdt::{ClockOrdering, DeviceId, SyncState, VectorClock};
 pub use cursor_parser::CursorParser;
 pub use models::*;
+pub use server::{start_server, ServerConfig};
 pub use surreal::{MergeResult, SurrealStore, SyncedConversation};
 pub use sync_service::{ImportResult, SyncService, SyncStats, SyncStatus};

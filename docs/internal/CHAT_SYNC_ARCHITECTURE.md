@@ -1,6 +1,7 @@
 # Cursor Chat Sync Architecture
 
 > **Goal**: Sync Cursor IDE chat history across devices with two modes:
+>
 > 1. **Self-hosted server** - Central hub with native egui/GPUI interface
 > 2. **Peer-to-peer** - Direct device sync for serverless setups
 
@@ -18,20 +19,47 @@
 | CRDT Module | ✅ Implemented | VectorClock, DeviceId, merge logic |
 | SurrealDB Store | ✅ Implemented | In-memory mode, schema, CRUD, merge |
 | Sync Service | ✅ Implemented | Orchestrates full import pipeline |
-| CLI Tool | ✅ Implemented | `sync-cli` for testing (import/stats/list/search) |
+| CLI Tool | ✅ Implemented | Local + server commands |
 | Device ID | ✅ Implemented | Persists to ~/.config/cursor-studio/device_id |
+| **Server Mode** | ✅ Implemented | REST API with axum (health, stats, conversations, sync) |
+| **HTTP Client** | ✅ Implemented | Pull/push/sync from server |
 | egui Integration | 🚧 Not Started | Next phase |
 | P2P Networking | 🚧 Not Started | libp2p planned |
-| Server Mode | 🚧 Not Started | API layer planned |
 
 ### CLI Usage
 
 ```bash
-# Test the full pipeline
-cargo run --bin sync-cli -- import    # Import from Cursor SQLite
-cargo run --bin sync-cli -- stats     # Show statistics
-cargo run --bin sync-cli -- list      # List conversations
-cargo run --bin sync-cli -- search <query>  # Search by title
+# LOCAL OPERATIONS
+cargo run --bin sync-cli -- import       # Import from Cursor SQLite
+cargo run --bin sync-cli -- stats        # Show statistics
+cargo run --bin sync-cli -- list         # List conversations
+cargo run --bin sync-cli -- search <q>   # Search by title
+
+# SERVER OPERATIONS
+cargo run --bin sync-cli -- server-status [url]  # Check server health
+cargo run --bin sync-cli -- server-stats [url]   # Get server statistics
+cargo run --bin sync-cli -- pull [url]           # Pull from server
+```
+
+### Server Usage
+
+```bash
+# Start server with defaults (port 8420)
+cargo run --bin sync-server
+
+# Custom port + import local chats
+cargo run --bin sync-server -- --import --port 8080
+
+# Server API endpoints:
+#   GET  /              - API info
+#   GET  /health        - Health check
+#   GET  /stats         - Server statistics
+#   GET  /conversations - List conversations
+#   GET  /conversations/:id - Get specific conversation
+#   GET  /conversations/search?q=<query> - Search
+#   POST /sync          - Bidirectional sync
+#   POST /sync/push     - Push to server
+#   GET  /sync/pull     - Pull from server
 ```
 
 ---
@@ -120,6 +148,7 @@ Instead of separate components, **cursor-studio** is a single Rust binary that o
 | **New (Native)** | Just `cursor-studio` | 1 binary | Low |
 
 Benefits:
+
 - **One thing to package** - Single Nix derivation
 - **One thing to deploy** - Copy binary, done
 - **Consistent UX** - Same interface everywhere
@@ -175,6 +204,7 @@ pub struct SurrealStore;         // Our sync-capable store
 ```
 
 **Key Features:**
+
 - Read-only access to Cursor's SQLite (never corrupt original)
 - ULID-based IDs (timestamp + random, sortable)
 - Vector clocks for conflict-free merge
@@ -214,6 +244,7 @@ pub enum SyncMode {
 ```
 
 **Sync Protocol:**
+
 ```
 1. Watch Cursor SQLite for changes (inotify/FSEvents)
 2. Extract new/modified conversations to SurrealDB
@@ -292,6 +323,7 @@ pub enum SyncAction {
 ```
 
 **Usage Examples:**
+
 ```bash
 # GUI mode (default)
 cursor-studio
@@ -316,6 +348,7 @@ cursor-studio export --format markdown --output ~/chats/
 ```
 
 **egui Interface Features:**
+
 - 📊 Dashboard (total chats, tokens used, device status)
 - 🔍 Full-text search across ALL conversations (instant, local)
 - 📁 Browse by workspace/project
@@ -329,11 +362,13 @@ cursor-studio export --format markdown --output ~/chats/
 **Purpose**: Direct device-to-device sync without central server
 
 **Discovery Methods:**
+
 1. **mDNS** - Automatic on local network (same WiFi)
 2. **DHT** - Find peers across internet via distributed hash table
 3. **Manual** - Add peer by ID/address
 
 **Protocol:**
+
 ```
 /cursor-sync/1.0.0
   - Handshake: Exchange device IDs, vector clocks
@@ -343,6 +378,7 @@ cursor-studio export --format markdown --output ~/chats/
 ```
 
 **NAT Traversal:**
+
 - STUN for symmetric NAT
 - Relay nodes (optional, can self-host)
 - TCP hole punching
@@ -392,6 +428,7 @@ DEFINE TABLE mentions SCHEMAFULL;    -- message -> file/symbol
 ```
 
 **Example Queries:**
+
 ```sql
 -- Search across all conversations
 SELECT * FROM conversation 
@@ -503,17 +540,20 @@ docker run -d --name cursor-studio-server \
 ## 🔐 Security Model
 
 ### Device Authentication
+
 - Each device generates Ed25519 keypair on first run
 - Device ID = hash of public key
 - Server/peers verify signatures on sync requests
 
 ### Optional E2E Encryption
+
 - Conversations encrypted with device key before sync
 - Server stores encrypted blobs (can't read content)
 - Key exchange via QR code or manual ID exchange
 - Supports key rotation
 
 ### Access Control (Server Mode)
+
 - API keys for device authentication
 - Optional user accounts with OAuth
 - Per-workspace access control (future)
@@ -703,6 +743,7 @@ pdf-export = ["printpdf"]
 ## 🗓️ Implementation Roadmap
 
 ### Phase 1: Core Library (Week 1-2)
+
 - [ ] Parse Cursor SQLite (`cursor_parser.rs`)
   - [ ] Read `bubbleId:*` entries from cursorDiskKV
   - [ ] Parse Lexical richText JSON
@@ -712,24 +753,28 @@ pdf-export = ["printpdf"]
 - [ ] Basic CRDT vector clocks (`crdt.rs`)
 
 ### Phase 2: egui Integration (Week 3-4)
+
 - [ ] Conversation browser UI
 - [ ] Full-text search with instant results
 - [ ] File watching for live updates
 - [ ] CLI commands (export, sync status)
 
 ### Phase 3: P2P Sync (Week 5-6)
+
 - [ ] libp2p integration (`p2p.rs`)
 - [ ] mDNS auto-discovery
 - [ ] Sync protocol (delta-based)
 - [ ] Peer management UI
 
 ### Phase 4: Server Mode (Week 7-8)
+
 - [ ] Server mode (`--server`)
 - [ ] Client connection to server
 - [ ] Hybrid mode (P2P + server fallback)
 - [ ] Device authentication
 
 ### Phase 5: Polish (Week 9-10)
+
 - [ ] E2E encryption (optional feature)
 - [ ] Export (Markdown, JSON, PDF)
 - [ ] Home Manager module refinement
@@ -748,12 +793,14 @@ pdf-export = ["printpdf"]
 ## 🎯 GPUI Future Path
 
 egui is our immediate choice because:
+
 - Already working in cursor-studio-egui
 - Good enough performance (60fps)
 - Single-file binary possible
 - Well-documented
 
 **GPUI consideration for v2.0:**
+
 - Even faster (GPU-accelerated)
 - Zed-proven at scale
 - Better text rendering
