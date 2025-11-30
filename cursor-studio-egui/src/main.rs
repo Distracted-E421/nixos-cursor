@@ -1,6 +1,7 @@
 //! Cursor Studio - Version Manager + Chat Library
 //! Built with egui for native Wayland support
 
+mod chat;
 mod database;
 mod security;
 mod theme;
@@ -3769,7 +3770,9 @@ impl CursorStudio {
                             ui.label(RichText::new("...").color(theme.accent));
                         });
                         ui.ctx().request_repaint();
-                    } else if styled_button_accent(ui, "⬇ Import", Vec2::new(100.0, 32.0), theme).clicked() {
+                    } else if styled_button_accent(ui, "⬇ Import", Vec2::new(100.0, 32.0), theme)
+                        .clicked()
+                    {
                         if !self.import_warning_shown {
                             self.import_warning_shown = true;
                             self.set_status("⚠️ Click again to confirm");
@@ -3789,12 +3792,13 @@ impl CursorStudio {
 
                 // Launch button
                 cols[2].vertical_centered(|ui| {
-                    if styled_button_accent(ui, "▶ Launch", Vec2::new(100.0, 32.0), theme).clicked() {
+                    if styled_button_accent(ui, "▶ Launch", Vec2::new(100.0, 32.0), theme).clicked()
+                    {
                         do_launch = true;
                     }
                 });
             });
-            
+
             // Warning hint
             if self.import_warning_shown {
                 ui.vertical_centered(|ui| {
