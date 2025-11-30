@@ -4,10 +4,22 @@
 > 1. **Self-hosted server** - Central hub with native egui/GPUI interface
 > 2. **Peer-to-peer** - Direct device sync for serverless setups
 
-**Status**: Design Phase  
+**Status**: Phase 1 - Implementation  
 **Database**: SurrealDB (multi-model, real-time sync, Rust-native)  
 **Languages**: Rust (everything - library, daemon, UI, server)  
 **UI Framework**: egui (immediate mode, 60fps, single binary) or GPUI (future)
+
+### Implementation Progress
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| SQLite Parser | ✅ Implemented | Lightly tested - parses real databases |
+| Data Models | ✅ Implemented | Conversation, Message, Stats |
+| CRDT Module | ✅ Implemented | VectorClock, DeviceId, merge logic |
+| SurrealDB Store | ✅ Implemented | In-memory mode, schema, CRUD, merge |
+| egui Integration | 🚧 Not Started | Next phase |
+| P2P Networking | 🚧 Not Started | libp2p planned |
+| Server Mode | 🚧 Not Started | API layer planned |
 
 ---
 

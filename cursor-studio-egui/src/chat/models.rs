@@ -164,6 +164,8 @@ impl Message {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Conversation {
     /// Conversation ID (UUID)
+    /// Renamed to conv_id in JSON to avoid conflict with SurrealDB's id field
+    #[serde(rename = "conv_id")]
     pub id: Uuid,
 
     /// Source device ID (for sync)
