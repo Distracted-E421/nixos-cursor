@@ -13,13 +13,26 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| SQLite Parser | ✅ Implemented | Lightly tested - parses real databases |
+| SQLite Parser | ✅ Implemented | Parses real databases (55 convs, 21K msgs) |
 | Data Models | ✅ Implemented | Conversation, Message, Stats |
 | CRDT Module | ✅ Implemented | VectorClock, DeviceId, merge logic |
 | SurrealDB Store | ✅ Implemented | In-memory mode, schema, CRUD, merge |
+| Sync Service | ✅ Implemented | Orchestrates full import pipeline |
+| CLI Tool | ✅ Implemented | `sync-cli` for testing (import/stats/list/search) |
+| Device ID | ✅ Implemented | Persists to ~/.config/cursor-studio/device_id |
 | egui Integration | 🚧 Not Started | Next phase |
 | P2P Networking | 🚧 Not Started | libp2p planned |
 | Server Mode | 🚧 Not Started | API layer planned |
+
+### CLI Usage
+
+```bash
+# Test the full pipeline
+cargo run --bin sync-cli -- import    # Import from Cursor SQLite
+cargo run --bin sync-cli -- stats     # Show statistics
+cargo run --bin sync-cli -- list      # List conversations
+cargo run --bin sync-cli -- search <query>  # Search by title
+```
 
 ---
 
