@@ -5,6 +5,12 @@
 //!
 //! Key format: `bubbleId:{conversation-uuid}:{message-uuid}`
 //! Value format: JSON blob with message data
+//!
+//! # Status
+//!
+//! **Lightly tested** - Basic parsing works against real databases, but edge cases
+//! and error handling need more thorough testing. See `test_parse_real_database`
+//! for the integration test.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -39,9 +45,8 @@ impl CursorParser {
 
     /// Get the default database path for the current platform
     pub fn default_db_path() -> Result<PathBuf> {
-        let config_dir = dirs::config_dir()
-            .context("Could not determine config directory")?;
-        
+        let config_dir = dirs::config_dir().context("Could not determine config directory")?;
+
         // Linux: ~/.config/Cursor/User/globalStorage/state.vscdb
         let db_path = config_dir
             .join("Cursor")
@@ -54,9 +59,8 @@ impl CursorParser {
 
     /// List all workspace storage databases (per-workspace chat history)
     pub fn list_workspace_dbs() -> Result<Vec<PathBuf>> {
-        let config_dir = dirs::config_dir()
-            .context("Could not determine config directory")?;
-        
+        let config_dir = dirs::config_dir().context("Could not determine config directory")?;
+
         let workspace_dir = config_dir
             .join("Cursor")
             .join("User")
@@ -102,9 +106,8 @@ impl CursorParser {
         // Group messages by conversation ID
         let mut conversations_map: HashMap<Uuid, Vec<Message>> = HashMap::new();
 
-        let mut stmt = conn.prepare(
-            "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:%'"
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:%'")?;
 
         let rows = stmt.query_map([], |row| {
             let key: String = row.get(0)?;
@@ -114,16 +117,13 @@ impl CursorParser {
 
         for row_result in rows {
             let (key, value) = row_result?;
-            
+
             // Parse key: bubbleId:{conv-id}:{msg-id}
             if let Some((conv_id, _msg_id)) = parse_bubble_key(&key) {
                 // Parse JSON value
                 match serde_json::from_str::<Message>(&value) {
                     Ok(message) => {
-                        conversations_map
-                            .entry(conv_id)
-                            .or_default()
-                            .push(message);
+                        conversations_map.entry(conv_id).or_default().push(message);
                     }
                     Err(e) => {
                         log::warn!("Failed to parse message {}: {}", key, e);
@@ -160,9 +160,7 @@ impl CursorParser {
         let conn = self.open_connection()?;
         let id_str = id.to_string();
 
-        let mut stmt = conn.prepare(
-            "SELECT key, value FROM cursorDiskKV WHERE key LIKE ?"
-        )?;
+        let mut stmt = conn.prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE ?")?;
 
         let pattern = format!("bubbleId:{}:%", id_str);
         let rows = stmt.query_map([&pattern], |row| {
@@ -191,7 +189,7 @@ impl CursorParser {
         let conn = self.open_connection()?;
 
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT substr(key, 10, 36) FROM cursorDiskKV WHERE key LIKE 'bubbleId:%'"
+            "SELECT DISTINCT substr(key, 10, 36) FROM cursorDiskKV WHERE key LIKE 'bubbleId:%'",
         )?;
 
         let ids: Vec<Uuid> = stmt
@@ -240,9 +238,9 @@ impl CursorParser {
         let matching: Vec<Conversation> = conversations
             .into_iter()
             .filter(|conv| {
-                conv.messages.iter().any(|msg| {
-                    msg.text.to_lowercase().contains(&query_lower)
-                })
+                conv.messages
+                    .iter()
+                    .any(|msg| msg.text.to_lowercase().contains(&query_lower))
             })
             .collect();
 
@@ -329,17 +327,12 @@ mod tests {
 
     #[test]
     fn test_parse_bubble_key() {
-        let key = "bubbleId:419a3f6b-ca2d-4982-aabf-55b4d767f364:ff231e68-a109-4bfb-a729-ae641802448f";
+        let key =
+            "bubbleId:419a3f6b-ca2d-4982-aabf-55b4d767f364:ff231e68-a109-4bfb-a729-ae641802448f";
         let (conv_id, msg_id) = parse_bubble_key(key).unwrap();
-        
-        assert_eq!(
-            conv_id.to_string(),
-            "419a3f6b-ca2d-4982-aabf-55b4d767f364"
-        );
-        assert_eq!(
-            msg_id.to_string(),
-            "ff231e68-a109-4bfb-a729-ae641802448f"
-        );
+
+        assert_eq!(conv_id.to_string(), "419a3f6b-ca2d-4982-aabf-55b4d767f364");
+        assert_eq!(msg_id.to_string(), "ff231e68-a109-4bfb-a729-ae641802448f");
     }
 
     #[test]
@@ -406,7 +399,10 @@ mod tests {
 
         println!("\n=== Chat History Stats ===");
         println!("Conversations: {}", conversations.len());
-        println!("Total messages: {}", conversations.iter().map(|c| c.message_count).sum::<usize>());
+        println!(
+            "Total messages: {}",
+            conversations.iter().map(|c| c.message_count).sum::<usize>()
+        );
         println!("Total tokens: {}", total_tokens);
         println!("Agentic conversations: {}", agentic_count);
         println!("Models used: {:?}", models_seen);
