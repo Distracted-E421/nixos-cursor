@@ -113,7 +113,7 @@ name = "cursor-studio"
 path = "src/main.rs"
 
 [[bin]]
-name = "cursor-cli"
+name = "cursor-studio-cli"
 path = "src/bin/cursor_cli.rs"
 
 [[bin]]

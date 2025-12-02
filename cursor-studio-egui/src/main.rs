@@ -2445,7 +2445,7 @@ impl CursorStudio {
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 ui.add_space(8.0);
-                                let cmd = format!("cursor-cli import <file> -v {}", version);
+                                let cmd = format!("cursor-studio-cli import <file> -v {}", version);
                                 ui.label(
                                     RichText::new(&cmd)
                                         .color(theme.fg)

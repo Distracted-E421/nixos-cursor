@@ -24,15 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 When automated download fails or hashes are outdated:
 ```bash
 # 1. Get URLs for manual download
-cursor-cli urls 2.0.77 --all
+cursor-studio-cli urls 2.0.77 --all
 
 # 2. Download in browser from the displayed URL
 
 # 3. Import the file and compute hash
-cursor-cli import ~/Downloads/Cursor-2.0.77-x86_64.AppImage --version 2.0.77
+cursor-studio-cli import ~/Downloads/Cursor-2.0.77-x86_64.AppImage --version 2.0.77
 
 # 4. Optionally update local registry with new hash
-cursor-cli import ~/Downloads/file.AppImage --version 2.0.77 --update-registry
+cursor-studio-cli import ~/Downloads/file.AppImage --version 2.0.77 --update-registry
 ```
 
 #### New CLI Commands
@@ -55,7 +55,7 @@ cursor-cli import ~/Downloads/file.AppImage --version 2.0.77 --update-registry
 ### 🔧 Hash Verification Fix
 - Fixed incorrect hashes for 2.1.32, 2.1.26, 2.1.25, 2.1.24, 2.1.20
 - Hashes verified against actual downloads on 2025-12-01
-- CLI now provides hash computation: `cursor-cli hash <version>`
+- CLI now provides hash computation: `cursor-studio-cli hash <version>`
 
 ### ⚡ Build Time Optimizations
 - **Feature flags** for heavy dependencies:
@@ -123,8 +123,8 @@ cursor-cli import ~/Downloads/file.AppImage --version 2.0.77 --update-registry
 
 ### ✨ New Features
 
-#### CLI Tool (`cursor-cli`)
-- **New binary: `cursor-cli`** - Full command-line interface for version management
+#### CLI Tool (`cursor-studio-cli`)
+- **New binary: `cursor-studio-cli`** - Full command-line interface for version management
 - **Commands**:
   - `list` - Show installed and/or available versions
   - `download <version>` - Download a specific version with progress bar
@@ -170,7 +170,7 @@ cursor-cli import ~/Downloads/file.AppImage --version 2.0.77 --update-registry
 - Added `sha2` and `base64` for hash verification
 - Added `clap`, `console`, `indicatif` for CLI
 - New modules: `versions`, `approval`
-- New binary: `cursor-cli` (alongside `cursor-studio`)
+- New binary: `cursor-studio-cli` (alongside `cursor-studio`)
 - Download state machine: Idle → Downloading → Completed/Failed
 - Approval manager tracks pending confirmations with expiry
 - Proper `pixels_per_point` scaling for font size

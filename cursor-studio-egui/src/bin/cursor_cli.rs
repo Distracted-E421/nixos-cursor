@@ -11,12 +11,11 @@ use std::path::PathBuf;
 
 // Import from main library
 use cursor_studio::approval::{ApprovalManager, ApprovalMode, ApprovalOperation, ApprovalResult};
-use cursor_studio::versions::{
-    get_available_versions, get_cache_dir, get_version_info,
-    install_version, is_version_installed,
-};
 use cursor_studio::version_registry::{
-    CursorVersion, ManualImport, Platform, VersionRegistry, compute_hash,
+    compute_hash, CursorVersion, ManualImport, Platform, VersionRegistry,
+};
+use cursor_studio::versions::{
+    get_available_versions, get_cache_dir, get_version_info, install_version, is_version_installed,
 };
 
 static CHECK: Emoji<'_, '_> = Emoji("✓ ", "+ ");
@@ -27,12 +26,14 @@ static DOWNLOAD: Emoji<'_, '_> = Emoji("⬇ ", "v ");
 static PACKAGE: Emoji<'_, '_> = Emoji("📦 ", "[] ");
 
 #[derive(Parser)]
-#[command(name = "cursor-cli")]
+#[command(name = "cursor-studio-cli")]
 #[command(author = "e421")]
-#[command(version = "0.2.1")]
+#[command(version = "0.3.0")]
 #[command(about = "Cursor Studio CLI - Manage Cursor IDE versions from the terminal")]
 #[command(long_about = r#"
 Cursor Studio CLI provides terminal-based management of Cursor IDE installations.
+
+Note: This is cursor-studio-cli (from cursor-studio), not Cursor's built-in CLI.
 
 Features:
   • List installed and available versions
@@ -41,11 +42,11 @@ Features:
   • View version details and disk usage
 
 Examples:
-  cursor-cli list                    # List all versions
-  cursor-cli list --available        # Show downloadable versions
-  cursor-cli download 2.1.34         # Download a specific version
-  cursor-cli install 2.1.34          # Download and install
-  cursor-cli info 2.0.77             # Show version details
+  cursor-studio-cli list                    # List all versions
+  cursor-studio-cli list --available        # Show downloadable versions
+  cursor-studio-cli download 2.1.34         # Download a specific version
+  cursor-studio-cli install 2.1.34          # Download and install
+  cursor-studio-cli info 2.0.77             # Show version details
 "#)]
 pub struct Cli {
     #[command(subcommand)]
@@ -217,9 +218,10 @@ fn main() -> Result<()> {
             force,
             skip_verify,
         } => cmd_download(&version, force, skip_verify, &mut approval),
-        Commands::Install { version, no_default } => {
-            cmd_install(&version, no_default, &mut approval)
-        }
+        Commands::Install {
+            version,
+            no_default,
+        } => cmd_install(&version, no_default, &mut approval),
         Commands::Info { version } => cmd_info(&version),
         Commands::Clean {
             older_than,
@@ -229,10 +231,16 @@ fn main() -> Result<()> {
         Commands::Launch { version } => cmd_launch(&version),
         Commands::Cache => cmd_cache(),
         Commands::Hash { target, verify } => cmd_hash(&target, verify),
-        Commands::VerifyHashes { only_with_hash, dry_run } => cmd_verify_hashes(only_with_hash, dry_run),
-        Commands::Import { file, version, platform, update_registry } => {
-            cmd_import(&file, &version, platform.as_deref(), update_registry)
-        }
+        Commands::VerifyHashes {
+            only_with_hash,
+            dry_run,
+        } => cmd_verify_hashes(only_with_hash, dry_run),
+        Commands::Import {
+            file,
+            version,
+            platform,
+            update_registry,
+        } => cmd_import(&file, &version, platform.as_deref(), update_registry),
         Commands::Urls { version, all } => cmd_urls(&version, all),
         Commands::ExportRegistry { output } => cmd_export_registry(output.as_ref()),
         Commands::ImportRegistry { file, merge } => cmd_import_registry(&file, merge),
@@ -296,10 +304,7 @@ fn cmd_list(available: bool, all: bool) -> Result<()> {
 
     // Show installed versions
     if !available || all {
-        println!(
-            "\n{}",
-            style("Installed Versions").bold().underlined()
-        );
+        println!("\n{}", style("Installed Versions").bold().underlined());
         println!();
 
         let installed: Vec<_> = versions
@@ -311,7 +316,7 @@ fn cmd_list(available: bool, all: bool) -> Result<()> {
             println!("  {} No versions installed", INFO);
             println!();
             println!(
-                "  Install one with: {} cursor-cli install latest",
+                "  Install one with: {} cursor-studio-cli install latest",
                 style("$").dim()
             );
         } else {
@@ -346,8 +351,10 @@ fn cmd_download(
 
     let version_str = resolved.context("No versions available")?;
 
-    let version_info = get_version_info(&version_str)
-        .context(format!("Version {} not found in available versions", version_str))?;
+    let version_info = get_version_info(&version_str).context(format!(
+        "Version {} not found in available versions",
+        version_str
+    ))?;
 
     // Check cache
     let cache_dir = get_cache_dir();
@@ -360,10 +367,7 @@ fn cmd_download(
             style(&version_str).cyan(),
             style(cached_path.display()).dim()
         );
-        println!(
-            "  Use {} to re-download",
-            style("--force").yellow()
-        );
+        println!("  Use {} to re-download", style("--force").yellow());
         return Ok(());
     }
 
@@ -393,15 +397,15 @@ fn cmd_download(
     let version_clone = version_info.clone();
     let cache_clone = cache_dir.clone();
     let do_verify = !skip_verify && version_info.sha256_hash.is_some();
-    
+
     // Spawn download thread
     let download_handle = std::thread::spawn(move || {
         use cursor_studio::versions::download_version_sync;
-        
+
         let result = download_version_sync(&version_clone, &cache_clone, move |progress| {
             let _ = progress_tx.send(progress);
         });
-        
+
         // If download succeeded and we should verify, do verification
         match result {
             Ok(path) if do_verify => {
@@ -461,10 +465,7 @@ fn cmd_download(
                     // Won't happen - we return error on mismatch
                 }
                 None if skip_verify => {
-                    println!(
-                        "  {} Hash verification skipped",
-                        style("⚠").yellow()
-                    );
+                    println!("  {} Hash verification skipped", style("⚠").yellow());
                 }
                 None => {
                     // No hash available or verification error
@@ -530,10 +531,7 @@ fn cmd_install(version: &str, no_default: bool, approval: &mut ApprovalManager) 
             );
 
             if !no_default {
-                println!(
-                    "{} Set as default version",
-                    CHECK
-                );
+                println!("{} Set as default version", CHECK);
             }
         }
         Err(e) => {
@@ -556,8 +554,8 @@ fn cmd_info(version: &str) -> Result<()> {
     };
 
     let version_str = resolved.context("No versions available")?;
-    let version_info = get_version_info(&version_str)
-        .context(format!("Version {} not found", version_str))?;
+    let version_info =
+        get_version_info(&version_str).context(format!("Version {} not found", version_str))?;
 
     println!();
     println!(
@@ -593,10 +591,7 @@ fn cmd_info(version: &str) -> Result<()> {
     if let Some(ref hash) = version_info.sha256_hash {
         println!("  SHA256:       {}", style(hash).dim());
     } else {
-        println!(
-            "  SHA256:       {}",
-            style("Not available").yellow()
-        );
+        println!("  SHA256:       {}", style("Not available").yellow());
     }
 
     if let Some(ref commit) = version_info.commit_hash {
@@ -700,21 +695,12 @@ fn cmd_clean(
             removed_size += metadata.len();
         }
         if let Err(e) = std::fs::remove_file(&path) {
-            println!(
-                "{} Failed to remove {}: {}",
-                CROSS,
-                path.display(),
-                e
-            );
+            println!("{} Failed to remove {}: {}", CROSS, path.display(), e);
         }
     }
 
     let removed_mb = removed_size as f64 / 1024.0 / 1024.0;
-    println!(
-        "\n{} Cleaned {:.1} MB",
-        CHECK,
-        removed_mb
-    );
+    println!("\n{} Cleaned {:.1} MB", CHECK, removed_mb);
 
     if !cache_only {
         println!(
@@ -768,7 +754,7 @@ fn cmd_launch(version: &str) -> Result<()> {
                         Err(e) => {
                             println!("{} Failed to launch: {}", CROSS, e);
                             println!(
-                                "  Try installing first: {} cursor-cli install {}",
+                                "  Try installing first: {} cursor-studio-cli install {}",
                                 style("$").dim(),
                                 v
                             );
@@ -780,7 +766,7 @@ fn cmd_launch(version: &str) -> Result<()> {
         None => {
             println!("{} No version installed", CROSS);
             println!(
-                "  Install one with: {} cursor-cli install latest",
+                "  Install one with: {} cursor-studio-cli install latest",
                 style("$").dim()
             );
         }
@@ -847,23 +833,28 @@ fn cmd_cache() -> Result<()> {
 /// Compute or verify hash for a file or version
 fn cmd_hash(target: &str, verify: bool) -> Result<()> {
     use sha2::{Digest, Sha256};
-    
+
     // Determine if target is a version or a file path
-    let file_path = if target.contains('/') || (target.contains('.') && target.ends_with(".AppImage")) {
-        // It's a file path
-        PathBuf::from(target)
-    } else {
-        // It's a version - check cache
-        let cache_dir = get_cache_dir();
-        let cached = cache_dir.join(format!("Cursor-{}-x86_64.AppImage", target));
-        if cached.exists() {
-            cached
+    let file_path =
+        if target.contains('/') || (target.contains('.') && target.ends_with(".AppImage")) {
+            // It's a file path
+            PathBuf::from(target)
         } else {
-            println!("{} File not found in cache for version {}", CROSS, target);
-            println!("  Download first with: {} cursor-cli download {}", style("$").dim(), target);
-            anyhow::bail!("File not found");
-        }
-    };
+            // It's a version - check cache
+            let cache_dir = get_cache_dir();
+            let cached = cache_dir.join(format!("Cursor-{}-x86_64.AppImage", target));
+            if cached.exists() {
+                cached
+            } else {
+                println!("{} File not found in cache for version {}", CROSS, target);
+                println!(
+                    "  Download first with: {} cursor-studio-cli download {}",
+                    style("$").dim(),
+                    target
+                );
+                anyhow::bail!("File not found");
+            }
+        };
 
     if !file_path.exists() {
         println!("{} File not found: {}", CROSS, file_path.display());
@@ -871,28 +862,29 @@ fn cmd_hash(target: &str, verify: bool) -> Result<()> {
     }
 
     println!();
-    println!("{} Computing hash for: {}", INFO, style(file_path.display()).dim());
-    
+    println!(
+        "{} Computing hash for: {}",
+        INFO,
+        style(file_path.display()).dim()
+    );
+
     // Read file and compute hash
     let pb = ProgressBar::new_spinner();
     pb.set_message("Reading file...");
     pb.enable_steady_tick(std::time::Duration::from_millis(100));
-    
+
     let file_content = std::fs::read(&file_path)?;
     let file_size = file_content.len() as f64 / 1024.0 / 1024.0;
-    
+
     pb.set_message("Computing SHA256...");
     let mut hasher = Sha256::new();
     hasher.update(&file_content);
     let hash = hasher.finalize();
-    
+
     // Convert to base64 (SRI format)
-    let hash_base64 = base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        hash,
-    );
+    let hash_base64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, hash);
     let sri_hash = format!("sha256-{}", hash_base64);
-    
+
     pb.finish_and_clear();
 
     println!();
@@ -905,22 +897,36 @@ fn cmd_hash(target: &str, verify: bool) -> Result<()> {
         if let Some(version_info) = get_version_info(target) {
             if let Some(ref expected) = version_info.sha256_hash {
                 if &sri_hash == expected {
-                    println!("  {} Hash matches expected value!", style("✓").green().bold());
+                    println!(
+                        "  {} Hash matches expected value!",
+                        style("✓").green().bold()
+                    );
                 } else {
                     println!("  {} Hash MISMATCH!", style("✗").red().bold());
                     println!("  Expected: {}", style(expected).dim());
                     println!("  Got:      {}", style(&sri_hash).red());
                 }
             } else {
-                println!("  {} No expected hash defined for version {}", style("⚠").yellow(), target);
+                println!(
+                    "  {} No expected hash defined for version {}",
+                    style("⚠").yellow(),
+                    target
+                );
             }
         } else {
-            println!("  {} Version {} not found in registry", style("⚠").yellow(), target);
+            println!(
+                "  {} Version {} not found in registry",
+                style("⚠").yellow(),
+                target
+            );
         }
     } else {
         // Show as copyable code
         println!("  Copy for versions.rs:");
-        println!("    {}", style(format!("sha256_hash: Some(\"{}\".into()),", sri_hash)).green());
+        println!(
+            "    {}",
+            style(format!("sha256_hash: Some(\"{}\".into()),", sri_hash)).green()
+        );
     }
 
     println!();
@@ -930,10 +936,13 @@ fn cmd_hash(target: &str, verify: bool) -> Result<()> {
 /// Verify all version hashes are still valid
 fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
     use sha2::{Digest, Sha256};
-    
+
     let versions = get_available_versions();
     let to_check: Vec<_> = if only_with_hash {
-        versions.iter().filter(|v| v.sha256_hash.is_some()).collect()
+        versions
+            .iter()
+            .filter(|v| v.sha256_hash.is_some())
+            .collect()
     } else {
         versions.iter().collect()
     };
@@ -941,7 +950,8 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
     println!();
     println!("{}", style("Hash Verification Report").bold().underlined());
     println!();
-    println!("  Checking {} versions{}...", 
+    println!(
+        "  Checking {} versions{}...",
         to_check.len(),
         if only_with_hash { " (with hashes)" } else { "" }
     );
@@ -949,10 +959,10 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
 
     if dry_run {
         for v in &to_check {
-            let hash_status = if v.sha256_hash.is_some() { 
-                style("has hash").green() 
-            } else { 
-                style("no hash").yellow() 
+            let hash_status = if v.sha256_hash.is_some() {
+                style("has hash").green()
+            } else {
+                style("no hash").yellow()
             };
             println!("  {} v{} - {}", ARROW, v.version, hash_status);
         }
@@ -976,7 +986,7 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
 
         // Check if already cached
         let cached_path = cache_dir.join(format!("Cursor-{}-x86_64.AppImage", v.version));
-        
+
         let file_path = if cached_path.exists() {
             print!("cached, ");
             std::io::Write::flush(&mut std::io::stdout())?;
@@ -985,7 +995,7 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
             // Download
             print!("downloading... ");
             std::io::Write::flush(&mut std::io::stdout())?;
-            
+
             match cursor_studio::versions::download_version_sync(v, &cache_dir, |_| {}) {
                 Ok(path) => path,
                 Err(e) => {
@@ -1001,10 +1011,7 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
         let mut hasher = Sha256::new();
         hasher.update(&file_content);
         let hash = hasher.finalize();
-        let hash_base64 = base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            hash,
-        );
+        let hash_base64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, hash);
         let computed_hash = format!("sha256-{}", hash_base64);
 
         // Compare
@@ -1018,12 +1025,24 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
                 println!("      Expected: {}", style(expected).dim());
                 println!("      Got:      {}", style(&computed_hash).yellow());
                 failed += 1;
-                results.push((v.version.clone(), "mismatch".into(), Some(computed_hash.clone())));
+                results.push((
+                    v.version.clone(),
+                    "mismatch".into(),
+                    Some(computed_hash.clone()),
+                ));
             }
         } else {
-            println!("{} ({})", style("no hash defined").yellow(), &computed_hash[..20]);
+            println!(
+                "{} ({})",
+                style("no hash defined").yellow(),
+                &computed_hash[..20]
+            );
             no_hash += 1;
-            results.push((v.version.clone(), "no hash".into(), Some(computed_hash.clone())));
+            results.push((
+                v.version.clone(),
+                "no hash".into(),
+                Some(computed_hash.clone()),
+            ));
         }
     }
 
@@ -1038,22 +1057,33 @@ fn cmd_verify_hashes(only_with_hash: bool, dry_run: bool) -> Result<()> {
         println!("  {} No hash defined: {}", style("?").yellow(), no_hash);
     }
     if download_failed > 0 {
-        println!("  {} Download failed: {}", style("⬇").red(), download_failed);
+        println!(
+            "  {} Download failed: {}",
+            style("⬇").red(),
+            download_failed
+        );
     }
 
     // If there were mismatches or missing hashes, show update suggestions
-    let needs_update: Vec<_> = results.iter()
+    let needs_update: Vec<_> = results
+        .iter()
         .filter(|(_, status, hash)| status == "mismatch" || (status == "no hash" && hash.is_some()))
         .collect();
 
     if !needs_update.is_empty() {
         println!();
-        println!("{}", style("Suggested hash updates for versions.rs:").bold());
+        println!(
+            "{}",
+            style("Suggested hash updates for versions.rs:").bold()
+        );
         println!();
         for (version, status, hash) in needs_update {
             if let Some(h) = hash {
                 println!("  // v{} - {}", version, status);
-                println!("  {}", style(format!("sha256_hash: Some(\"{}\".into()),", h)).cyan());
+                println!(
+                    "  {}",
+                    style(format!("sha256_hash: Some(\"{}\".into()),", h)).cyan()
+                );
                 println!();
             }
         }
@@ -1090,10 +1120,8 @@ fn cmd_import(
         }
     } else {
         // Try to detect from filename
-        let filename = file.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
-        
+        let filename = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
         if filename.contains("x86_64") || filename.contains("x64") {
             if filename.ends_with(".AppImage") {
                 Platform::LinuxX64
@@ -1133,14 +1161,22 @@ fn cmd_import(
         if registry.update_hash(version, platform, hash.clone()) {
             match registry.save() {
                 Ok(path) => {
-                    println!("  {} Registry updated: {}", CHECK, style(path.display()).dim());
+                    println!(
+                        "  {} Registry updated: {}",
+                        CHECK,
+                        style(path.display()).dim()
+                    );
                 }
                 Err(e) => {
                     println!("  {} Failed to save registry: {}", CROSS, e);
                 }
             }
         } else {
-            println!("  {} Version {} not found in registry", style("⚠").yellow(), version);
+            println!(
+                "  {} Version {} not found in registry",
+                style("⚠").yellow(),
+                version
+            );
             println!("  Hash for manual use: {}", style(&hash).cyan());
         }
     }
@@ -1152,21 +1188,27 @@ fn cmd_import(
 /// Show download URLs for manual download
 fn cmd_urls(version: &str, show_all: bool) -> Result<()> {
     let registry = VersionRegistry::load();
-    
+
     // Resolve version
     let version_str = if version == "latest" {
-        registry.latest_stable()
+        registry
+            .latest_stable()
             .map(|v| v.version.as_str())
             .unwrap_or("2.1.34")
     } else {
         version
     };
 
-    let cursor_version = registry.get_version(version_str)
+    let cursor_version = registry
+        .get_version(version_str)
         .context(format!("Version {} not found in registry", version_str))?;
 
     println!();
-    println!("{} Download URLs for Cursor v{}", INFO, style(&cursor_version.version).cyan().bold());
+    println!(
+        "{} Download URLs for Cursor v{}",
+        INFO,
+        style(&cursor_version.version).cyan().bold()
+    );
     if let Some(ref notes) = cursor_version.notes {
         println!("  {}", style(notes).dim());
     }
@@ -1180,43 +1222,58 @@ fn cmd_urls(version: &str, show_all: bool) -> Result<()> {
         for platform in Platform::all() {
             let url = cursor_version.download_url(*platform);
             let has_hash = cursor_version.has_hash(*platform);
-            let hash_indicator = if has_hash { 
-                style("✓").green().to_string() 
-            } else { 
-                style("?").yellow().to_string() 
+            let hash_indicator = if has_hash {
+                style("✓").green().to_string()
+            } else {
+                style("?").yellow().to_string()
             };
-            
+
             let is_current = *platform == current_platform;
             let marker = if is_current { " ← current" } else { "" };
-            
-            println!("  {} {} {}{}", hash_indicator, style(platform.display_name()).bold(), style(marker).dim(), "");
+
+            println!(
+                "  {} {} {}{}",
+                hash_indicator,
+                style(platform.display_name()).bold(),
+                style(marker).dim(),
+                ""
+            );
             println!("    {}", style(&url).cyan());
             println!();
         }
     } else {
-        println!("{} (use {} to see all platforms)", 
+        println!(
+            "{} (use {} to see all platforms)",
             style(current_platform.display_name()).bold(),
             style("--all").dim()
         );
         println!();
         let url = cursor_version.download_url(current_platform);
         println!("  {}", style(&url).cyan().bold());
-        
+
         if let Some(hash) = cursor_version.hash_for_platform(current_platform) {
             println!();
             println!("  Expected hash: {}", style(hash).dim());
         } else {
             println!();
-            println!("  {} No hash available - run {} after download", 
+            println!(
+                "  {} No hash available - run {} after download",
                 style("⚠").yellow(),
-                style(format!("cursor-cli import --version {} <file>", version_str)).dim()
+                style(format!(
+                    "cursor-studio-cli import --version {} <file>",
+                    version_str
+                ))
+                .dim()
             );
         }
     }
 
     println!();
     println!("{}", style("After downloading, import with:").dim());
-    println!("  cursor-cli import --version {} <downloaded_file>", version_str);
+    println!(
+        "  cursor-studio-cli import --version {} <downloaded_file>",
+        version_str
+    );
     println!();
 
     Ok(())
@@ -1229,7 +1286,11 @@ fn cmd_export_registry(output: Option<&PathBuf>) -> Result<()> {
 
     if let Some(path) = output {
         std::fs::write(path, &json)?;
-        println!("{} Registry exported to {}", CHECK, style(path.display()).cyan());
+        println!(
+            "{} Registry exported to {}",
+            CHECK,
+            style(path.display()).cyan()
+        );
     } else {
         println!("{}", json);
     }
@@ -1240,14 +1301,14 @@ fn cmd_export_registry(output: Option<&PathBuf>) -> Result<()> {
 /// Import registry from JSON
 fn cmd_import_registry(file: &PathBuf, merge: bool) -> Result<()> {
     println!();
-    
+
     let content = std::fs::read_to_string(file)?;
     let imported: VersionRegistry = serde_json::from_str(&content)?;
 
     if merge {
         let mut current = VersionRegistry::load();
         let mut updated = 0;
-        
+
         for imported_version in &imported.versions {
             for (platform, hash) in &imported_version.hashes {
                 if current.update_hash(&imported_version.version, *platform, hash.clone()) {
@@ -1255,13 +1316,17 @@ fn cmd_import_registry(file: &PathBuf, merge: bool) -> Result<()> {
                 }
             }
         }
-        
+
         let path = current.save()?;
         println!("{} Merged {} hash(es) into registry", CHECK, updated);
         println!("  Saved to: {}", style(path.display()).dim());
     } else {
         let path = imported.save()?;
-        println!("{} Registry replaced with {} versions", CHECK, imported.versions.len());
+        println!(
+            "{} Registry replaced with {} versions",
+            CHECK,
+            imported.versions.len()
+        );
         println!("  Saved to: {}", style(path.display()).dim());
     }
 
