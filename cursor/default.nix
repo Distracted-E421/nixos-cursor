@@ -99,21 +99,36 @@
         hash = hashAarch64;
       }
     else
-      # Fall back to standard downloader.cursor.sh URLs
-      let
-        sources = {
-          x86_64-linux = fetchurl {
-            url = "https://downloader.cursor.sh/linux/appImage/x64/${version}";
-            inherit hash;
-          };
-          aarch64-linux = fetchurl {
-            url = "https://downloader.cursor.sh/linux/appImage/arm64/${version}";
-            hash = hashAarch64;
-          };
-        };
-      in
-        sources.${hostPlatform.system}
-        or (throw "Cursor is not available for ${hostPlatform.system}. Supported: ${lib.concatStringsSep ", " (lib.attrNames sources)}");
+      # ERROR: srcUrl is required! The old downloader.cursor.sh domain is DEAD (NXDOMAIN).
+      # Users MUST provide srcUrl from cursor-versions.nix or use the flake's versioned packages.
+      throw ''
+        Cursor package requires 'srcUrl' parameter!
+
+        The legacy downloader.cursor.sh domain no longer exists (returns NXDOMAIN).
+        You must provide an explicit download URL from downloads.cursor.com.
+
+        Options:
+        1. Use a versioned package from the flake:
+           pkgs.cursor-2_1_34  # Latest
+           pkgs.cursor-2_0_77  # Stable
+           pkgs.cursor-1_7_54  # Classic
+
+        2. Provide srcUrl explicitly:
+           pkgs.callPackage ./cursor/default.nix {
+             version = "2.1.34";
+             hash = "sha256-...";
+             srcUrl = "https://downloads.cursor.com/production/COMMIT/linux/x64/Cursor-2.1.34-x86_64.AppImage";
+           }
+
+        3. Use a local AppImage:
+           pkgs.callPackage ./cursor/default.nix {
+             version = "2.1.34";
+             hash = "sha256-...";
+             localAppImage = ./Cursor-2.1.34-x86_64.AppImage;
+           }
+
+        See cursor-versions.nix for available versions with correct URLs and hashes.
+      '';
 
   # Extract AppImage contents
   cursor-extracted = appimageTools.extractType2 {

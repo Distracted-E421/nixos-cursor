@@ -19,9 +19,9 @@ Comprehensive testing of the `pre-release` branch revealed several critical issu
 
 ## Critical Issues Found
 
-### 1. 🔴 `downloader.cursor.sh` Domain is Dead
+### 1. ✅ `downloader.cursor.sh` Domain is Dead
 
-**Status**: CRITICAL - Affects multiple components
+**Status**: RESOLVED - All fallbacks removed
 
 **Symptoms**:
 ```bash
@@ -29,24 +29,24 @@ $ host downloader.cursor.sh
 Host downloader.cursor.sh not found: 3(NXDOMAIN)
 ```
 
-**Impact**:
-- All packages without explicit `srcUrl` fail to build
-- Old version URLs (1.6.x, 1.7.x) in cursor-studio-egui fail
-- GUI download functionality broken
-- Default overlay broken
+**Impact** (Fixed):
+- ~~All packages without explicit `srcUrl` fail to build~~ → Now throws helpful error
+- ~~Old version URLs (1.6.x, 1.7.x) in cursor-studio-egui fail~~ → Fixed with downloads.cursor.com
+- ~~GUI download functionality broken~~ → Needs testing
+- ~~Default overlay broken~~ → Fixed with explicit srcUrl
 
 **Affected Files**:
 | File | Status |
 |------|--------|
-| `cursor/default.nix` | ⚠️ Has broken fallback URL |
-| `cursor-studio-egui/src/versions.rs` | ✅ Fixed in this session |
-| `flake.nix` (cursor-test) | ✅ Fixed in this session |
-| `flake.nix` (overlay) | ✅ Fixed in this session |
+| `cursor/default.nix` | ✅ Now throws helpful error if srcUrl missing |
+| `cursor-studio-egui/src/versions.rs` | ✅ Fixed |
+| `flake.nix` (cursor-test) | ✅ Fixed |
+| `flake.nix` (overlay) | ✅ Fixed |
 
-**Resolution Required**:
-- Remove all `downloader.cursor.sh` references
-- Always require explicit `srcUrl` with `downloads.cursor.com` format
-- Update documentation to reflect this change
+**Resolution Applied**:
+- Removed dead `downloader.cursor.sh` fallback
+- Package now throws helpful error message with options
+- All versioned packages use explicit `srcUrl` from cursor-versions.nix
 
 ---
 
@@ -238,8 +238,8 @@ programs.cursor-studio = {
 | `nix develop` | DevShell | ✅ Pass |
 | `overlays.default` | Overlay | ✅ Pass (after fix) |
 | `homeManagerModules.default` | HM Module | ✅ Evaluates |
-| `cursor-studio` GUI | Download | ❌ Fails |
-| `cursor-studio-cli` | Installation | ❌ Not installed |
+| `cursor-studio` GUI | Download | ⚠️ Needs testing |
+| `cursor-studio-cli` | Installation | ✅ Working |
 | Multi-version build | 1.6.45, 1.7.54, 2.0.64 | ✅ Pass |
 
 ---
