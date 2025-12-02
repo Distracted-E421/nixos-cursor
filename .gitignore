@@ -43,3 +43,4 @@ Cargo.lock
 # Exception: cursor-studio-egui is an application, needs reproducible builds
 !cursor-studio-egui/Cargo.lock
 
+cursor-studio/

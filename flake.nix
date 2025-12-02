@@ -230,6 +230,9 @@
 
           # Cursor Version Manager (Rust CLI - Linux only for now)
           cursor-manager = pkgs.callPackage ./cursor/manager.nix { };
+          
+          # Cursor Chat Library - chat history management with markdown preview
+          cursor-chat-library = pkgs.callPackage ./cursor/chat-library.nix { };
         }
         # Darwin-specific extras
         // lib.optionalAttrs isDarwin {

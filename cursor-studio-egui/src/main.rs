@@ -1,10 +1,16 @@
 //! Cursor Studio - Version Manager + Chat Library
 //! Built with egui for native Wayland support
 
+mod approval;
 mod chat;
 mod database;
 mod security;
 mod theme;
+mod versions;
+
+use approval::{ApprovalManager, ApprovalMode, ApprovalOperation, ApprovalResult};
+// ApprovalMode is used in Settings panel for download confirmation style
+use versions::{get_available_versions, get_version_info, AvailableVersion, DownloadState};
 
 use database::{
     Bookmark, ChatDatabase, Conversation, CursorVersion, DisplayPreference, Message, MessageRole,
@@ -90,12 +96,8 @@ impl ExternalConfig {
     }
 }
 
-// Known Cursor versions that can be downloaded
-const AVAILABLE_VERSIONS: &[&str] = &[
-    "0.50.5", "0.50.4", "0.50.3", "0.50.2", "0.50.1", "0.50.0", "0.49.6", "0.49.5", "0.49.4",
-    "0.49.3", "0.49.2", "0.49.1", "0.49.0", "0.48.9", "0.48.8", "0.48.7", "0.48.6", "0.47.9",
-    "0.47.8", "0.47.7", "0.46.11", "0.46.10", "0.46.9", "0.45.14", "0.45.13", "0.45.12",
-];
+// Available Cursor versions - now dynamically loaded from versions module
+// See versions.rs for the full list with download URLs and hashes
 
 fn main() -> eframe::Result<()> {
     env_logger::init();
@@ -409,6 +411,16 @@ struct CursorStudio {
     sync_last_status: Option<String>,
     sync_conversation_count: usize,
     sync_p2p_peers: Vec<String>,
+
+    // Version download state
+    available_versions: Vec<AvailableVersion>,
+    download_state: DownloadState,
+    download_progress: Option<f32>,
+    download_thread: Option<std::thread::JoinHandle<Result<PathBuf, String>>>,
+    download_receiver: Option<std::sync::mpsc::Receiver<f32>>,
+
+    // Approval system
+    approval_manager: ApprovalManager,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -540,7 +552,7 @@ impl CursorStudio {
             launch_version,
             auto_sync_enabled: true,
             import_on_start: false,
-            show_all_versions: false,
+            show_all_versions: true, // Default to showing all versions
             hovered_theme: None,
             import_in_progress: false,
             import_progress: None,
@@ -595,6 +607,16 @@ impl CursorStudio {
             sync_last_status: None,
             sync_conversation_count: 0,
             sync_p2p_peers: Vec::new(),
+
+            // Version download state
+            available_versions: get_available_versions(),
+            download_state: DownloadState::Idle,
+            download_progress: None,
+            download_thread: None,
+            download_receiver: None,
+
+            // Approval system
+            approval_manager: ApprovalManager::new(ApprovalMode::Gui),
         }
     }
 
@@ -1393,15 +1415,205 @@ impl CursorStudio {
             .collect();
 
         if self.show_all_versions {
-            for &ver in AVAILABLE_VERSIONS {
-                if !installed.contains(ver) {
-                    all_versions.push((ver.to_string(), false));
+            // Use the new versioning system with actual current versions
+            for available in &self.available_versions {
+                if !installed.contains(&available.version) {
+                    all_versions.push((available.version.clone(), false));
                 }
             }
         }
 
+        // Sort by version (descending - newest first)
+        all_versions.sort_by(|a, b| version_compare(&b.0, &a.0));
+
         all_versions
     }
+
+    /// Start downloading a version in the background
+    fn start_download(&mut self, version: &str) {
+        // Check if already downloading
+        if matches!(self.download_state, DownloadState::Downloading { .. }) {
+            self.set_status("⏳ A download is already in progress");
+            return;
+        }
+
+        // Find the version info
+        let version_info = match get_version_info(version) {
+            Some(v) => v,
+            None => {
+                self.set_status(&format!(
+                    "✗ Version {} not found in available versions",
+                    version
+                ));
+                return;
+            }
+        };
+
+        // Request approval
+        let operation = ApprovalOperation::Download {
+            version: version.to_string(),
+            size_estimate: Some(150_000_000), // ~150MB estimate
+        };
+
+        let result = self.approval_manager.request(operation);
+        match result {
+            ApprovalResult::Approved => {
+                // Proceed with download
+                self.set_status(&format!("⏳ Starting download of v{}...", version));
+                self.download_state = DownloadState::Downloading {
+                    progress: 0.0,
+                    version: version.to_string(),
+                };
+
+                // Create progress channel
+                let (tx, rx) = std::sync::mpsc::channel();
+                self.download_receiver = Some(rx);
+
+                // Clone data for thread
+                let version_clone = version_info.clone();
+                let cache_dir = versions::get_cache_dir();
+
+                // Spawn download thread
+                let handle = std::thread::spawn(move || -> Result<PathBuf, String> {
+                    versions::download_version_sync(&version_clone, &cache_dir, move |progress| {
+                        let _ = tx.send(progress);
+                    })
+                    .map_err(|e| e.to_string())
+                });
+
+                self.download_thread = Some(handle);
+            }
+            ApprovalResult::Denied => {
+                // First click - show confirmation message
+                if let Some(msg) = self
+                    .approval_manager
+                    .get_pending_message(&format!("Download Cursor v{}", version))
+                {
+                    self.set_status(&msg);
+                } else {
+                    self.set_status(&format!(
+                        "⚠️ Click again to confirm download of v{}",
+                        version
+                    ));
+                }
+            }
+            _ => {
+                self.set_status("Download cancelled");
+            }
+        }
+    }
+
+    /// Check download progress and handle completion
+    fn check_download_progress(&mut self) {
+        // Check for progress updates
+        if let Some(ref rx) = self.download_receiver {
+            while let Ok(progress) = rx.try_recv() {
+                self.download_progress = Some(progress);
+                if let DownloadState::Downloading { version, .. } = &self.download_state {
+                    self.download_state = DownloadState::Downloading {
+                        progress,
+                        version: version.clone(),
+                    };
+                }
+            }
+        }
+
+        // Check if thread completed
+        if let Some(handle) = self.download_thread.take() {
+            if handle.is_finished() {
+                match handle.join() {
+                    Ok(Ok(path)) => {
+                        if let DownloadState::Downloading { version, .. } = &self.download_state {
+                            let version = version.clone();
+
+                            // Verify hash if available
+                            let hash_status = if let Some(version_info) = get_version_info(&version)
+                            {
+                                if let Some(ref expected_hash) = version_info.sha256_hash {
+                                    match versions::verify_hash(&path, expected_hash) {
+                                        Ok(true) => Some("✓ Hash verified"),
+                                        Ok(false) => {
+                                            // Hash mismatch - delete file and fail
+                                            let _ = std::fs::remove_file(&path);
+                                            self.download_state = DownloadState::Failed {
+                                                version: version.clone(),
+                                                error: "Hash verification failed - file deleted"
+                                                    .to_string(),
+                                            };
+                                            self.set_status("✗ Hash verification failed - downloaded file was corrupted");
+                                            self.download_receiver = None;
+                                            self.download_progress = None;
+                                            return;
+                                        }
+                                        Err(e) => {
+                                            log::warn!("Hash verification error: {}", e);
+                                            Some("⚠ Hash verification error")
+                                        }
+                                    }
+                                } else {
+                                    Some("⚠ No hash available")
+                                }
+                            } else {
+                                None
+                            };
+
+                            self.download_state = DownloadState::Completed {
+                                version: version.clone(),
+                                path: path.clone(),
+                            };
+
+                            let status_msg = match hash_status {
+                                Some(hash_msg) => {
+                                    format!("✓ Downloaded v{} - {}", version, hash_msg)
+                                }
+                                None => format!("✓ Downloaded v{}", version),
+                            };
+                            self.set_status(&status_msg);
+                        }
+                        self.download_receiver = None;
+                        self.download_progress = None;
+                    }
+                    Ok(Err(e)) => {
+                        if let DownloadState::Downloading { version, .. } = &self.download_state {
+                            self.download_state = DownloadState::Failed {
+                                version: version.clone(),
+                                error: e.clone(),
+                            };
+                        }
+                        self.set_status(&format!("✗ Download failed: {}", e));
+                        self.download_receiver = None;
+                        self.download_progress = None;
+                    }
+                    Err(_) => {
+                        self.set_status("✗ Download thread panicked");
+                        self.download_state = DownloadState::Idle;
+                        self.download_receiver = None;
+                        self.download_progress = None;
+                    }
+                }
+            } else {
+                // Thread still running, put it back
+                self.download_thread = Some(handle);
+            }
+        }
+    }
+}
+
+/// Compare version strings (e.g., "2.1.34" > "1.7.43")
+fn version_compare(a: &str, b: &str) -> std::cmp::Ordering {
+    let parse_version =
+        |s: &str| -> Vec<u32> { s.split('.').filter_map(|p| p.parse().ok()).collect() };
+
+    let va = parse_version(a);
+    let vb = parse_version(b);
+
+    for (a, b) in va.iter().zip(vb.iter()) {
+        match a.cmp(b) {
+            std::cmp::Ordering::Equal => continue,
+            other => return other,
+        }
+    }
+    va.len().cmp(&vb.len())
 }
 
 // Helper for styled buttons
@@ -1480,6 +1692,12 @@ impl eframe::App for CursorStudio {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Check download progress
+        self.check_download_progress();
+
+        // Clean up expired approval requests
+        self.approval_manager.cleanup_expired();
+
         let theme = self.theme;
 
         let mut visuals = if theme.bg.r() > 128 {
@@ -1497,6 +1715,11 @@ impl eframe::App for CursorStudio {
         visuals.widgets.active.bg_fill = theme.accent;
         visuals.selection.bg_fill = theme.selection;
         ctx.set_visuals(visuals);
+
+        // Apply font scaling - base is 1.0 (default), range 0.8-1.5
+        // egui uses pixels_per_point for DPI/scale - we modify it relative to native
+        let native_ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
+        ctx.set_pixels_per_point(native_ppp * self.font_scale);
 
         egui::SidePanel::left("activity_bar")
             .exact_width(48.0)
@@ -1903,9 +2126,23 @@ impl CursorStudio {
 
             ui.add_space(8.0);
 
+            // Legend for version icons
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(RichText::new("★").color(theme.warning).size(10.0));
+                ui.label(RichText::new("default").color(theme.fg_dim).size(9.0));
+                ui.add_space(8.0);
+                ui.label(RichText::new("●").color(theme.success).size(10.0));
+                ui.label(RichText::new("installed").color(theme.fg_dim).size(9.0));
+                ui.add_space(8.0);
+                ui.label(RichText::new("⬇").color(theme.accent).size(10.0));
+                ui.label(RichText::new("download").color(theme.fg_dim).size(9.0));
+            });
+            ui.add_space(4.0);
+
             // Version list
             let all_versions = self.get_all_versions();
-            let available_height = ui.available_height() - 160.0;
+            let available_height = ui.available_height() - 180.0; // Adjust for legend
             let default_ver = self.default_version.clone();
 
             egui::ScrollArea::vertical()
@@ -1926,8 +2163,17 @@ impl CursorStudio {
                         let is_default = version == &default_ver
                             || (version == "default" && default_ver == "default");
 
+                        // Check if we have a hash for this version
+                        let has_hash = get_version_info(version)
+                            .map(|v| v.sha256_hash.is_some())
+                            .unwrap_or(false);
+
+                        // Determine background color based on state
                         let bg_color = if is_default {
                             theme.selection
+                        } else if !is_installed && has_hash {
+                            // Downloadable with verified hash - subtle highlight
+                            theme.accent.linear_multiply(0.15)
                         } else {
                             Color32::TRANSPARENT
                         };
@@ -1935,38 +2181,49 @@ impl CursorStudio {
                         egui::Frame::none()
                             .fill(bg_color)
                             .rounding(Rounding::same(4.0))
-                            .inner_margin(egui::Margin::symmetric(4.0, 2.0))
+                            .inner_margin(egui::Margin::symmetric(4.0, 3.0))
                             .show(ui, |ui| {
                                 let response = ui
                                     .horizontal(|ui| {
                                         ui.add_space(8.0);
 
-                                        // Star for default
-                                        let icon = if is_default { "★" } else { "○" };
-                                        let icon_color = if is_default {
-                                            theme.warning
-                                        } else if !is_installed {
-                                            theme.fg_dim.linear_multiply(0.5)
+                                        // Status icon
+                                        let (icon, icon_color) = if is_default {
+                                            ("★", theme.warning) // Default version
+                                        } else if *is_installed {
+                                            ("●", theme.success) // Installed
+                                        } else if has_hash {
+                                            ("⬇", theme.accent) // Downloadable with hash
                                         } else {
-                                            theme.fg_dim
+                                            ("○", theme.fg_dim.linear_multiply(0.5))
+                                            // No hash
                                         };
                                         ui.label(RichText::new(icon).color(icon_color).size(14.0));
 
                                         ui.add_space(8.0);
 
                                         let label = Self::version_display_name(version);
-                                        let text_color = if !is_installed {
-                                            theme.fg_dim
-                                        } else if is_default {
+                                        let text_color = if is_default {
                                             theme.fg_bright
-                                        } else {
+                                        } else if *is_installed {
                                             theme.fg
+                                        } else if has_hash {
+                                            theme.accent // Downloadable stands out
+                                        } else {
+                                            theme.fg_dim
                                         };
 
-                                        let tooltip = if !is_installed {
-                                            "Not installed - click to download"
+                                        // Build tooltip
+                                        let tooltip = if *is_installed {
+                                            if is_default {
+                                                "✓ Default version"
+                                            } else {
+                                                "Click to set as default"
+                                            }
+                                        } else if has_hash {
+                                            "Click to download (hash verified)"
                                         } else {
-                                            "Click to set as default"
+                                            "Click to download (no hash verification)"
                                         };
 
                                         let btn = ui
@@ -1984,12 +2241,32 @@ impl CursorStudio {
                                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                                         }
 
-                                        // Show "not installed" indicator
-                                        if !is_installed {
-                                            ui.label(
-                                                RichText::new("⬇").color(theme.fg_dim).size(10.0),
-                                            );
-                                        }
+                                        // Show additional status indicators
+                                        ui.with_layout(
+                                            egui::Layout::right_to_left(egui::Align::Center),
+                                            |ui| {
+                                                ui.add_space(8.0);
+                                                if !is_installed {
+                                                    if has_hash {
+                                                        ui.label(
+                                                            RichText::new("✓")
+                                                                .color(theme.success)
+                                                                .size(10.0),
+                                                        )
+                                                        .on_hover_text("Hash verified");
+                                                    } else {
+                                                        ui.label(
+                                                            RichText::new("?")
+                                                                .color(theme.warning)
+                                                                .size(10.0),
+                                                        )
+                                                        .on_hover_text(
+                                                            "No hash - download at your own risk",
+                                                        );
+                                                    }
+                                                }
+                                            },
+                                        );
 
                                         btn
                                     })
@@ -1999,10 +2276,8 @@ impl CursorStudio {
                                     if *is_installed {
                                         self.set_default_version(version);
                                     } else {
-                                        self.set_status(&format!(
-                                            "Download for {} not yet implemented",
-                                            version
-                                        ));
+                                        // Start download for this version
+                                        self.start_download(version);
                                     }
                                 }
                             });
@@ -2012,7 +2287,192 @@ impl CursorStudio {
                 });
 
             // Spacer
-            ui.add_space(ui.available_height() - 130.0);
+            ui.add_space(ui.available_height() - 180.0);
+
+            // Download status section (if downloading)
+            if let DownloadState::Downloading { progress, version } = &self.download_state {
+                ui.separator();
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("DOWNLOADING")
+                            .size(11.0)
+                            .color(theme.accent)
+                            .strong(),
+                    );
+                });
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add_space(4.0);
+                    ui.label(
+                        RichText::new(format!("v{} - {:.0}%", version, progress))
+                            .color(theme.fg)
+                            .size(11.0),
+                    );
+                });
+
+                // Progress bar
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    let bar_width = ui.available_width() - 32.0;
+                    let (rect, _) = ui.allocate_exact_size(
+                        Vec2::new(bar_width.max(50.0), 6.0),
+                        egui::Sense::hover(),
+                    );
+
+                    // Background
+                    ui.painter()
+                        .rect_filled(rect, Rounding::same(3.0), theme.input_bg);
+
+                    // Progress
+                    let progress_width = rect.width() * (progress / 100.0);
+                    let progress_rect = egui::Rect::from_min_size(
+                        rect.min,
+                        Vec2::new(progress_width, rect.height()),
+                    );
+                    ui.painter()
+                        .rect_filled(progress_rect, Rounding::same(3.0), theme.accent);
+                });
+
+                ui.add_space(4.0);
+
+                // Request repaint while downloading
+                ui.ctx().request_repaint();
+            }
+
+            // Download failed section with recovery options
+            if let DownloadState::Failed { version, error } = &self.download_state {
+                ui.separator();
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("⚠ DOWNLOAD FAILED")
+                            .size(11.0)
+                            .color(theme.error)
+                            .strong(),
+                    );
+                });
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new(format!("v{}: {}", version, error))
+                            .color(theme.fg_dim)
+                            .size(10.0),
+                    );
+                });
+                ui.add_space(8.0);
+
+                // Show manual download URL
+                if let Some(version_info) = get_version_info(version) {
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
+                        ui.label(
+                            RichText::new("Manual download:")
+                                .color(theme.fg_dim)
+                                .size(10.0),
+                        );
+                    });
+                    ui.add_space(2.0);
+
+                    // URL display with copy button
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(4.0))
+                        .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                let url = &version_info.download_url;
+
+                                // Truncate URL for display
+                                let display_url = if url.len() > 40 {
+                                    format!("{}...", &url[..40])
+                                } else {
+                                    url.clone()
+                                };
+
+                                ui.label(
+                                    RichText::new(&display_url)
+                                        .color(theme.accent)
+                                        .size(9.0)
+                                        .family(egui::FontFamily::Monospace),
+                                );
+
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(
+                                                egui::Button::new(RichText::new("📋").size(12.0))
+                                                    .frame(false),
+                                            )
+                                            .on_hover_text("Copy URL to clipboard")
+                                            .clicked()
+                                        {
+                                            ui.ctx().copy_text(url.clone());
+                                            // Note: set_status is not available in this scope, status shown via tooltip
+                                        }
+                                    },
+                                );
+                            });
+                        });
+
+                    ui.add_space(4.0);
+
+                    // Instructions
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
+                        ui.label(
+                            RichText::new("Download manually, then use CLI:")
+                                .color(theme.fg_dim)
+                                .size(9.0),
+                        );
+                    });
+
+                    egui::Frame::none()
+                        .fill(theme.code_bg)
+                        .rounding(Rounding::same(4.0))
+                        .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                let cmd = format!("cursor-cli import <file> -v {}", version);
+                                ui.label(
+                                    RichText::new(&cmd)
+                                        .color(theme.fg)
+                                        .size(9.0)
+                                        .family(egui::FontFamily::Monospace),
+                                );
+                            });
+                        });
+                }
+
+                ui.add_space(4.0);
+
+                // Retry and dismiss buttons
+                let version_clone = version.clone();
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    if styled_button(ui, "🔄 Retry", Vec2::new(70.0, 24.0)).clicked() {
+                        self.download_state = DownloadState::Idle;
+                        self.start_download(&version_clone);
+                    }
+                    ui.add_space(4.0);
+                    if styled_button(ui, "✕ Dismiss", Vec2::new(70.0, 24.0)).clicked() {
+                        self.download_state = DownloadState::Idle;
+                    }
+                });
+                ui.add_space(4.0);
+            }
 
             // Actions section
             ui.separator();
@@ -2390,6 +2850,59 @@ impl CursorStudio {
                 "Include downloadable versions in list",
                 "show_all_versions",
             );
+            ui.add_space(12.0);
+
+            // Approval Mode selector
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("Download Approval")
+                        .color(theme.fg)
+                        .size(12.0),
+                );
+            });
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.add_space(24.0);
+
+                let current_mode = self.approval_manager.mode();
+                let modes = [
+                    (
+                        ApprovalMode::Gui,
+                        "Double-click",
+                        "Require second click to confirm",
+                    ),
+                    (ApprovalMode::Terminal, "Terminal", "Use terminal prompts"),
+                    (
+                        ApprovalMode::AutoApprove,
+                        "Auto",
+                        "Skip confirmation (risky)",
+                    ),
+                ];
+
+                for (mode, label, tooltip) in modes {
+                    let is_selected = current_mode == mode;
+                    let btn_text = RichText::new(label).size(10.0).color(if is_selected {
+                        theme.selected_fg
+                    } else {
+                        theme.fg
+                    });
+
+                    let btn = egui::Button::new(btn_text)
+                        .fill(if is_selected {
+                            theme.accent
+                        } else {
+                            theme.input_bg
+                        })
+                        .min_size(egui::vec2(70.0, 22.0));
+
+                    if ui.add(btn).on_hover_text(tooltip).clicked() {
+                        self.approval_manager.set_mode(mode);
+                        self.set_status(&format!("✓ Approval mode: {}", label));
+                    }
+                    ui.add_space(4.0);
+                }
+            });
 
             ui.add_space(20.0);
             ui.horizontal(|ui| {
@@ -2403,64 +2916,116 @@ impl CursorStudio {
             });
             ui.add_space(8.0);
 
-            // Font scale slider - using vertical layout to prevent clipping
+            // Display Size presets
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
-                ui.label(RichText::new("Font Scale").color(theme.fg).size(12.0));
+                ui.label(RichText::new("Display Size").color(theme.fg).size(12.0));
             });
             ui.horizontal(|ui| {
                 ui.add_space(24.0);
-                let slider = ui.add(
-                    egui::Slider::new(&mut self.font_scale, 0.8..=1.5)
-                        .show_value(true)
-                        .suffix("%")
-                        .custom_formatter(|v, _| format!("{:.0}", v * 100.0))
-                        .custom_parser(|s| s.parse::<f64>().ok().map(|v| v / 100.0)),
-                );
-                if slider.changed() {
-                    self.save_settings();
-                    self.set_status(&format!("✓ Font scale: {:.0}%", self.font_scale * 100.0));
+
+                // Preset buttons
+                let presets = [
+                    ("Small", 0.85, 8.0, 9.0),
+                    ("Normal", 1.0, 12.0, 11.0),
+                    ("Large", 1.15, 16.0, 12.0),
+                    ("XL", 1.3, 20.0, 14.0),
+                ];
+
+                for (name, scale, spacing, status_font) in presets {
+                    let is_selected = (self.font_scale - scale).abs() < 0.05;
+                    let btn_text = RichText::new(name).size(11.0).color(if is_selected {
+                        theme.selected_fg
+                    } else {
+                        theme.fg
+                    });
+
+                    let btn = egui::Button::new(btn_text)
+                        .fill(if is_selected {
+                            theme.accent
+                        } else {
+                            theme.input_bg
+                        })
+                        .min_size(egui::vec2(50.0, 24.0));
+
+                    if ui.add(btn).clicked() {
+                        self.font_scale = scale;
+                        self.message_spacing = spacing;
+                        self.status_bar_font_size = status_font;
+                        self.save_settings();
+                        self.set_status(&format!("✓ Display: {} ({:.0}%)", name, scale * 100.0));
+                    }
+                    ui.add_space(4.0);
                 }
             });
-            ui.add_space(8.0);
+            ui.add_space(12.0);
 
-            // Message spacing slider
+            // Fine-tuning section (collapsible)
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
-                ui.label(RichText::new("Message Spacing").color(theme.fg).size(12.0));
+                ui.label(RichText::new("Fine-tune").color(theme.fg_dim).size(11.0));
             });
+            ui.add_space(4.0);
+
+            // Font scale - compact with +/- buttons
             ui.horizontal(|ui| {
                 ui.add_space(24.0);
-                let slider = ui.add(
-                    egui::Slider::new(&mut self.message_spacing, 4.0..=32.0)
-                        .show_value(true)
-                        .suffix("px"),
-                );
-                if slider.changed() {
+                ui.label(RichText::new("Scale").color(theme.fg_dim).size(10.0));
+                ui.add_space(8.0);
+
+                if ui.small_button("−").clicked() {
+                    self.font_scale = (self.font_scale - 0.05).max(0.7);
                     self.save_settings();
-                    self.set_status(&format!("✓ Message spacing: {:.0}px", self.message_spacing));
+                }
+                ui.label(
+                    RichText::new(format!("{:.0}%", self.font_scale * 100.0))
+                        .color(theme.fg)
+                        .size(11.0)
+                        .monospace(),
+                );
+                if ui.small_button("+").clicked() {
+                    self.font_scale = (self.font_scale + 0.05).min(1.6);
+                    self.save_settings();
+                }
+
+                ui.add_space(16.0);
+
+                ui.label(RichText::new("Gap").color(theme.fg_dim).size(10.0));
+                ui.add_space(8.0);
+                if ui.small_button("−").clicked() {
+                    self.message_spacing = (self.message_spacing - 2.0).max(4.0);
+                    self.save_settings();
+                }
+                ui.label(
+                    RichText::new(format!("{:.0}px", self.message_spacing))
+                        .color(theme.fg)
+                        .size(11.0)
+                        .monospace(),
+                );
+                if ui.small_button("+").clicked() {
+                    self.message_spacing = (self.message_spacing + 2.0).min(32.0);
+                    self.save_settings();
                 }
             });
-            ui.add_space(8.0);
 
-            // Status bar font size slider
-            ui.horizontal(|ui| {
-                ui.add_space(16.0);
-                ui.label(RichText::new("Status Bar Font").color(theme.fg).size(12.0));
-            });
+            // Status bar font - compact
             ui.horizontal(|ui| {
                 ui.add_space(24.0);
-                let slider = ui.add(
-                    egui::Slider::new(&mut self.status_bar_font_size, 8.0..=16.0)
-                        .show_value(true)
-                        .suffix("px"),
-                );
-                if slider.changed() {
+                ui.label(RichText::new("Status").color(theme.fg_dim).size(10.0));
+                ui.add_space(4.0);
+                if ui.small_button("−").clicked() {
+                    self.status_bar_font_size = (self.status_bar_font_size - 1.0).max(8.0);
                     self.save_settings();
-                    self.set_status(&format!(
-                        "✓ Status bar font: {:.0}px",
-                        self.status_bar_font_size
-                    ));
+                }
+                ui.label(
+                    RichText::new(format!("{:.0}px", self.status_bar_font_size))
+                        .color(theme.fg)
+                        .size(11.0)
+                        .monospace(),
+                );
+                if ui.small_button("+").clicked() {
+                    self.status_bar_font_size = (self.status_bar_font_size + 1.0).min(16.0);
+                    self.save_settings();
                 }
             });
 

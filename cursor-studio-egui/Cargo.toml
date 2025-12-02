@@ -1,6 +1,6 @@
 [package]
 name = "cursor-studio"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["e421"]
 description = "Cursor version manager and chat library - built with egui"
@@ -31,13 +31,13 @@ tokio = { version = "1.0", features = [
 ] }
 futures = "0.3"
 
-# Server mode (REST API)
-axum = { version = "0.7", features = ["json"] }
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+# Server mode (REST API) - optional, for sync server
+axum = { version = "0.7", features = ["json"], optional = true }
+tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# P2P networking (libp2p)
+# P2P networking (libp2p) - optional, for P2P sync
 libp2p = { version = "0.54", features = [
     "tokio",
     "noise",
@@ -48,7 +48,7 @@ libp2p = { version = "0.54", features = [
     "macros",
     "json",
     "identify",
-] }
+], optional = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -57,12 +57,12 @@ serde_json = "1.0"
 # Database - Cursor's SQLite (read-only)
 rusqlite = { version = "0.31", features = ["bundled"] }
 
-# Database - SurrealDB for sync-capable storage
+# Database - SurrealDB for sync-capable storage (optional)
 # Use kv-mem for development, kv-rocksdb for production
 surrealdb = { version = "2.1", default-features = false, features = [
     "kv-mem",
     "protocol-ws",
-] }
+], optional = true }
 
 # IDs - ULIDs for sortable, unique identifiers
 ulid = { version = "1.1", features = ["serde"] }
@@ -82,6 +82,26 @@ log = "0.4"
 env_logger = "0.11"
 hostname = "0.4"
 
+# Version downloading (using rustls to avoid OpenSSL dependency)
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "stream",
+    "rustls-tls",
+] }
+futures-util = "0.3"
+
+# Hash verification
+sha2 = "0.10"
+base64 = "0.22"
+
+# Terminal detection for approval system
+atty = "0.2"
+
+# CLI enhancements
+clap = { version = "4.5", features = ["derive"] }
+console = "0.15"
+indicatif = "0.17"
+
 [dev-dependencies]
 tempfile = "3.10"
 
@@ -93,25 +113,48 @@ name = "cursor-studio"
 path = "src/main.rs"
 
 [[bin]]
+name = "cursor-cli"
+path = "src/bin/cursor_cli.rs"
+
+[[bin]]
 name = "sync-cli"
 path = "src/bin/sync_cli.rs"
+required-features = ["surrealdb-store"]
 
 [[bin]]
 name = "sync-server"
 path = "src/bin/sync_server.rs"
+required-features = ["server-sync", "surrealdb-store"]
 
 [[bin]]
 name = "p2p-sync"
 path = "src/bin/p2p_sync.rs"
+required-features = ["p2p-sync", "surrealdb-store"]
 
 [lib]
 name = "cursor_studio"
 path = "src/lib.rs"
 
 [features]
-default = []
+default = ["full"]
+
+# Full feature set - includes all sync capabilities
+full = ["p2p-sync", "server-sync", "surrealdb-store"]
+
+# P2P sync via libp2p (adds ~3 min to build)
+p2p-sync = ["dep:libp2p"]
+
+# Server mode for sync (adds ~30s to build)
+server-sync = ["dep:axum", "dep:tower-http"]
+
+# SurrealDB storage backend (adds ~2 min to build)
+surrealdb-store = ["dep:surrealdb"]
+
 # Enable RocksDB for persistent storage (larger binary, slower compile)
-persistent-db = ["surrealdb/kv-rocksdb"]
+persistent-db = ["surrealdb-store", "surrealdb/kv-rocksdb"]
+
+# Minimal build - just version management and chat viewing (fastest compile)
+minimal = []
 
 # ============================================
 # Build Profiles - Optimized for different use cases
