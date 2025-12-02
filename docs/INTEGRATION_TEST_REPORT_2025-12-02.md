@@ -50,33 +50,31 @@ Host downloader.cursor.sh not found: 3(NXDOMAIN)
 
 ---
 
-### 2. 🔴 cursor-studio-cli Not Installed/Accessible
+### 2. ✅ cursor-studio-cli Now Integrated
 
-**Status**: CRITICAL - CLI unusable out of the box
+**Status**: RESOLVED - CLI now available via flake
 
-**Symptoms**:
+**Previous Symptoms**:
 ```bash
 $ cursor-studio-cli --help
 command not found
 ```
 
-**Root Cause**:
-- `cursor-studio-egui` is a separate Rust project
-- Not integrated into NixOS system configuration
-- No installation method documented
-- Must be manually built with `cargo build --release`
+**Resolution Applied**:
+- Added `cursor-studio` and `cursor-studio-cli` packages to main `flake.nix`
+- Created `cursor-studio-egui/package.nix` for proper Nix derivation
+- Both GUI and CLI now installable:
+  ```bash
+  nix run github:Distracted-E421/nixos-cursor#cursor-studio
+  nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
+  ```
 
-**Current Workaround**:
+**Verification**:
 ```bash
-cd /path/to/cursor-studio-egui
-cargo build --release --bin cursor-studio-cli
-./target/release/cursor-studio-cli --help
+# This now works!
+nix build .#cursor-studio --dry-run  # Evaluates correctly
+nix build .#cursor-studio-cli --dry-run  # Evaluates correctly
 ```
-
-**Resolution Required**:
-- Add `cursor-studio-egui` packages to main `flake.nix`
-- Or: Create installation instructions for standalone use
-- Or: Add Home Manager module for cursor-studio
 
 ---
 
@@ -101,19 +99,20 @@ cargo build --release --bin cursor-studio-cli
 
 ---
 
-### 4. 🟡 cursor-manager (tkinter) Has Fatal Bug
+### 4. ✅ cursor-manager (tkinter) Deprecated
 
-**Status**: MEDIUM - Being deprecated anyway
+**Status**: RESOLVED - Now deprecated with migration path
 
-**Symptoms**:
+**Previous Symptoms**:
 ```python
 AttributeError: '_tkinter.tkapp' object has no attribute 'on_close'
 ```
 
-**Resolution**: 
-- Mark as deprecated in documentation
-- Remove from active development
-- Direct users to cursor-studio instead
+**Resolution Applied**: 
+- Moved legacy Python files to `cursor/legacy/`
+- `cursor-manager` now shows deprecation warning and redirects to cursor-studio
+- Created comprehensive [Migration Guide](MIGRATION.md)
+- Timeline: Removal in v1.0.0
 
 ---
 

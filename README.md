@@ -9,21 +9,35 @@ A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in 
 
 ---
 
-## 🆕 Cursor Studio v0.2.0-rc1 Available!
+## 🚀 Cursor Studio - Modern IDE Manager (Recommended)
 
-> **NEW!** We're developing **Cursor Studio** - a comprehensive Open Source Cursor IDE Manager with:
+> **Cursor Studio** is the modern, fast, native replacement for the legacy Python tools:
 > - 📊 **Modern Dashboard** - Stats, version management, quick actions
 > - 🔐 **Security Scanning** - Detect API keys and sensitive data in chats
 > - 🎨 **VS Code Themes** - Full theme support with customization
+> - 💻 **CLI Interface** - `cursor-studio-cli` for automation
 > - 🏠 **Home Manager Module** - Declarative NixOS configuration
 >
-> **Try the release candidate:**
-> ```nix
-> inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/pre-release";
-> # Then use: inputs.nixos-cursor.packages.${system}.cursor-studio
+> **Quick Start:**
+> ```bash
+> # Try it without installing
+> nix run github:Distracted-E421/nixos-cursor#cursor-studio
+> 
+> # CLI interface
+> nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
 > ```
 >
-> 📖 **[Cursor Studio README →](cursor-studio-egui/README.md)** | **[Changelog →](cursor-studio-egui/CHANGELOG.md)**
+> **Or add to your flake:**
+> ```nix
+> home.packages = [
+>   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio
+>   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # Optional
+> ];
+> ```
+>
+> 📖 **[Cursor Studio README →](cursor-studio-egui/README.md)** | **[Migration Guide →](docs/MIGRATION.md)**
+> 
+> ⚠️ **Note:** The legacy `cursor-manager` and `cursor-chat-library` (Python/tkinter) are deprecated and will be removed in v1.0.0. See the [Migration Guide](docs/MIGRATION.md) for upgrade instructions.
 
 ---
 
@@ -113,7 +127,7 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 | Component | Closure Size | Already in KDE | Effective New |
 |-----------|--------------|----------------|---------------|
 | Cursor 2.0.77 (AppImage) | 1798 MB | ~1300 MB | ~500 MB |
-| cursor-manager (GUI) | 194 MB | ~150 MB | ~50 MB |
+| cursor-studio (Rust GUI) | ~150 MB | ~50 MB | ~100 MB |
 | Node.js 22 (MCP servers) | 210 MB | ~100 MB | ~110 MB |
 | uv (mcp-nixos) | 104 MB | ~80 MB | ~25 MB |
 | Google Chrome (Playwright) | 1689 MB | ~800 MB | ~900 MB |
@@ -133,7 +147,7 @@ The flake automatically configures Cachix - no setup required!
 
 1. **Use one version**: If you don't need multi-version, stick with `cursor` (saves ~500MB per additional version)
 2. **Skip Playwright browser**: Only enable `mcp.playwright.enable` if you need browser automation (~1.5GB)
-3. **Enable auto-cleanup**: cursor-manager can remove old versions automatically
+3. **Enable auto-cleanup**: cursor-studio can remove old versions automatically
 4. **npm lazy loading**: MCP npm packages only download on first use (~50-100MB in ~/.npm/)
 
 ---
@@ -162,7 +176,7 @@ Then in your Home Manager configuration:
     inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_0_64   # Specific version
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic version
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-manager  # GUI launcher
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # Modern GUI manager (recommended)
   ];
 }
 ```
@@ -178,13 +192,17 @@ After installation, you'll have:
 - `cursor` → Launches 2.0.77
 - `cursor-2.0.77` → Launches 2.0.77
 - `cursor-1.x.xx` → Launches specified version (assuming it is supported, see below)
-- `cursor-manager` → GUI version picker
+- `cursor-studio` → Modern GUI version manager + chat library
+- `cursor-studio-cli` → CLI interface for automation
 
 ### **Option B: nix run (No Installation)**
 
 ```bash
-# Launch the version manager GUI
-nix run github:Distracted-E421/nixos-cursor#cursor-manager
+# Launch Cursor Studio (GUI manager + chat library)
+nix run github:Distracted-E421/nixos-cursor#cursor-studio
+
+# Use the CLI
+nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
 
 # Or run specific versions directly:
 nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
@@ -199,7 +217,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
 **For Local Development:**
 
 ```bash
-CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
+CURSOR_FLAKE_URI=. nix run .#cursor-studio --impure
 ```
 
 **Available Versions**:

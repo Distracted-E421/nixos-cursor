@@ -234,10 +234,28 @@
                 '';
               });
 
-          # Cursor Version Manager (Rust CLI - Linux only for now)
+          # ═══════════════════════════════════════════════════════════════════
+          # Cursor Studio - Modern Rust/egui IDE Manager (RECOMMENDED)
+          # ═══════════════════════════════════════════════════════════════════
+          
+          # Full Cursor Studio package (includes both GUI and CLI)
+          cursor-studio = pkgs.callPackage ./cursor-studio-egui/package.nix { };
+          
+          # CLI-only wrapper for cursor-studio
+          cursor-studio-cli = pkgs.writeShellScriptBin "cursor-studio-cli" ''
+            exec ${self.packages.${system}.cursor-studio}/bin/cursor-studio-cli "$@"
+          '';
+
+          # ═══════════════════════════════════════════════════════════════════
+          # DEPRECATED - Legacy Python/tkinter managers
+          # ═══════════════════════════════════════════════════════════════════
+          # These packages display deprecation warnings and redirect to cursor-studio.
+          # They will be removed in v1.0.0. See cursor/legacy/README.md for details.
+          
+          # Cursor Version Manager (DEPRECATED - use cursor-studio)
           cursor-manager = pkgs.callPackage ./cursor/manager.nix { };
           
-          # Cursor Chat Library - chat history management with markdown preview
+          # Cursor Chat Library (DEPRECATED - use cursor-studio)
           cursor-chat-library = pkgs.callPackage ./cursor/chat-library.nix { };
         }
         # Darwin-specific extras
@@ -276,6 +294,10 @@
           # Main cursor
           cursor = mkApp pkgs.cursor "cursor";
           cursor-test = mkApp pkgs.cursor-test "cursor-test";
+
+          # Cursor Studio (modern Rust/egui manager) - Linux only
+          cursor-studio = mkApp pkgs.cursor-studio "cursor-studio";
+          cursor-studio-cli = mkApp pkgs.cursor-studio-cli "cursor-studio-cli";
 
           # 2.1.x Latest Era (11 versions)
           cursor-2_1_34 = mkApp pkgs.cursor-2_1_34 "cursor-2.1.34";
