@@ -419,6 +419,16 @@ struct CursorStudio {
     download_thread: Option<std::thread::JoinHandle<Result<PathBuf, String>>>,
     download_receiver: Option<std::sync::mpsc::Receiver<f32>>,
 
+    // Security scan threading (background scan for UI responsiveness)
+    security_scan_thread: Option<std::thread::JoinHandle<SecurityScanResults>>,
+    security_scan_progress: Option<(usize, usize)>, // (scanned, total)
+    security_scan_receiver: Option<std::sync::mpsc::Receiver<(usize, usize)>>,
+    
+    // NPM scan threading
+    npm_scan_thread: Option<std::thread::JoinHandle<Vec<(PathBuf, Vec<security::PackageScanResult>)>>>,
+    npm_scan_progress: Option<String>,
+    npm_scan_receiver: Option<std::sync::mpsc::Receiver<String>>,
+
     // Approval system
     approval_manager: ApprovalManager,
 }
@@ -615,6 +625,16 @@ impl CursorStudio {
             download_thread: None,
             download_receiver: None,
 
+            // Security scan threading
+            security_scan_thread: None,
+            security_scan_progress: None,
+            security_scan_receiver: None,
+            
+            // NPM scan threading
+            npm_scan_thread: None,
+            npm_scan_progress: None,
+            npm_scan_receiver: None,
+
             // Approval system
             approval_manager: ApprovalManager::new(ApprovalMode::Gui),
         }
@@ -654,110 +674,175 @@ impl CursorStudio {
     }
 
     fn run_security_scan(&mut self) {
-        use regex::Regex;
+        // Don't start another scan if one is already running
+        if self.security_scan_thread.is_some() {
+            self.set_status("⏳ Security scan already in progress...");
+            return;
+        }
 
-        let mut results = SecurityScanResults {
-            total_messages: 0,
-            scanned_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            ..Default::default()
-        };
+        // Create channel for progress updates
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.security_scan_receiver = Some(rx);
 
-        // Patterns to detect sensitive data
-        let api_key_pattern = Regex::new(r#"(?i)(api[_-]?key|apikey|api_token|auth_token)[=:\s]*['"]?([a-zA-Z0-9_\-]{20,})['"]?"#).ok();
-        let password_pattern =
-            Regex::new(r#"(?i)(password|passwd|pwd)[=:\s]*['"]?([^\s'"]{8,})['"]?"#).ok();
-        let secret_pattern = Regex::new(
-            r#"(?i)(secret|private_key|access_token|bearer)[=:\s]*['"]?([a-zA-Z0-9_\-]{16,})['"]?"#,
-        )
-        .ok();
+        // Collect conversation data to pass to thread (avoiding self borrow)
+        let db_path = self.db.get_path();
+        let total_convs = self.conversations.len();
 
-        // Scan all conversations
-        for conv in &self.conversations {
-            if let Ok(messages) = self.db.get_messages(&conv.id) {
-                for msg in messages {
-                    results.total_messages += 1;
+        self.set_status(&format!("🔍 Starting security scan of {} conversations...", total_convs));
+        self.security_scan_progress = Some((0, total_convs));
 
-                    let content = &msg.content;
+        // Spawn background thread for scanning
+        let handle = std::thread::spawn(move || -> SecurityScanResults {
+            use regex::Regex;
 
-                    // Check for API keys
-                    if let Some(ref pattern) = api_key_pattern {
-                        for cap in pattern.captures_iter(content) {
-                            let preview = cap
-                                .get(0)
-                                .map(|m| {
-                                    let s = m.as_str();
-                                    if s.len() > 50 {
-                                        format!("{}...", &s.chars().take(50).collect::<String>())
-                                    } else {
-                                        s.to_string()
-                                    }
-                                })
-                                .unwrap_or_default();
-                            results.potential_api_keys.push((
-                                conv.id.clone(),
-                                msg.id.clone(),
-                                preview,
-                            ));
+            let mut results = SecurityScanResults {
+                total_messages: 0,
+                scanned_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                ..Default::default()
+            };
+
+            // Create new database connection in thread
+            let db = match database::ChatDatabase::open(&db_path) {
+                Ok(db) => db,
+                Err(_) => return results,
+            };
+
+            // Patterns to detect sensitive data
+            let api_key_pattern = Regex::new(r#"(?i)(api[_-]?key|apikey|api_token|auth_token)[=:\s]*['"]?([a-zA-Z0-9_\-]{20,})['"]?"#).ok();
+            let password_pattern =
+                Regex::new(r#"(?i)(password|passwd|pwd)[=:\s]*['"]?([^\s'"]{8,})['"]?"#).ok();
+            let secret_pattern = Regex::new(
+                r#"(?i)(secret|private_key|access_token|bearer)[=:\s]*['"]?([a-zA-Z0-9_\-]{16,})['"]?"#,
+            )
+            .ok();
+
+            // Get all conversations (use large limit to scan everything)
+            let conversations = db.get_conversations(usize::MAX).unwrap_or_default();
+            let total = conversations.len();
+
+            // Scan all conversations
+            for (i, conv) in conversations.iter().enumerate() {
+                // Report progress
+                let _ = tx.send((i + 1, total));
+
+                if let Ok(messages) = db.get_messages(&conv.id) {
+                    for msg in messages {
+                        results.total_messages += 1;
+                        let content = &msg.content;
+
+                        // Check for API keys
+                        if let Some(ref pattern) = api_key_pattern {
+                            for cap in pattern.captures_iter(content) {
+                                let preview = cap
+                                    .get(0)
+                                    .map(|m| {
+                                        let s = m.as_str();
+                                        if s.len() > 50 {
+                                            format!("{}...", &s.chars().take(50).collect::<String>())
+                                        } else {
+                                            s.to_string()
+                                        }
+                                    })
+                                    .unwrap_or_default();
+                                results.potential_api_keys.push((
+                                    conv.id.clone(),
+                                    msg.id.clone(),
+                                    preview,
+                                ));
+                            }
                         }
-                    }
 
-                    // Check for passwords
-                    if let Some(ref pattern) = password_pattern {
-                        for cap in pattern.captures_iter(content) {
-                            let preview = cap
-                                .get(0)
-                                .map(|m| {
-                                    let s = m.as_str();
-                                    if s.len() > 50 {
-                                        format!("{}...", &s.chars().take(50).collect::<String>())
-                                    } else {
-                                        s.to_string()
-                                    }
-                                })
-                                .unwrap_or_default();
-                            results.potential_passwords.push((
-                                conv.id.clone(),
-                                msg.id.clone(),
-                                preview,
-                            ));
+                        // Check for passwords
+                        if let Some(ref pattern) = password_pattern {
+                            for cap in pattern.captures_iter(content) {
+                                let preview = cap
+                                    .get(0)
+                                    .map(|m| {
+                                        let s = m.as_str();
+                                        if s.len() > 50 {
+                                            format!("{}...", &s.chars().take(50).collect::<String>())
+                                        } else {
+                                            s.to_string()
+                                        }
+                                    })
+                                    .unwrap_or_default();
+                                results.potential_passwords.push((
+                                    conv.id.clone(),
+                                    msg.id.clone(),
+                                    preview,
+                                ));
+                            }
                         }
-                    }
 
-                    // Check for secrets
-                    if let Some(ref pattern) = secret_pattern {
-                        for cap in pattern.captures_iter(content) {
-                            let preview = cap
-                                .get(0)
-                                .map(|m| {
-                                    let s = m.as_str();
-                                    if s.len() > 50 {
-                                        format!("{}...", &s.chars().take(50).collect::<String>())
-                                    } else {
-                                        s.to_string()
-                                    }
-                                })
-                                .unwrap_or_default();
-                            results.potential_secrets.push((
-                                conv.id.clone(),
-                                msg.id.clone(),
-                                preview,
-                            ));
+                        // Check for secrets
+                        if let Some(ref pattern) = secret_pattern {
+                            for cap in pattern.captures_iter(content) {
+                                let preview = cap
+                                    .get(0)
+                                    .map(|m| {
+                                        let s = m.as_str();
+                                        if s.len() > 50 {
+                                            format!("{}...", &s.chars().take(50).collect::<String>())
+                                        } else {
+                                            s.to_string()
+                                        }
+                                    })
+                                    .unwrap_or_default();
+                                results.potential_secrets.push((
+                                    conv.id.clone(),
+                                    msg.id.clone(),
+                                    preview,
+                                ));
+                            }
                         }
                     }
                 }
             }
+
+            results
+        });
+
+        self.security_scan_thread = Some(handle);
+    }
+
+    /// Poll security scan thread for completion (called from update loop)
+    fn poll_security_scan(&mut self) {
+        // Check for progress updates
+        if let Some(ref rx) = self.security_scan_receiver {
+            while let Ok((scanned, total)) = rx.try_recv() {
+                self.security_scan_progress = Some((scanned, total));
+            }
         }
 
-        let total_found = results.potential_api_keys.len()
-            + results.potential_passwords.len()
-            + results.potential_secrets.len();
+        // Check if thread completed
+        if let Some(handle) = self.security_scan_thread.take() {
+            if handle.is_finished() {
+                match handle.join() {
+                    Ok(results) => {
+                        let total_found = results.potential_api_keys.len()
+                            + results.potential_passwords.len()
+                            + results.potential_secrets.len();
 
-        self.set_status(&format!(
-            "🔍 Scanned {} messages, found {} potential sensitive items",
-            results.total_messages, total_found
-        ));
+                        self.set_status(&format!(
+                            "🔍 Scanned {} messages, found {} potential sensitive items",
+                            results.total_messages, total_found
+                        ));
 
-        self.security_scan_results = Some(results);
+                        self.security_scan_results = Some(results);
+                        self.security_scan_progress = None;
+                        self.security_scan_receiver = None;
+                    }
+                    Err(_) => {
+                        self.set_status("✗ Security scan thread panicked");
+                        self.security_scan_progress = None;
+                        self.security_scan_receiver = None;
+                    }
+                }
+            } else {
+                // Thread still running, put it back
+                self.security_scan_thread = Some(handle);
+            }
+        }
     }
 
     fn find_vscode_themes() -> Vec<(String, Option<PathBuf>)> {
@@ -918,29 +1003,80 @@ impl CursorStudio {
     }
 
     fn scan_npm_packages(&mut self) {
+        // Don't start another scan if one is already running
+        if self.npm_scan_thread.is_some() {
+            self.set_status("⏳ NPM scan already in progress...");
+            return;
+        }
+
         let path = PathBuf::from(&self.npm_scan_path);
         if !path.exists() {
             self.set_status(&format!("✗ Path does not exist: {}", self.npm_scan_path));
             return;
         }
 
-        match self.npm_scanner.scan_directory(&path) {
-            Ok(results) => {
-                let total_issues: usize = results.iter().map(|(_, r)| r.len()).sum();
-                if total_issues > 0 {
-                    self.set_status(&format!(
-                        "⚠️ Found {} blocked packages in {} files",
-                        total_issues,
-                        results.len()
-                    ));
-                } else {
-                    self.set_status("✓ No blocked packages found");
-                }
-                self.npm_scan_results = Some(results);
-                self.show_npm_scan_results = true;
+        // Create channel for progress updates
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.npm_scan_receiver = Some(rx);
+        self.npm_scan_progress = Some("Starting NPM scan...".to_string());
+
+        self.set_status(&format!("🔍 Scanning {} for package.json files...", self.npm_scan_path));
+
+        // Clone the scanner for use in thread
+        let scanner = security::SecurityScanner::new();
+        let scan_path = path.clone();
+
+        // Spawn background thread
+        let handle = std::thread::spawn(move || -> Vec<(PathBuf, Vec<security::PackageScanResult>)> {
+            let _ = tx.send(format!("Scanning {}...", scan_path.display()));
+            
+            match scanner.scan_directory(&scan_path) {
+                Ok(results) => results,
+                Err(_) => Vec::new(),
             }
-            Err(e) => {
-                self.set_status(&format!("✗ Scan failed: {}", e));
+        });
+
+        self.npm_scan_thread = Some(handle);
+    }
+
+    /// Poll NPM scan thread for completion (called from update loop)
+    fn poll_npm_scan(&mut self) {
+        // Check for progress updates
+        if let Some(ref rx) = self.npm_scan_receiver {
+            while let Ok(msg) = rx.try_recv() {
+                self.npm_scan_progress = Some(msg);
+            }
+        }
+
+        // Check if thread completed
+        if let Some(handle) = self.npm_scan_thread.take() {
+            if handle.is_finished() {
+                match handle.join() {
+                    Ok(results) => {
+                        let total_issues: usize = results.iter().map(|(_, r)| r.len()).sum();
+                        if total_issues > 0 {
+                            self.set_status(&format!(
+                                "⚠️ Found {} blocked packages in {} files",
+                                total_issues,
+                                results.len()
+                            ));
+                        } else {
+                            self.set_status("✓ No blocked packages found");
+                        }
+                        self.npm_scan_results = Some(results);
+                        self.show_npm_scan_results = true;
+                        self.npm_scan_progress = None;
+                        self.npm_scan_receiver = None;
+                    }
+                    Err(_) => {
+                        self.set_status("✗ NPM scan thread panicked");
+                        self.npm_scan_progress = None;
+                        self.npm_scan_receiver = None;
+                    }
+                }
+            } else {
+                // Thread still running, put it back
+                self.npm_scan_thread = Some(handle);
             }
         }
     }
@@ -1692,8 +1828,10 @@ impl eframe::App for CursorStudio {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Check download progress
+        // Poll background threads for completion
         self.check_download_progress();
+        self.poll_security_scan();
+        self.poll_npm_scan();
 
         // Clean up expired approval requests
         self.approval_manager.cleanup_expired();
@@ -3720,11 +3858,24 @@ impl CursorStudio {
 
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
-                    if styled_button(ui, "🔍 Scan Chat History", Vec2::new(160.0, 32.0))
-                        .on_hover_text("Scan for sensitive data in chat history")
-                        .clicked()
-                    {
-                        self.run_security_scan();
+                    
+                    // Show scan in progress indicator or button
+                    if let Some((scanned, total)) = self.security_scan_progress {
+                        // Scan in progress - show progress bar
+                        let progress = if total > 0 { scanned as f32 / total as f32 } else { 0.0 };
+                        ui.vertical(|ui| {
+                            ui.add(egui::ProgressBar::new(progress)
+                                .desired_width(160.0)
+                                .text(format!("Scanning... {}/{}", scanned, total)));
+                        });
+                    } else {
+                        // No scan running - show button
+                        if styled_button(ui, "🔍 Scan Chat History", Vec2::new(160.0, 32.0))
+                            .on_hover_text("Scan for sensitive data in chat history")
+                            .clicked()
+                        {
+                            self.run_security_scan();
+                        }
                     }
                 });
                 ui.add_space(4.0);
@@ -3988,11 +4139,20 @@ impl CursorStudio {
 
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
-                    if styled_button(ui, "🔍 Scan for Malicious Packages", Vec2::new(200.0, 32.0))
-                        .on_hover_text("Scan package.json files for known malicious packages")
-                        .clicked()
-                    {
-                        self.scan_npm_packages();
+                    
+                    // Show scan in progress indicator or button
+                    if let Some(ref progress_msg) = self.npm_scan_progress {
+                        // Scan in progress - show spinner/message
+                        ui.spinner();
+                        ui.label(RichText::new(progress_msg).size(11.0).color(theme.fg_dim));
+                    } else {
+                        // No scan running - show button
+                        if styled_button(ui, "🔍 Scan for Malicious Packages", Vec2::new(200.0, 32.0))
+                            .on_hover_text("Scan package.json files for known malicious packages")
+                            .clicked()
+                        {
+                            self.scan_npm_packages();
+                        }
                     }
                 });
 
