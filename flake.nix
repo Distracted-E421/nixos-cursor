@@ -208,8 +208,14 @@
           # Isolated test instance (separate profile for testing)
           cursor-test =
             (pkgs.callPackage ./cursor {
+              version = "2.0.77";
+              hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
+              srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage";
               commandLineArgs = [
-                "--user-data-dir=/tmp/cursor-test-profile --extensions-dir=/tmp/cursor-test-extensions"
+                "--user-data-dir"
+                "/tmp/cursor-test-profile"
+                "--extensions-dir"
+                "/tmp/cursor-test-extensions"
               ];
             }).overrideAttrs
               (old: {
@@ -425,7 +431,11 @@
 
       # Overlays
       overlays.default = final: prev: {
-        cursor = final.callPackage ./cursor { };
+        cursor = final.callPackage ./cursor {
+          version = "2.0.77";
+          hash = "sha256-/r7cmjgFhec7fEKUfFKw3vUoB9LJB2P/646cMeRKp/0=";
+          srcUrl = "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/linux/x64/Cursor-2.0.77-x86_64.AppImage";
+        };
 
         # MCP server packages from mcp-servers-nix
         mcp-server-memory = mcp-servers-nix.packages.${final.system}.mcp-server-memory or null;
