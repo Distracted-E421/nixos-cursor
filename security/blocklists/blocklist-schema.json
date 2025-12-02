@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/e421/nixos-cursor/security/blocklist-schema.json",
+  "title": "NPM Security Blocklist",
+  "description": "Schema for npm package security blocklists",
+  "type": "object",
+  "required": [
+    "version",
+    "lastUpdated",
+    "packages"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the blocklist format"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "description": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "URLs of sources used to compile this blocklist"
+    },
+    "packages": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/blockedPackage"
+            }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "blockedPackage": {
+      "type": "object",
+      "required": [
+        "name",
+        "versions",
+        "reason"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "npm package name"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Affected versions (* for all versions)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this package is blocked"
+        },
+        "cve": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "CVE identifier if applicable"
+        },
+        "discovered": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the malicious behavior was discovered"
+        },
+        "note": {
+          "type": "string",
+          "description": "Additional notes"
+        }
+      }
+    }
+  }
+}

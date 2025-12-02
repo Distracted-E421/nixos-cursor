@@ -68,6 +68,7 @@ impl Downloader {
         Ok(cache_path)
     }
 
+    #[allow(dead_code)]
     pub async fn verify_hash(&self, path: &PathBuf, expected_hash: &str) -> Result<bool> {
         let content = std::fs::read(path)?;
         let mut hasher = Sha256::new();

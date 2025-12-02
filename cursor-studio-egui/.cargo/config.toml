@@ -1,0 +1,14 @@
+# Cargo configuration for faster builds
+# See: https://doc.rust-lang.org/cargo/reference/config.html
+
+[target.x86_64-unknown-linux-gnu]
+# Use mold linker - significantly faster than default ld
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[build]
+# Use all available CPU cores for rustc
+jobs = 16
+
+[registries.crates-io]
+protocol = "sparse"

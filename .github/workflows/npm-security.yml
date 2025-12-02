@@ -1,0 +1,371 @@
+# NPM Security Scanning Workflow
+# Scans MCP server dependencies for known vulnerabilities and malicious packages
+#
+# Runs on:
+# - Every push to main
+# - Every pull request
+# - Daily schedule (to catch newly discovered vulnerabilities)
+# - Manual trigger
+
+name: NPM Security Scan
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'security/**'
+      - 'home-manager-module/**'
+      - '.github/workflows/npm-security.yml'
+      - 'package*.json'
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      scan_depth:
+        description: 'Scan depth (quick/full)'
+        required: false
+        default: 'quick'
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 1: Blocklist Validation
+  # ═══════════════════════════════════════════════════════════════════════════
+  validate-blocklist:
+    name: Validate Blocklist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate blocklist JSON schema
+        run: |
+          echo "Validating blocklist schema..."
+          
+          # Install ajv-cli for JSON schema validation
+          npm install -g ajv-cli
+          
+          # Validate blocklist against schema
+          ajv validate \
+            -s security/blocklists/blocklist-schema.json \
+            -d security/blocklists/known-malicious.json \
+            --verbose
+          
+          echo "✅ Blocklist schema validation passed"
+
+      - name: Check blocklist freshness
+        run: |
+          LAST_UPDATED=$(jq -r '.lastUpdated' security/blocklists/known-malicious.json)
+          LAST_UPDATED_TS=$(date -d "$LAST_UPDATED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_UPDATED" +%s)
+          NOW_TS=$(date +%s)
+          AGE_DAYS=$(( (NOW_TS - LAST_UPDATED_TS) / 86400 ))
+          
+          echo "Blocklist last updated: $LAST_UPDATED ($AGE_DAYS days ago)"
+          
+          if [ $AGE_DAYS -gt 30 ]; then
+            echo "::warning::Blocklist is more than 30 days old. Consider updating."
+          fi
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 2: MCP Package Security Scan
+  # ═══════════════════════════════════════════════════════════════════════════
+  scan-mcp-packages:
+    name: Scan MCP Packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - '@modelcontextprotocol/server-filesystem'
+          - '@modelcontextprotocol/server-github'
+          - '@modelcontextprotocol/server-memory'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check against blocklist
+        run: |
+          PACKAGE="${{ matrix.package }}"
+          echo "Checking $PACKAGE against blocklist..."
+          
+          # Extract all blocked package names
+          BLOCKED=$(jq -r '
+            .packages | to_entries[] | .value.packages[]? | .name
+          ' security/blocklists/known-malicious.json | sort -u)
+          
+          if echo "$BLOCKED" | grep -qxF "$PACKAGE"; then
+            echo "::error::Package $PACKAGE is on the blocklist!"
+            exit 1
+          fi
+          
+          echo "✅ $PACKAGE is not on the blocklist"
+
+      - name: Download package (no execution)
+        run: |
+          mkdir -p scan-workspace
+          cd scan-workspace
+          
+          # Download package tarball without executing anything
+          npm pack "${{ matrix.package }}" --ignore-scripts
+          
+          # Extract for analysis
+          TARBALL=$(ls *.tgz | head -1)
+          mkdir extracted
+          tar -xzf "$TARBALL" -C extracted
+          
+          echo "Downloaded and extracted ${{ matrix.package }}"
+          ls -la extracted/
+
+      - name: Scan for suspicious patterns
+        run: |
+          cd scan-workspace/extracted
+          
+          echo "Scanning for suspicious patterns..."
+          SUSPICIOUS=0
+          
+          # Pattern 1: Credential access
+          if grep -rE 'process\.env\[.*(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL)' . 2>/dev/null; then
+            echo "::warning::Found credential access patterns"
+            SUSPICIOUS=1
+          fi
+          
+          # Pattern 2: SSH/AWS file access
+          if grep -rE 'fs\.(readFile|readFileSync).*\.(ssh|aws|npmrc)' . 2>/dev/null; then
+            echo "::error::Found sensitive file access patterns!"
+            SUSPICIOUS=1
+          fi
+          
+          # Pattern 3: Remote code execution
+          if grep -rE '(eval|Function)\s*\(' . 2>/dev/null | grep -v 'node_modules'; then
+            echo "::warning::Found eval/Function usage"
+          fi
+          
+          # Pattern 4: Network exfiltration
+          if grep -rE 'https?://[^/]*\.(workers\.dev|pages\.dev|vercel\.app|netlify\.app)' . 2>/dev/null; then
+            echo "::warning::Found connections to common exfiltration domains"
+            SUSPICIOUS=1
+          fi
+          
+          # Pattern 5: Base64 decoding (common obfuscation)
+          if grep -rE 'atob\(|Buffer\.from\([^,]+,\s*["\x27]base64' . 2>/dev/null; then
+            echo "::warning::Found base64 decoding patterns"
+          fi
+          
+          if [ $SUSPICIOUS -eq 1 ]; then
+            echo "::warning::Suspicious patterns detected in ${{ matrix.package }}"
+          else
+            echo "✅ No obvious suspicious patterns in ${{ matrix.package }}"
+          fi
+
+      - name: Check for install scripts
+        run: |
+          cd scan-workspace/extracted
+          
+          if [ -f package/package.json ]; then
+            echo "Checking package.json scripts..."
+            
+            SCRIPTS=$(jq -r '.scripts // {} | keys[]' package/package.json 2>/dev/null || echo "")
+            
+            for script in preinstall postinstall preuninstall postuninstall; do
+              if echo "$SCRIPTS" | grep -qx "$script"; then
+                SCRIPT_CONTENT=$(jq -r ".scripts.$script" package/package.json)
+                echo "::warning::Package has $script script: $SCRIPT_CONTENT"
+              fi
+            done
+          fi
+
+      - name: Run npm audit
+        run: |
+          cd scan-workspace
+          
+          # Create package.json for audit
+          echo '{"name":"audit-check","dependencies":{"${{ matrix.package }}":"latest"}}' > package.json
+          
+          # Generate lockfile
+          npm install --package-lock-only --ignore-scripts
+          
+          # Run audit
+          npm audit --json > audit-results.json || true
+          
+          # Check for high/critical vulnerabilities
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-results.json)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-results.json)
+          
+          echo "Vulnerabilities found: Critical=$CRITICAL, High=$HIGH"
+          
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::Critical vulnerabilities found in ${{ matrix.package }}!"
+            jq '.vulnerabilities | to_entries[] | select(.value.severity == "critical")' audit-results.json
+            exit 1
+          fi
+          
+          if [ "$HIGH" -gt 0 ]; then
+            echo "::warning::High severity vulnerabilities found in ${{ matrix.package }}"
+            jq '.vulnerabilities | to_entries[] | select(.value.severity == "high")' audit-results.json
+          fi
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scan-results-${{ matrix.package }}
+          path: scan-workspace/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 3: Dependency Tree Analysis
+  # ═══════════════════════════════════════════════════════════════════════════
+  analyze-dependencies:
+    name: Analyze Dependency Tree
+    runs-on: ubuntu-latest
+    needs: scan-mcp-packages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Generate dependency report
+        run: |
+          mkdir -p reports
+          
+          for pkg in "@modelcontextprotocol/server-filesystem" "@modelcontextprotocol/server-github" "@modelcontextprotocol/server-memory"; do
+            echo "Analyzing dependencies for $pkg..."
+            
+            safe_name=$(echo "$pkg" | tr '/@' '__')
+            
+            # Create temp workspace
+            tmpdir=$(mktemp -d)
+            cd "$tmpdir"
+            
+            echo "{\"name\":\"dep-analysis\",\"dependencies\":{\"$pkg\":\"latest\"}}" > package.json
+            npm install --package-lock-only --ignore-scripts
+            
+            # Count dependencies
+            DEP_COUNT=$(jq '.packages | length' package-lock.json)
+            echo "$pkg: $DEP_COUNT packages"
+            
+            # Save dependency list
+            jq -r '.packages | keys[]' package-lock.json > "$GITHUB_WORKSPACE/reports/${safe_name}-deps.txt"
+            
+            cd "$GITHUB_WORKSPACE"
+            rm -rf "$tmpdir"
+          done
+          
+          echo ""
+          echo "Dependency counts:"
+          wc -l reports/*-deps.txt
+
+      - name: Check for overlapping vulnerabilities
+        run: |
+          # Cross-reference all dependencies against blocklist
+          echo "Cross-referencing dependencies against blocklist..."
+          
+          BLOCKED=$(jq -r '
+            .packages | to_entries[] | .value.packages[]? | .name
+          ' security/blocklists/known-malicious.json | sort -u)
+          
+          FOUND_BLOCKED=0
+          
+          for depfile in reports/*-deps.txt; do
+            while read -r dep; do
+              # Extract package name from path (e.g., "node_modules/lodash" -> "lodash")
+              pkg_name=$(echo "$dep" | sed 's|node_modules/||' | cut -d'/' -f1-2 | sed 's|^@|@|')
+              
+              if echo "$BLOCKED" | grep -qxF "$pkg_name"; then
+                echo "::error::Blocked package found in dependencies: $pkg_name (in $depfile)"
+                FOUND_BLOCKED=1
+              fi
+            done < "$depfile"
+          done
+          
+          if [ $FOUND_BLOCKED -eq 1 ]; then
+            exit 1
+          fi
+          
+          echo "✅ No blocked packages found in dependency trees"
+
+      - name: Upload dependency reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reports
+          path: reports/
+          retention-days: 30
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Job 4: Generate Security Report
+  # ═══════════════════════════════════════════════════════════════════════════
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [validate-blocklist, scan-mcp-packages, analyze-dependencies]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate summary report
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          # 🔒 NPM Security Scan Report
+          
+          ## Scan Summary
+          
+          | Check | Status |
+          |-------|--------|
+          | Blocklist Validation | ${{ needs.validate-blocklist.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | MCP Package Scan | ${{ needs.scan-mcp-packages.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Dependency Analysis | ${{ needs.analyze-dependencies.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          
+          ## Packages Scanned
+          
+          - `@modelcontextprotocol/server-filesystem`
+          - `@modelcontextprotocol/server-github`
+          - `@modelcontextprotocol/server-memory`
+          
+          ## Blocklist Info
+          
+          EOF
+          
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          jq '{version, lastUpdated, packageCount: (.packages | to_entries | map(.value.packages | length) | add)}' \
+            security/blocklists/known-malicious.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          
+          ## Next Steps
+          
+          - Review any warnings in the job logs
+          - Update blocklist if new threats are discovered
+          - Consider running `cursor-security audit` locally for deeper analysis
+          
+          ---
+          *Generated by nixos-cursor security workflow*
+          EOF
+
+      - name: Fail if any check failed
+        if: |
+          needs.validate-blocklist.result != 'success' ||
+          needs.scan-mcp-packages.result != 'success' ||
+          needs.analyze-dependencies.result != 'success'
+        run: |
+          echo "::error::One or more security checks failed!"
+          exit 1

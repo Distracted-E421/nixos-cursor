@@ -9,32 +9,76 @@ A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in 
 
 ---
 
-## 🆕 Cursor Studio v0.2.0-rc1 Now Available!
+## 🚀 Cursor Studio - Modern IDE Manager (Recommended)
 
-> **NEW!** Try **Cursor Studio** - the Open Source Cursor IDE Manager:
-> - 📊 Modern Dashboard with stats and version management
-> - 🔐 Security scanning for API keys and sensitive data
-> - 🎨 Full VS Code theme support
-> - 🏠 Home Manager module for NixOS
+> **Cursor Studio** is the modern, fast, native replacement for the legacy Python tools:
+> - 📊 **Modern Dashboard** - Stats, version management, quick actions
+> - 🔐 **Security Scanning** - Detect API keys and sensitive data in chats
+> - 🎨 **VS Code Themes** - Full theme support with customization
+> - 💻 **CLI Interface** - `cursor-studio-cli` for automation
+> - 🏠 **Home Manager Module** - Declarative NixOS configuration
 >
-> ```nix
-> # Add to flake inputs:
-> inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor/pre-release";
-> # Then use:
-> environment.systemPackages = [ inputs.nixos-cursor.packages.${system}.cursor-studio ];
+> **Quick Start:**
+> ```bash
+> # Try it without installing
+> nix run github:Distracted-E421/nixos-cursor#cursor-studio
+> 
+> # CLI interface
+> nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
 > ```
 >
-> 📖 **[Full Documentation →](https://github.com/Distracted-E421/nixos-cursor/tree/pre-release/cursor-studio-egui)**
+> **Or add to your flake:**
+> ```nix
+> home.packages = [
+>   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio
+>   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # Optional
+> ];
+> ```
+>
+> 📖 **[Cursor Studio README →](cursor-studio-egui/README.md)** | **[Migration Guide →](docs/MIGRATION.md)**
+> 
+> ⚠️ **Note:** The legacy `cursor-manager` and `cursor-chat-library` (Python/tkinter) are deprecated and will be removed in v1.0.0. See the [Migration Guide](docs/MIGRATION.md) for upgrade instructions.
 
 ---
 
 > **Why Multi-Version Support?**
-> With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **37 versions** (spanning 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
+> With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **48 versions** (spanning 2.1.x, 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
 >
 > Multi-version packages install to unique paths (`/share/cursor-VERSION/`, `/bin/cursor-VERSION`), enabling simultaneous installation without path conflicts. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
 
-**Version Coverage:**
+**Supported Platforms:**
 
+| Platform | Support Level | Format |
+|----------|--------------|--------|
+| x86_64-linux | ✅ Full | AppImage |
+| aarch64-linux | ✅ Full | AppImage |
+| x86_64-darwin | 🧪 Experimental | DMG |
+| aarch64-darwin | 🧪 Experimental | DMG (Universal) |
+
+---
+
+### 🍎 macOS Users: We Need Your Help
+
+> **Darwin support is built but needs hash verification!**
+>
+> We've implemented full 48-version support for macOS (both Intel and Apple Silicon), but we need macOS users to help compute the SHA256 hashes for the DMG files. This is a 5-minute task that makes a huge difference!
+>
+> **Quick contribution** (literally 5 minutes):
+>
+> ```bash
+> curl -L -o cursor.dmg "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/universal/Cursor-darwin-universal.dmg"
+> nix hash file cursor.dmg  # Copy this output and open an issue!
+> ```
+>
+> 📖 **[Full Darwin Testing Guide →](docs/DARWIN_TESTING.md)**
+>
+> Every hash you contribute brings macOS support closer to production-ready!
+
+---
+
+**Version Coverage (48 total):**
+
+- **2.1.x Latest Era**: 11 versions (2.1.6 - 2.1.34)
 - **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
 - **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
 - **1.6.x Legacy Era**: 1 version (1.6.45)
@@ -66,6 +110,48 @@ See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manife
 
 ---
 
+## 📦 Install Size & Requirements
+
+**Disk Space Requirements** (Fresh NixOS 25.11 KDE Desktop):
+
+| Configuration | Effective New Space | Download Size (Cachix) |
+|---------------|---------------------|------------------------|
+| **Minimal** (cursor only) | ~500-800 MB | ~400 MB |
+| **Standard** (+ MCP servers) | ~800-1200 MB | ~500 MB |
+| **Full** (+ Playwright browser) | ~2-3 GB | ~1.5 GB |
+
+**Why "Effective New Space"?** Many dependencies (GTK3, mesa, glib) are already included in a standard NixOS KDE desktop. The numbers above represent actual *additional* disk usage.
+
+### Component Breakdown
+
+| Component | Closure Size | Already in KDE | Effective New |
+|-----------|--------------|----------------|---------------|
+| Cursor 2.0.77 (AppImage) | 1798 MB | ~1300 MB | ~500 MB |
+| cursor-studio (Rust GUI) | ~150 MB | ~50 MB | ~100 MB |
+| Node.js 22 (MCP servers) | 210 MB | ~100 MB | ~110 MB |
+| uv (mcp-nixos) | 104 MB | ~80 MB | ~25 MB |
+| Google Chrome (Playwright) | 1689 MB | ~800 MB | ~900 MB |
+
+### 🚀 Cachix Binary Cache
+
+All 48 Cursor versions are **pre-built and cached** on `nixos-cursor.cachix.org`:
+
+```
+Without Cachix:  Build from AppImage = ~5-10 minutes + 1.8GB download
+With Cachix:     Fetch pre-built    = ~30 seconds + 400MB download
+```
+
+The flake automatically configures Cachix - no setup required!
+
+### Space-Saving Tips
+
+1. **Use one version**: If you don't need multi-version, stick with `cursor` (saves ~500MB per additional version)
+2. **Skip Playwright browser**: Only enable `mcp.playwright.enable` if you need browser automation (~1.5GB)
+3. **Enable auto-cleanup**: cursor-studio can remove old versions automatically
+4. **npm lazy loading**: MCP npm packages only download on first use (~50-100MB in ~/.npm/)
+
+---
+
 ## Quick Start
 
 ### **Option A: Direct Package Installation (Recommended)**
@@ -90,7 +176,7 @@ Then in your Home Manager configuration:
     inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_0_64   # Specific version
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic version
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-manager  # GUI launcher
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # Modern GUI manager (recommended)
   ];
 }
 ```
@@ -106,13 +192,17 @@ After installation, you'll have:
 - `cursor` → Launches 2.0.77
 - `cursor-2.0.77` → Launches 2.0.77
 - `cursor-1.x.xx` → Launches specified version (assuming it is supported, see below)
-- `cursor-manager` → GUI version picker
+- `cursor-studio` → Modern GUI version manager + chat library
+- `cursor-studio-cli` → CLI interface for automation
 
 ### **Option B: nix run (No Installation)**
 
 ```bash
-# Launch the version manager GUI
-nix run github:Distracted-E421/nixos-cursor#cursor-manager
+# Launch Cursor Studio (GUI manager + chat library)
+nix run github:Distracted-E421/nixos-cursor#cursor-studio
+
+# Use the CLI
+nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
 
 # Or run specific versions directly:
 nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
@@ -127,7 +217,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
 **For Local Development:**
 
 ```bash
-CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
+CURSOR_FLAKE_URI=. nix run .#cursor-studio --impure
 ```
 
 **Available Versions**:

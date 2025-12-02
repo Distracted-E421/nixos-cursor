@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Whitelist for known-legitimate pattern usage in npm packages",
+  "version": "1.0.0",
+  "lastUpdated": "2025-11-27T00:00:00Z",
+  "packages": {
+    "@modelcontextprotocol/server-github": {
+      "description": "GitHub MCP server - officially maintained by Anthropic",
+      "whitelisted_patterns": [
+        {
+          "pattern": "Buffer.from.*base64",
+          "reason": "GitHub API returns file contents as base64-encoded data",
+          "file": "dist/operations/files.js",
+          "reviewed": "2025-11-27"
+        }
+      ],
+      "trusted": true,
+      "maintainer": "modelcontextprotocol",
+      "notes": "Part of official MCP SDK"
+    },
+    "@modelcontextprotocol/server-filesystem": {
+      "description": "Filesystem MCP server - officially maintained",
+      "whitelisted_patterns": [
+        {
+          "pattern": "fs.readFile",
+          "reason": "Filesystem access is the core functionality of this package",
+          "reviewed": "2025-11-27"
+        }
+      ],
+      "trusted": true,
+      "maintainer": "modelcontextprotocol"
+    },
+    "@modelcontextprotocol/sdk": {
+      "description": "MCP SDK - officially maintained",
+      "whitelisted_patterns": [
+        {
+          "pattern": "child_process",
+          "reason": "SDK may spawn child processes for stdio transport",
+          "reviewed": "2025-11-27"
+        }
+      ],
+      "trusted": true,
+      "maintainer": "modelcontextprotocol"
+    },
+    "commander": {
+      "description": "Node.js CLI framework - widely trusted",
+      "whitelisted_patterns": [
+        {
+          "pattern": "child_process",
+          "reason": "CLI tool that may need to spawn processes",
+          "reviewed": "2025-11-27"
+        }
+      ],
+      "trusted": true,
+      "maintainer": "tj"
+    }
+  },
+  "trusted_maintainers": {
+    "modelcontextprotocol": {
+      "description": "Official MCP SDK maintainer (Anthropic)",
+      "verified": true
+    },
+    "tj": {
+      "description": "TJ Holowaychuk - prolific Node.js author (Express, Commander, etc.)",
+      "verified": true
+    },
+    "sindresorhus": {
+      "description": "Sindre Sorhus - prolific Node.js author",
+      "verified": true
+    }
+  },
+  "notes": "This whitelist should be reviewed regularly. Add entries only after manual verification of the package source code."
+}

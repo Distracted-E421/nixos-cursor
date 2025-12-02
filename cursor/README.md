@@ -229,6 +229,36 @@ nixos-rebuild build-vm --flake '.#test'
 
 ---
 
+## Bash Scripts (Required Exception)
+
+**The following scripts must remain as bash:**
+
+| Script | Purpose | Why Bash Required |
+|--------|---------|-------------------|
+| `check-update.sh` | Update checker | Embedded in Nix derivation, runs in user env |
+| `nix-update.sh` | Nix package updater | Called from Nix wrapper |
+| `update.sh` | Version update script | Maintainer script |
+
+**Rationale:**
+
+These scripts are embedded in the Nix package via `substitute` and run in contexts where Nushell may not be available:
+
+1. **Nix Derivation Context**: The scripts are patched and included in the final package
+2. **User Environment**: The installed Cursor runs in users' environments where only bash is guaranteed
+3. **POSIX Compatibility**: Nix packages should work on any Linux system with bash
+
+**Example from default.nix:**
+
+```nix
+substitute ${./check-update.sh} $out/libexec/${shareDirName}/check-update \
+  --subst-var-by version "${version}"
+chmod +x $out/libexec/${shareDirName}/check-update
+```
+
+**DO NOT convert these to Nushell** - they are the only exception to the project's Nushell-first policy.
+
+---
+
 ## License
 
 **This packaging**: MIT License  
