@@ -270,5 +270,40 @@ https://downloads.cursor.com/production/5c17eb2968a37f66bc6662f48d6356a100b67be8
 
 ---
 
-*Report generated: 2025-12-02*
+## New Features: Context Capture Design
+
+### 🆕 Full Session Context Export (v0.3.x Roadmap)
+
+Based on database analysis, cursor-studio can now capture comprehensive context:
+
+**Data Available for Export:**
+| Data Type | Source | Description |
+|-----------|--------|-------------|
+| `allThinkingBlocks` | bubbleData | Claude's `<thinking>` content |
+| `mcpDescriptors` | bubbleData | MCP server metadata |
+| `toolResults` | bubbleData | MCP tool call results |
+| `cursorRules` | context | Active .cursor/rules files |
+| `fileSelections` | context | @-mentioned files |
+| `recentlyViewedFiles` | bubbleData | Files viewed during session |
+| `assistantSuggestedDiffs` | bubbleData | Code changes proposed |
+| `modelInfo` | bubbleData | Model name and provider |
+| `tokenCount` | bubbleData | Token usage per message |
+
+**Export Formats Planned:**
+- JSON: Full structured data
+- Markdown: Human-readable documentation
+- HTML: Interactive viewer
+
+**CLI Commands (Future):**
+```bash
+cursor-studio-cli export <id> --format json
+cursor-studio-cli export <id> --format markdown
+cursor-studio-cli analyze <id> --context-usage
+```
+
+See: [CONTEXT_CAPTURE_DESIGN.md](CONTEXT_CAPTURE_DESIGN.md)
+
+---
+
+*Report generated: 2025-12-02 (Updated: Context Capture Design)*
 *Tester: Maxim (Claude Opus 4.5) on Obsidian*
