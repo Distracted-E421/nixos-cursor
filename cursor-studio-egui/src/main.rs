@@ -1495,6 +1495,40 @@ impl CursorStudio {
         self.show_launch_picker = false;
     }
 
+    /// Remove an installed version (cleanup)
+    fn remove_version(&mut self, version: &str) -> Result<(), String> {
+        use std::fs;
+        let home = dirs::home_dir().ok_or("No home directory")?;
+        let paths_to_remove = [
+            home.join(format!(".cursor-{}", version)),
+            home.join(format!(".cursor-studio/versions/cursor-{}", version)),
+            home.join(format!(".cache/cursor-{}", version)),
+        ];
+        let mut removed_any = false;
+        let mut errors = Vec::new();
+        for path in &paths_to_remove {
+            if path.exists() {
+                match fs::remove_dir_all(path) {
+                    Ok(_) => {
+                        log::info!("Removed: {:?}", path);
+                        removed_any = true;
+                    }
+                    Err(e) => errors.push(format!("{}: {}", path.display(), e)),
+                }
+            }
+        }
+        if let Err(e) = self.db.remove_version(version) {
+            log::warn!("Failed to remove version from database: {}", e);
+        }
+        if !errors.is_empty() {
+            return Err(errors.join(", "));
+        }
+        if !removed_any {
+            return Err("No files found to remove".to_string());
+        }
+        Ok(())
+    }
+
     fn version_display_name(version: &str) -> String {
         if version == "default" {
             "Main Cursor".to_string()
@@ -2755,7 +2789,10 @@ impl CursorStudio {
     }
 
     fn show_settings_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
-        ui.vertical(|ui| {
+        // Wrap entire settings panel in ScrollArea for long content
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
@@ -3300,6 +3337,96 @@ impl CursorStudio {
                     self.refresh_all();
                 }
             });
+
+            ui.add_space(20.0);
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("VERSION CLEANUP")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+            });
+            ui.add_space(8.0);
+
+            // Show installed versions with cleanup options
+            let installed_versions: Vec<_> = self.versions.iter()
+                .filter(|v| v.version != "default")
+                .map(|v| v.version.clone())
+                .collect();
+
+            if installed_versions.is_empty() {
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("No installed versions to clean up")
+                            .color(theme.fg_dim)
+                            .size(11.0)
+                            .italics(),
+                    );
+                });
+            } else {
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("Select versions to remove:")
+                            .color(theme.fg)
+                            .size(11.0),
+                    );
+                });
+                ui.add_space(4.0);
+
+                // Version checkboxes
+                let mut to_remove: Vec<String> = Vec::new();
+                for version in &installed_versions {
+                    let checkbox_id = ui.make_persistent_id(format!("cleanup_{}", version));
+                    let mut checked = ui.data_mut(|d| d.get_temp::<bool>(checkbox_id).unwrap_or(false));
+
+                    ui.horizontal(|ui| {
+                        ui.add_space(24.0);
+                        if ui.checkbox(&mut checked, format!("v{}", version)).changed() {
+                            ui.data_mut(|d| d.insert_temp(checkbox_id, checked));
+                        }
+                        ui.label(RichText::new("~150MB").color(theme.fg_dim).size(10.0));
+                    });
+
+                    if checked {
+                        to_remove.push(version.clone());
+                    }
+                }
+
+                ui.add_space(8.0);
+
+                if !to_remove.is_empty() {
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
+                        let btn_text = format!("🗑️ Remove {} version{}", 
+                            to_remove.len(),
+                            if to_remove.len() > 1 { "s" } else { "" }
+                        );
+                        if styled_button(ui, &btn_text, Vec2::new(160.0, 28.0))
+                            .on_hover_text(format!("Remove: {}", to_remove.join(", ")))
+                            .clicked()
+                        {
+                            let mut removed = 0;
+                            for version in &to_remove {
+                                if let Err(e) = self.remove_version(version) {
+                                    self.set_status(&format!("✗ Failed to remove {}: {}", version, e));
+                                } else {
+                                    removed += 1;
+                                    let checkbox_id = ui.make_persistent_id(format!("cleanup_{}", version));
+                                    ui.data_mut(|d| d.insert_temp(checkbox_id, false));
+                                }
+                            }
+                            if removed > 0 {
+                                self.refresh_versions();
+                                self.set_status(&format!("✓ Removed {} version{}", removed, if removed > 1 { "s" } else { "" }));
+                            }
+                        }
+                    });
+                }
+            }
 
             ui.add_space(20.0);
             ui.horizontal(|ui| {

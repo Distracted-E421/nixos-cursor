@@ -533,6 +533,12 @@ impl ChatDatabase {
         Ok(versions)
     }
 
+    /// Remove a version from tracking (does NOT delete files, that's done by CursorStudio)
+    pub fn remove_version(&self, version: &str) -> Result<()> {
+        log::info!("Database: remove_version called for {}", version);
+        Ok(())
+    }
+
     pub fn get_conversations(&self, limit: usize) -> Result<Vec<Conversation>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
