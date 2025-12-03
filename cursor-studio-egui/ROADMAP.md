@@ -113,11 +113,23 @@
 - [ ] TUI interface (`cursor-studio-tui`)
 - [ ] TOML config support
 
+### v0.3.0 - Chat Sync (🚧 Implemented, Testing)
+
+> **Status**: Code complete, awaiting testing across devices
+
+- [x] P2P Sync with libp2p (mDNS, Noise encryption)
+- [x] Server Mode (REST API with axum)
+- [x] SurrealDB integration for sync-capable storage
+- [x] Sync panel in egui right sidebar
+- [x] Device ID persistence and management
+- [ ] Real-world testing (neon-laptop ↔ framework ↔ Obsidian)
+- [ ] Documentation for sync setup
+- [ ] Home Manager integration for sync options
+
 ### Post v0.3.0
 
 - GPUI migration (Zed's framework)
 - Plugin system
-- Multi-device sync
 - AI integration (auto-titles, summaries)
 - Data playground (charts, heatmaps)
 

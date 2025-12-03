@@ -1,6 +1,6 @@
 [package]
 name = "cursor-studio"
-version = "0.3.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["e421"]
 description = "Cursor version manager and chat library - built with egui"
