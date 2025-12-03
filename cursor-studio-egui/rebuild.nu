@@ -159,6 +159,17 @@ def main [
         print ""
         print "🚀 Starting cursor-studio..."
         let target_dir = if $debug { "target/debug" } else { "target/release" }
-        ^$"($target_dir)/cursor-studio"
+        
+        # Check if we're in nix develop (has LD_LIBRARY_PATH set)
+        let in_nix = ($env | get -i LD_LIBRARY_PATH | is-not-empty)
+        
+        if $in_nix {
+            # Already in nix develop, run directly
+            ^$"($target_dir)/cursor-studio"
+        } else {
+            # Need nix develop for libraries
+            print "   (Running via nix develop for library paths)"
+            nix develop --command $"($target_dir)/cursor-studio"
+        }
     }
 }
