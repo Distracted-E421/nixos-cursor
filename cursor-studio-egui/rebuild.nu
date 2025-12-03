@@ -5,7 +5,7 @@
 # Usage:
 #   nu rebuild.nu              # Build with all features (default)
 #   nu rebuild.nu --lite       # Core GUI only (fastest ~2 min)
-#   nu rebuild.nu --sync       # GUI + sync features
+#   nu rebuild.nu --turbo      # Maximum parallelism (uses all CPU/RAM)
 #   nu rebuild.nu --features "p2p-sync"  # Custom features
 
 def main [
@@ -14,6 +14,7 @@ def main [
     --features (-f): string = ""   # Custom feature list
     --release (-r)                 # Build release (default)
     --debug (-d)                   # Build debug (faster compile, slower runtime)
+    --turbo (-t)                   # Maximum hardware utilization
     --run                          # Run after building
     --install (-i)                 # Install to ~/.cargo/bin
     --clean (-c)                   # Clean before building
@@ -21,6 +22,21 @@ def main [
 ] {
     print "🔧 Cursor Studio Rebuild Helper"
     print "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Detect CPU cores
+    let cpu_cores = (nproc | into int)
+    
+    # Turbo mode: maximum parallelism
+    if $turbo {
+        print $"🚀 TURBO MODE: Using all ($cpu_cores) cores"
+        $env.CARGO_BUILD_JOBS = ($cpu_cores | into string)
+        $env.MAKEFLAGS = $"-j($cpu_cores)"
+        $env.CARGO_INCREMENTAL = "1"
+        $env.CARGO_PROFILE_DEV_CODEGEN_UNITS = "256"
+        $env.CARGO_PROFILE_RELEASE_CODEGEN_UNITS = ($cpu_cores | into string)
+        $env.CARGO_PROFILE_RELEASE_LTO = "thin"
+        $env.RUSTFLAGS = $"-C codegen-units=($cpu_cores)"
+    }
     
     # Determine features
     let feature_list = if $lite {

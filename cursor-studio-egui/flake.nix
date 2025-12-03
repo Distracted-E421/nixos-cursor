@@ -78,23 +78,38 @@
 
           LD_LIBRARY_PATH = libPath;
 
-          # Note: sccache conflicts with incremental compilation
-          # For dev builds, incremental is faster, so we don't use sccache here
-          # sccache is better for CI/clean builds
+          # Aggressive build settings for fast iteration
+          CARGO_BUILD_JOBS = "16";
+          CARGO_INCREMENTAL = "1";
+          CARGO_PROFILE_DEV_OPT_LEVEL = "1";
+          CARGO_PROFILE_DEV_CODEGEN_UNITS = "256";
+          CARGO_PROFILE_RELEASE_LTO = "thin";
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
+          
+          # Parallel Rust compilation
+          RUSTFLAGS = "-C codegen-units=16";
+          
+          # Use all cores for native deps
+          NIX_BUILD_CORES = "16";
+          MAKEFLAGS = "-j16";
 
           shellHook = ''
-            echo "🎨 Cursor Studio (egui) Development Environment"
+            echo "🎨 Cursor Studio Development Environment"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "   Rust: $(rustc --version)"
-            echo "   Linker: mold (fast)"
+            echo "   Cores: 16 (using all)"
+            echo "   Linker: mold (10x faster)"
             echo ""
-            echo "   🚀 FAST DEVELOPMENT:"
-            echo "      cargo run              # Debug build (fastest compile)"
-            echo "      cargo run --release    # Release build"
+            echo "   🚀 Commands:"
+            echo "      cargo run              # Debug (~30s incremental)"
+            echo "      cargo run --release    # Release (~2min)"
+            echo "      nu rebuild.nu --lite   # Lite build (~2min)"
+            echo "      nu rebuild.nu          # Full build (~5min)"
             echo ""
-            echo "   📦 DISTRIBUTION:"
-            echo "      nix build              # Full optimized build"
+            echo "   📦 Nix builds:"
+            echo "      nix build .#lite       # Fast (~2min)"
+            echo "      nix build .#full       # All features (~7min)"
             echo ""
-            echo "   ⚠️  Stay in this shell! Don't exit until cargo finishes."
           '';
         };
 
@@ -113,12 +128,19 @@
           inherit buildInputs;
           nativeBuildInputs = nativeBuildInputs ++ [pkgs.mold];
 
-          # Fast build: no sync features
+          # Aggressive parallelism
+          NIX_BUILD_CORES = 16;
+          CARGO_BUILD_JOBS = "16";
+          MAKEFLAGS = "-j16";
+
+          # Fast build: no sync features, maximum parallelism
           buildPhase = ''
+            export CARGO_BUILD_JOBS=16
             export CARGO_PROFILE_RELEASE_LTO=thin
             export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+            export RUSTFLAGS="-C codegen-units=16"
             cargo build --release --frozen --no-default-features \
-              --bin cursor-studio --bin cursor-studio-cli
+              --bin cursor-studio --bin cursor-studio-cli -j 16
           '';
 
           installPhase = ''
@@ -140,7 +162,7 @@
           };
         };
 
-        # Full package: All sync features (slow build ~7 min)
+        # Full package: All sync features (slow build ~5 min with parallelism)
         packages.full = pkgs.rustPlatform.buildRustPackage {
           pname = "cursor-studio-full";
           version = "0.2.0";
@@ -151,11 +173,18 @@
           inherit buildInputs;
           nativeBuildInputs = nativeBuildInputs ++ [pkgs.mold];
 
-          # Full build: all features including P2P and server sync
+          # Aggressive parallelism
+          NIX_BUILD_CORES = 16;
+          CARGO_BUILD_JOBS = "16";
+          MAKEFLAGS = "-j16";
+
+          # Full build: all features, maximum parallelism
           buildPhase = ''
+            export CARGO_BUILD_JOBS=16
             export CARGO_PROFILE_RELEASE_LTO=thin
             export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
-            cargo build --release --frozen --features full
+            export RUSTFLAGS="-C codegen-units=16"
+            cargo build --release --frozen --features full -j 16
           '';
 
           installPhase = ''
