@@ -90,6 +90,13 @@ in
       # Install CLI
       cp target/release/cursor-studio-cli $out/bin/
       
+      # Install sync binaries (if built with features)
+      for bin in p2p-sync sync-server sync-cli; do
+        if [ -f "target/release/$bin" ]; then
+          cp "target/release/$bin" $out/bin/
+        fi
+      done
+      
       runHook postInstall
     '';
 
@@ -110,6 +117,13 @@ in
     in ''
       patchelf --add-rpath "${libPath}" $out/bin/cursor-studio
       patchelf --add-rpath "${libPath}" $out/bin/cursor-studio-cli
+      
+      # Patch sync binaries if they exist
+      for bin in p2p-sync sync-server sync-cli; do
+        if [ -f "$out/bin/$bin" ]; then
+          patchelf --add-rpath "${libPath}" "$out/bin/$bin"
+        fi
+      done
       
       # Wrap to ensure fonts are available
       wrapProgram $out/bin/cursor-studio \

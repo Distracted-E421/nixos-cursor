@@ -4783,6 +4783,48 @@ impl CursorStudio {
         });
     }
 
+    /// Find the p2p-sync binary in common locations
+    fn find_p2p_binary(&self) -> Option<PathBuf> {
+        // Check common locations
+        let candidates = [
+            // Same directory as cursor-studio
+            std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join("p2p-sync"))),
+            // Cargo target directory
+            std::env::current_exe().ok().and_then(|p| {
+                p.parent()
+                    .and_then(|d| d.parent())
+                    .and_then(|d| d.parent())
+                    .map(|ws| ws.join("target/release/p2p-sync"))
+            }),
+            // Home directory cargo install location
+            dirs::home_dir().map(|h| h.join(".cargo/bin/p2p-sync")),
+            // Current directory
+            Some(PathBuf::from("./target/release/p2p-sync")),
+        ];
+
+        for candidate in candidates.into_iter().flatten() {
+            if candidate.exists() {
+                log::info!("Found p2p-sync at: {:?}", candidate);
+                return Some(candidate);
+            }
+        }
+
+        // Try PATH lookup via `which`
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("p2p-sync")
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(PathBuf::from(path));
+                }
+            }
+        }
+
+        None
+    }
+
     /// Start the P2P sync daemon as a background process
     fn start_p2p_daemon(&mut self) {
         if self.p2p_daemon_running {
@@ -4790,29 +4832,15 @@ impl CursorStudio {
             return;
         }
 
-        // Get the path to the p2p-sync binary
-        // First try the release binary, then debug
-        let exe_path = std::env::current_exe().ok();
-        let bin_dir = exe_path.as_ref().and_then(|p| p.parent());
-        
-        let p2p_binary = if let Some(dir) = bin_dir {
-            let release_path = dir.join("p2p-sync");
-            if release_path.exists() {
-                Some(release_path)
-            } else {
-                // Try finding it relative to cargo workspace
-                let workspace_path = dir.parent().and_then(|p| p.parent());
-                workspace_path.map(|ws| ws.join("target/release/p2p-sync"))
+        // Find the p2p-sync binary
+        let binary = match self.find_p2p_binary() {
+            Some(path) => path,
+            None => {
+                self.set_status("✗ p2p-sync binary not found. Build with: cargo build --release --bin p2p-sync");
+                log::error!("p2p-sync binary not found in any expected location");
+                return;
             }
-        } else {
-            None
         };
-
-        // Fallback to just "p2p-sync" in PATH
-        let binary = p2p_binary
-            .filter(|p| p.exists())
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| "p2p-sync".to_string());
 
         self.set_status(&format!("🚀 Starting P2P daemon on port {}...", self.p2p_daemon_port));
 
