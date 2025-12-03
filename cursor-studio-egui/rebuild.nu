@@ -161,7 +161,7 @@ def main [
         let target_dir = if $debug { "target/debug" } else { "target/release" }
         
         # Check if we're in nix develop (has LD_LIBRARY_PATH set)
-        let in_nix = ($env | get -i LD_LIBRARY_PATH | is-not-empty)
+        let in_nix = ($env | get -o LD_LIBRARY_PATH | is-not-empty)
         
         if $in_nix {
             # Already in nix develop, run directly

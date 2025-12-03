@@ -4884,6 +4884,7 @@ impl CursorStudio {
         }
     }
 
+    #[cfg(feature = "surrealdb-store")]
     fn check_server_status(&mut self) {
         use chat::ClientConfig;
         use chat::SyncClient;
@@ -4913,6 +4914,12 @@ impl CursorStudio {
         }
     }
 
+    #[cfg(not(feature = "surrealdb-store"))]
+    fn check_server_status(&mut self) {
+        self.set_status("⚠️ Server sync requires 'full' build");
+    }
+
+    #[cfg(feature = "surrealdb-store")]
     fn pull_from_server(&mut self) {
         use chat::ClientConfig;
         use chat::SyncClient;
@@ -4935,6 +4942,11 @@ impl CursorStudio {
                 self.set_status(&format!("✗ Pull failed: {}", e));
             }
         }
+    }
+
+    #[cfg(not(feature = "surrealdb-store"))]
+    fn pull_from_server(&mut self) {
+        self.set_status("⚠️ Server sync requires 'full' build");
     }
 
     fn show_editor_area(&mut self, ui: &mut egui::Ui, theme: Theme) {
