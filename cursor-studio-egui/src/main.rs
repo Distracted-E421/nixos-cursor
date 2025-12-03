@@ -4456,6 +4456,26 @@ impl CursorStudio {
                     });
                 }
 
+                ui.add_space(16.0);
+
+                // Development status note
+                egui::Frame::none()
+                    .fill(theme.input_bg)
+                    .rounding(Rounding::same(6.0))
+                    .inner_margin(egui::Margin::same(10.0))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("🔧").size(12.0));
+                            ui.add_space(4.0);
+                            ui.label(
+                                RichText::new("Security features under active development")
+                                    .color(theme.fg_dim)
+                                    .size(10.0)
+                                    .italics(),
+                            );
+                        });
+                    });
+
                 ui.add_space(20.0);
             });
     }
@@ -4463,6 +4483,33 @@ impl CursorStudio {
     fn show_sync_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         ui.vertical(|ui| {
             ui.add_space(12.0);
+
+            // Coming Soon Banner
+            egui::Frame::none()
+                .fill(theme.accent.linear_multiply(0.2))
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("🚀").size(16.0));
+                        ui.add_space(8.0);
+                        ui.vertical(|ui| {
+                            ui.label(
+                                RichText::new("Coming Soon")
+                                    .color(theme.accent)
+                                    .strong()
+                                    .size(14.0),
+                            );
+                            ui.label(
+                                RichText::new("P2P & Server sync in development")
+                                    .color(theme.fg_dim)
+                                    .size(11.0),
+                            );
+                        });
+                    });
+                });
+            ui.add_space(16.0);
+
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
                 ui.label(

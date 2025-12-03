@@ -5,7 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2025-11-29
+## [0.2.0] - 2025-12-03
+
+> 🎉 **First stable release of Cursor Studio** - A complete rewrite from Python/Tkinter to Rust/egui
+
+### Highlights
+
+- **Native Rust Application** - Fast, single binary, no runtime dependencies
+- **VS Code-like Interface** - Familiar layout with activity bar, sidebars, tabs
+- **Security Features** - Sensitive data detection, NPM malicious package scanning
+- **Full Bookmark System** - Persistent bookmarks that survive reimports
+- **48 Cursor Versions** - Multi-version management with isolated configs
+
+### Added
+
+- **Security Panel Improvements**:
+  - Dynamic audit log showing actual scan results and import status
+  - Feature checklist showing implemented vs planned features
+  - "Under active development" status indicator
+  - Stable category display (fixed potential flickering)
+
+- **Sync Panel** (Coming Soon):
+  - P2P and Server sync marked as "Coming Soon"
+  - Infrastructure prepared for multi-device synchronization
+  - Device info display with hostname detection
+
+### Notes
+
+- P2P/Server sync features are implemented but disabled in stable release
+- Security features under active development
+- See pre-release branch for experimental features
+
+---
+
+## [0.2.0-rc2] - 2025-11-29
 
 ### Added
 
@@ -46,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Result counter (X/Y matches)
   - Jump to matching messages
 
-## [0.2.0] - 2025-11-28
+## [0.2.0-rc1] - 2025-11-28
 
 ### Added
 
