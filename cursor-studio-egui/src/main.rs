@@ -4233,9 +4233,11 @@ impl CursorStudio {
                             .size(10.0),
                         );
 
-                        // Show categories
+                        // Show categories (sorted for stable display order)
                         ui.add_space(4.0);
-                        for (name, count) in &stats.categories {
+                        let mut categories: Vec<_> = stats.categories.iter().collect();
+                        categories.sort_by_key(|(name, _)| name.as_str());
+                        for (name, count) in categories {
                             ui.horizontal(|ui| {
                                 ui.add_space(8.0);
                                 ui.label(
@@ -4373,18 +4375,50 @@ impl CursorStudio {
                         );
                         ui.add_space(4.0);
 
-                        // Show last few events
-                        let events = [
-                            ("✓", "App started", theme.success),
-                            ("✓", "Database loaded", theme.success),
-                            ("•", "No imports today", theme.fg_dim),
-                        ];
+                        // Show dynamic events based on actual state
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("✓").color(theme.success).size(10.0));
+                            ui.add_space(4.0);
+                            ui.label(RichText::new("Database loaded").color(theme.fg_dim).size(10.0));
+                        });
 
-                        for (icon, text, color) in events {
+                        // Show last security scan if available
+                        if let Some(ref results) = self.security_scan_results {
+                            let total_found = results.potential_api_keys.len()
+                                + results.potential_passwords.len()
+                                + results.potential_secrets.len();
+                            let (icon, color) = if total_found > 0 {
+                                ("⚠", theme.warning)
+                            } else {
+                                ("✓", theme.success)
+                            };
                             ui.horizontal(|ui| {
                                 ui.label(RichText::new(icon).color(color).size(10.0));
                                 ui.add_space(4.0);
-                                ui.label(RichText::new(text).color(theme.fg_dim).size(10.0));
+                                ui.label(RichText::new(format!(
+                                    "Security scan: {} ({})",
+                                    results.scanned_at,
+                                    if total_found > 0 { format!("{} findings", total_found) } else { "clean".to_string() }
+                                )).color(theme.fg_dim).size(10.0));
+                            });
+                        }
+
+                        // Show chat import status
+                        let chat_count = self.conversations.len();
+                        if chat_count > 0 {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("✓").color(theme.success).size(10.0));
+                                ui.add_space(4.0);
+                                ui.label(RichText::new(format!(
+                                    "{} conversations imported",
+                                    chat_count
+                                )).color(theme.fg_dim).size(10.0));
+                            });
+                        } else {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("○").color(theme.fg_dim).size(10.0));
+                                ui.add_space(4.0);
+                                ui.label(RichText::new("No conversations imported yet").color(theme.fg_dim).size(10.0));
                             });
                         }
                     });
@@ -4402,30 +4436,23 @@ impl CursorStudio {
                 });
                 ui.add_space(8.0);
 
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("More security features coming soon...")
-                            .color(theme.fg_dim)
-                            .size(11.0)
-                            .italics(),
-                    );
-                });
-                ui.add_space(8.0);
-
-                // Future features list
-                let future_features = [
-                    "• Encrypted local storage",
-                    "• Sensitive data detection (API keys, passwords)",
-                    "• Auto-redaction in exports",
-                    "• Session timeout settings",
-                    "• Audit log export",
+                // Current features with status
+                let current_features = [
+                    ("✓", "Sensitive data detection (scan above)", theme.success),
+                    ("✓", "NPM malicious package scanning", theme.success),
+                    ("✓", "Jump-to-message navigation", theme.success),
+                    ("○", "Encrypted local storage", theme.fg_dim),
+                    ("○", "Auto-redaction in exports", theme.fg_dim),
+                    ("○", "Session timeout settings", theme.fg_dim),
+                    ("○", "Audit log export", theme.fg_dim),
                 ];
 
-                for feature in future_features {
+                for (icon, feature, color) in current_features {
                     ui.horizontal(|ui| {
-                        ui.add_space(24.0);
-                        ui.label(RichText::new(feature).color(theme.fg_dim).size(10.0));
+                        ui.add_space(20.0);
+                        ui.label(RichText::new(icon).color(color).size(10.0));
+                        ui.add_space(4.0);
+                        ui.label(RichText::new(feature).color(color).size(10.0));
                     });
                 }
 
