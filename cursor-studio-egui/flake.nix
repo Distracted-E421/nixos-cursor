@@ -20,8 +20,8 @@
       homeManagerModules.cursor-studio = import ./home-manager-module.nix;
     }
     //
-    # Per-system outputs
-    flake-utils.lib.eachDefaultSystem (
+    # Per-system outputs - Linux only for now (egui uses Wayland/X11)
+    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
       system: let
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
@@ -66,6 +66,8 @@
           # Fast linker - dramatically reduces link time
           mold
           clang
+          # Required for bindgen (surrealdb-librocksdb-sys)
+          llvmPackages.libclang
         ];
 
         libPath = pkgs.lib.makeLibraryPath buildInputs;
@@ -77,6 +79,9 @@
           inherit buildInputs nativeBuildInputs;
 
           LD_LIBRARY_PATH = libPath;
+          
+          # Required for bindgen (surrealdb-librocksdb-sys)
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
           # Aggressive build settings for fast iteration
           CARGO_BUILD_JOBS = "16";
