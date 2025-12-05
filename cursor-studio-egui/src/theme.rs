@@ -1,7 +1,7 @@
 //! Theme definitions for egui and VS Code theme parsing
 
 use eframe::egui::Color32;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -487,7 +487,7 @@ fn strip_json_comments(json: &str) -> String {
         } else if c == '/' {
             if chars.peek() == Some(&'/') {
                 // Line comment - skip to end of line
-                while let Some(nc) = chars.next() {
+                for nc in chars.by_ref() {
                     if nc == '\n' {
                         result.push('\n');
                         break;

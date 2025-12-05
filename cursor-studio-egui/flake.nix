@@ -20,8 +20,8 @@
       homeManagerModules.cursor-studio = import ./home-manager-module.nix;
     }
     //
-    # Per-system outputs
-    flake-utils.lib.eachDefaultSystem (
+    # Per-system outputs - Linux only for now (egui uses Wayland/X11)
+    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
       system: let
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {inherit system overlays;};
@@ -66,6 +66,8 @@
           # Fast linker - dramatically reduces link time
           mold
           clang
+          # Required for bindgen (surrealdb-librocksdb-sys)
+          llvmPackages.libclang
         ];
 
         libPath = pkgs.lib.makeLibraryPath buildInputs;
@@ -77,24 +79,42 @@
           inherit buildInputs nativeBuildInputs;
 
           LD_LIBRARY_PATH = libPath;
+          
+          # Required for bindgen (surrealdb-librocksdb-sys)
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
-          # Note: sccache conflicts with incremental compilation
-          # For dev builds, incremental is faster, so we don't use sccache here
-          # sccache is better for CI/clean builds
+          # Aggressive build settings for fast iteration
+          CARGO_BUILD_JOBS = "16";
+          CARGO_INCREMENTAL = "1";
+          CARGO_PROFILE_DEV_OPT_LEVEL = "1";
+          CARGO_PROFILE_DEV_CODEGEN_UNITS = "256";
+          CARGO_PROFILE_RELEASE_LTO = "thin";
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
+          
+          # Parallel Rust compilation
+          RUSTFLAGS = "-C codegen-units=16";
+          
+          # Use all cores for native deps
+          NIX_BUILD_CORES = "16";
+          MAKEFLAGS = "-j16";
 
           shellHook = ''
-            echo "🎨 Cursor Studio (egui) Development Environment"
+            echo "🎨 Cursor Studio Development Environment"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "   Rust: $(rustc --version)"
-            echo "   Linker: mold (fast)"
+            echo "   Cores: 16 (using all)"
+            echo "   Linker: mold (10x faster)"
             echo ""
-            echo "   🚀 FAST DEVELOPMENT:"
-            echo "      cargo run              # Debug build (fastest compile)"
-            echo "      cargo run --release    # Release build"
+            echo "   🚀 Commands:"
+            echo "      cargo run              # Debug (~30s incremental)"
+            echo "      cargo run --release    # Release (~2min)"
+            echo "      nu rebuild.nu --lite   # Lite build (~2min)"
+            echo "      nu rebuild.nu          # Full build (~5min)"
             echo ""
-            echo "   📦 DISTRIBUTION:"
-            echo "      nix build              # Full optimized build"
+            echo "   📦 Nix builds:"
+            echo "      nix build .#lite       # Fast (~2min)"
+            echo "      nix build .#full       # All features (~7min)"
             echo ""
-            echo "   ⚠️  Stay in this shell! Don't exit until cargo finishes."
           '';
         };
 
@@ -102,8 +122,8 @@
         # Packages
         # ============================================
 
-        # Default package: Full release build (slow but optimal)
-        packages.default = pkgs.rustPlatform.buildRustPackage {
+        # Lite package: Core GUI only (fast build ~2 min)
+        packages.lite = pkgs.rustPlatform.buildRustPackage {
           pname = "cursor-studio";
           version = "0.2.0";
           src = ./.;
@@ -113,32 +133,97 @@
           inherit buildInputs;
           nativeBuildInputs = nativeBuildInputs ++ [pkgs.mold];
 
-          # Use release-fast profile for nix builds (good balance)
+          # Aggressive parallelism
+          NIX_BUILD_CORES = 16;
+          CARGO_BUILD_JOBS = "16";
+          MAKEFLAGS = "-j16";
+
+          # Fast build: no sync features, maximum parallelism
           buildPhase = ''
+            export CARGO_BUILD_JOBS=16
             export CARGO_PROFILE_RELEASE_LTO=thin
             export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
-            cargo build --release --frozen
+            export RUSTFLAGS="-C codegen-units=16"
+            cargo build --release --frozen --no-default-features \
+              --bin cursor-studio --bin cursor-studio-cli -j 16
           '';
 
           installPhase = ''
             mkdir -p $out/bin
             cp target/release/cursor-studio $out/bin/
+            cp target/release/cursor-studio-cli $out/bin/
           '';
 
           postFixup = ''
             patchelf --add-rpath "${libPath}" $out/bin/cursor-studio
+            patchelf --add-rpath "${libPath}" $out/bin/cursor-studio-cli
           '';
 
           meta = with pkgs.lib; {
-            description = "Cursor version manager and chat library (egui)";
+            description = "Cursor Studio - Lite (core GUI, fast build)";
             license = licenses.mit;
             platforms = platforms.linux;
             mainProgram = "cursor-studio";
           };
         };
 
-        # Alias for easy access
-        packages.cursor-studio = self.packages.${system}.default;
+        # Full package: All sync features (slow build ~5 min with parallelism)
+        packages.full = pkgs.rustPlatform.buildRustPackage {
+          pname = "cursor-studio-full";
+          version = "0.2.0";
+          src = ./.;
+
+          cargoLock.lockFile = ./Cargo.lock;
+
+          inherit buildInputs;
+          nativeBuildInputs = nativeBuildInputs ++ [pkgs.mold];
+
+          # Aggressive parallelism
+          NIX_BUILD_CORES = 16;
+          CARGO_BUILD_JOBS = "16";
+          MAKEFLAGS = "-j16";
+
+          # Full build: all features, maximum parallelism
+          buildPhase = ''
+            export CARGO_BUILD_JOBS=16
+            export CARGO_PROFILE_RELEASE_LTO=thin
+            export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
+            export RUSTFLAGS="-C codegen-units=16"
+            cargo build --release --frozen --features full -j 16
+          '';
+
+          installPhase = ''
+            mkdir -p $out/bin
+            cp target/release/cursor-studio $out/bin/
+            cp target/release/cursor-studio-cli $out/bin/
+            # Install sync binaries
+            for bin in p2p-sync sync-server sync-cli; do
+              if [ -f "target/release/$bin" ]; then
+                cp "target/release/$bin" $out/bin/
+              fi
+            done
+          '';
+
+          postFixup = ''
+            for bin in $out/bin/*; do
+              patchelf --add-rpath "${libPath}" "$bin"
+            done
+          '';
+
+          meta = with pkgs.lib; {
+            description = "Cursor Studio - Full (with P2P + server sync)";
+            license = licenses.mit;
+            platforms = platforms.linux;
+            mainProgram = "cursor-studio";
+          };
+        };
+
+        # Default: Lite for fast builds (use 'full' when testing sync)
+        packages.default = self.packages.${system}.lite;
+
+        # Aliases
+        packages.cursor-studio = self.packages.${system}.lite;
+        packages.cursor-studio-full = self.packages.${system}.full;
 
         # Make it runnable with `nix run`
         apps.default = {
@@ -147,6 +232,22 @@
         };
 
         apps.cursor-studio = self.apps.${system}.default;
+
+        # Full version with sync features
+        apps.full = {
+          type = "app";
+          program = "${self.packages.${system}.full}/bin/cursor-studio";
+        };
+
+        apps.p2p-sync = {
+          type = "app";
+          program = "${self.packages.${system}.full}/bin/p2p-sync";
+        };
+
+        apps.sync-server = {
+          type = "app";
+          program = "${self.packages.${system}.full}/bin/sync-server";
+        };
       }
     );
 }

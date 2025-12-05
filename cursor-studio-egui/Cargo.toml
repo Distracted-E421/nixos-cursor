@@ -6,6 +6,7 @@ authors = ["e421"]
 description = "Cursor version manager and chat library - built with egui"
 license = "MIT"
 rust-version = "1.75"
+default-run = "cursor-studio"
 
 [dependencies]
 # GUI - egui with eframe (native + Wayland support)

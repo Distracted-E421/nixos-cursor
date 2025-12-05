@@ -411,6 +411,11 @@ struct CursorStudio {
     sync_last_status: Option<String>,
     sync_conversation_count: usize,
     sync_p2p_peers: Vec<String>,
+    
+    // P2P daemon state
+    p2p_daemon_running: bool,
+    p2p_daemon_process: Option<std::process::Child>,
+    p2p_daemon_port: u16,
 
     // Version download state
     available_versions: Vec<AvailableVersion>,
@@ -617,6 +622,11 @@ impl CursorStudio {
             sync_last_status: None,
             sync_conversation_count: 0,
             sync_p2p_peers: Vec::new(),
+            
+            // P2P daemon state
+            p2p_daemon_running: false,
+            p2p_daemon_process: None,
+            p2p_daemon_port: 4001,
 
             // Version download state
             available_versions: get_available_versions(),
@@ -4637,13 +4647,79 @@ impl CursorStudio {
             });
             ui.add_space(8.0);
 
+            // P2P Daemon Controls
+            egui::Frame::none()
+                .fill(theme.code_bg)
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("🔗").size(16.0));
+                        ui.add_space(8.0);
+                        ui.vertical(|ui| {
+                            ui.label(
+                                RichText::new("P2P Daemon")
+                                    .color(theme.fg)
+                                    .strong()
+                                    .size(12.0),
+                            );
+                            let status_text = if self.p2p_daemon_running {
+                                format!("Running on port {}", self.p2p_daemon_port)
+                            } else {
+                                "Stopped".to_string()
+                            };
+                            let status_color = if self.p2p_daemon_running {
+                                theme.success
+                            } else {
+                                theme.fg_dim
+                            };
+                            ui.label(RichText::new(&status_text).color(status_color).size(11.0));
+                        });
+                    });
+                    ui.add_space(8.0);
+                    
+                    ui.horizontal(|ui| {
+                        if self.p2p_daemon_running {
+                            if styled_button(ui, "⏹ Stop", Vec2::new(80.0, 28.0))
+                                .on_hover_text("Stop P2P daemon")
+                                .clicked()
+                            {
+                                self.stop_p2p_daemon();
+                            }
+                        } else {
+                            if styled_button(ui, "▶ Start", Vec2::new(80.0, 28.0))
+                                .on_hover_text("Start P2P daemon for local network discovery")
+                                .clicked()
+                            {
+                                self.start_p2p_daemon();
+                            }
+                        }
+                        ui.add_space(8.0);
+                        ui.label(RichText::new("Port:").color(theme.fg_dim).size(11.0));
+                        ui.add_space(4.0);
+                        let port_str = &mut format!("{}", self.p2p_daemon_port);
+                        let response = ui.add(
+                            egui::TextEdit::singleline(port_str)
+                                .desired_width(60.0)
+                                .font(egui::FontId::monospace(11.0)),
+                        );
+                        if response.changed() {
+                            if let Ok(port) = port_str.parse::<u16>() {
+                                self.p2p_daemon_port = port;
+                            }
+                        }
+                    });
+                });
+            ui.add_space(8.0);
+
+            // Discovered Peers
             egui::Frame::none()
                 .fill(theme.code_bg)
                 .rounding(Rounding::same(8.0))
                 .inner_margin(egui::Margin::same(12.0))
                 .show(ui, |ui| {
                     ui.label(
-                        RichText::new("🔗 Local Network Discovery")
+                        RichText::new("📡 Discovered Peers")
                             .color(theme.fg)
                             .size(12.0),
                     );
@@ -4656,12 +4732,21 @@ impl CursorStudio {
                                 .size(11.0)
                                 .italics(),
                         );
-                        ui.add_space(4.0);
-                        ui.label(
-                            RichText::new("Run p2p-sync daemon on other devices")
-                                .color(theme.fg_dim)
-                                .size(10.0),
-                        );
+                        if self.p2p_daemon_running {
+                            ui.add_space(4.0);
+                            ui.label(
+                                RichText::new("Waiting for peers on local network...")
+                                    .color(theme.fg_dim)
+                                    .size(10.0),
+                            );
+                        } else {
+                            ui.add_space(4.0);
+                            ui.label(
+                                RichText::new("Start daemon to discover peers")
+                                    .color(theme.fg_dim)
+                                    .size(10.0),
+                            );
+                        }
                     } else {
                         for peer in &self.sync_p2p_peers {
                             ui.horizontal(|ui| {
@@ -4671,17 +4756,6 @@ impl CursorStudio {
                         }
                     }
                 });
-            ui.add_space(8.0);
-
-            ui.horizontal(|ui| {
-                ui.add_space(16.0);
-                ui.label(
-                    RichText::new("Tip: Use 'cargo run --bin p2p-sync' to start P2P daemon")
-                        .color(theme.fg_dim)
-                        .size(10.0)
-                        .italics(),
-                );
-            });
 
             ui.add_space(16.0);
 
@@ -4709,6 +4783,108 @@ impl CursorStudio {
         });
     }
 
+    /// Find the p2p-sync binary in common locations
+    fn find_p2p_binary(&self) -> Option<PathBuf> {
+        // Check common locations
+        let candidates = [
+            // Same directory as cursor-studio
+            std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join("p2p-sync"))),
+            // Cargo target directory
+            std::env::current_exe().ok().and_then(|p| {
+                p.parent()
+                    .and_then(|d| d.parent())
+                    .and_then(|d| d.parent())
+                    .map(|ws| ws.join("target/release/p2p-sync"))
+            }),
+            // Home directory cargo install location
+            dirs::home_dir().map(|h| h.join(".cargo/bin/p2p-sync")),
+            // Current directory
+            Some(PathBuf::from("./target/release/p2p-sync")),
+        ];
+
+        for candidate in candidates.into_iter().flatten() {
+            if candidate.exists() {
+                log::info!("Found p2p-sync at: {:?}", candidate);
+                return Some(candidate);
+            }
+        }
+
+        // Try PATH lookup via `which`
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("p2p-sync")
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some(PathBuf::from(path));
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Start the P2P sync daemon as a background process
+    fn start_p2p_daemon(&mut self) {
+        if self.p2p_daemon_running {
+            self.set_status("⚠️ P2P daemon already running");
+            return;
+        }
+
+        // Find the p2p-sync binary
+        let binary = match self.find_p2p_binary() {
+            Some(path) => path,
+            None => {
+                self.set_status("✗ p2p-sync binary not found. Build with: cargo build --release --bin p2p-sync");
+                log::error!("p2p-sync binary not found in any expected location");
+                return;
+            }
+        };
+
+        self.set_status(&format!("🚀 Starting P2P daemon on port {}...", self.p2p_daemon_port));
+
+        match std::process::Command::new(&binary)
+            .args(["--port", &self.p2p_daemon_port.to_string(), "--import"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+        {
+            Ok(child) => {
+                self.p2p_daemon_process = Some(child);
+                self.p2p_daemon_running = true;
+                self.set_status(&format!("✓ P2P daemon started on port {}", self.p2p_daemon_port));
+            }
+            Err(e) => {
+                self.set_status(&format!("✗ Failed to start P2P daemon: {}", e));
+                log::error!("Failed to start P2P daemon: {}", e);
+            }
+        }
+    }
+
+    /// Stop the P2P sync daemon
+    fn stop_p2p_daemon(&mut self) {
+        if let Some(mut process) = self.p2p_daemon_process.take() {
+            match process.kill() {
+                Ok(()) => {
+                    self.p2p_daemon_running = false;
+                    self.sync_p2p_peers.clear();
+                    self.set_status("⏹ P2P daemon stopped");
+                }
+                Err(e) => {
+                    self.set_status(&format!("✗ Failed to stop P2P daemon: {}", e));
+                    log::error!("Failed to stop P2P daemon: {}", e);
+                    // Put the process back if we couldn't kill it
+                    self.p2p_daemon_process = Some(process);
+                }
+            }
+        } else {
+            self.p2p_daemon_running = false;
+            self.set_status("P2P daemon was not running");
+        }
+    }
+
+    #[cfg(feature = "surrealdb-store")]
     fn check_server_status(&mut self) {
         use chat::ClientConfig;
         use chat::SyncClient;
@@ -4738,6 +4914,12 @@ impl CursorStudio {
         }
     }
 
+    #[cfg(not(feature = "surrealdb-store"))]
+    fn check_server_status(&mut self) {
+        self.set_status("⚠️ Server sync requires 'full' build");
+    }
+
+    #[cfg(feature = "surrealdb-store")]
     fn pull_from_server(&mut self) {
         use chat::ClientConfig;
         use chat::SyncClient;
@@ -4760,6 +4942,11 @@ impl CursorStudio {
                 self.set_status(&format!("✗ Pull failed: {}", e));
             }
         }
+    }
+
+    #[cfg(not(feature = "surrealdb-store"))]
+    fn pull_from_server(&mut self) {
+        self.set_status("⚠️ Server sync requires 'full' build");
     }
 
     fn show_editor_area(&mut self, ui: &mut egui::Ui, theme: Theme) {

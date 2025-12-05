@@ -1,14 +1,54 @@
-# Cargo configuration for faster builds
-# See: https://doc.rust-lang.org/cargo/reference/config.html
+# Cargo configuration for fast builds
+# Optimized for powerful hardware (i9-9900KS, Ryzen, etc.)
 
+[build]
+# Use all available cores
+jobs = 16
+
+# Use mold linker (much faster than default ld)
 [target.x86_64-unknown-linux-gnu]
-# Use mold linker - significantly faster than default ld
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 
-[build]
-# Use all available CPU cores for rustc
-jobs = 16
+# Aggressive parallelism for release builds
+[profile.release]
+# Thin LTO: good optimization, fast compile (vs fat LTO)
+lto = "thin"
+# More codegen units = more parallelism (16 = good for 16-thread CPU)
+codegen-units = 16
+# Don't strip debug info (faster builds, can strip separately)
+strip = false
+# Optimize for speed
+opt-level = 3
+
+# Fast debug builds
+[profile.dev]
+# Skip LTO for debug
+lto = false
+# Maximum parallelism for debug
+codegen-units = 256
+# Level 1 optimization (faster compile than 0, decent speed)
+opt-level = 1
+# Incremental compilation
+incremental = true
+# Split debug info for faster linking
+split-debuginfo = "unpacked"
+
+# Custom profile: Maximum speed compilation
+[profile.dev.package."*"]
+opt-level = 2
+
+# Fast release for testing (compromise between dev and release)
+[profile.release-fast]
+inherits = "release"
+lto = "thin"
+codegen-units = 16
+opt-level = 2
+debug = false
+
+[net]
+# Parallel downloads
+git-fetch-with-cli = true
 
 [registries.crates-io]
 protocol = "sparse"
