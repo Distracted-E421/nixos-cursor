@@ -106,22 +106,17 @@ pub enum ApprovalResult {
 }
 
 /// Approval mode - how to request user approval
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum ApprovalMode {
     /// Always require terminal confirmation (stdin)
     Terminal,
     /// Use GUI dialogs (double-click confirmation)
     Gui,
     /// Use both - GUI with terminal fallback
+    #[default]
     Both,
     /// Auto-approve all operations (dangerous!)
     AutoApprove,
-}
-
-impl Default for ApprovalMode {
-    fn default() -> Self {
-        ApprovalMode::Both
-    }
 }
 
 /// Pending approval state for GUI mode

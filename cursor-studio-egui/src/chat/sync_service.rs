@@ -19,7 +19,7 @@ use super::models::Conversation;
 use super::surreal::SurrealStore;
 
 /// Sync service status
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SyncStatus {
     /// Number of local conversations
     pub local_count: usize,
@@ -33,18 +33,6 @@ pub struct SyncStatus {
     pub syncing: bool,
 }
 
-impl Default for SyncStatus {
-    fn default() -> Self {
-        Self {
-            local_count: 0,
-            store_count: 0,
-            last_sync: None,
-            error: None,
-            syncing: false,
-        }
-    }
-}
-
 /// Main sync service for chat history
 pub struct SyncService {
     /// Device ID for this machine
@@ -53,6 +41,12 @@ pub struct SyncService {
     store: Option<SurrealStore>,
     /// Current status
     status: SyncStatus,
+}
+
+impl Default for SyncService {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SyncService {

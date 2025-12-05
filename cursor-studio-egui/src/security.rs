@@ -94,6 +94,12 @@ pub struct SecurityScanner {
     blocked_packages: Vec<String>,
 }
 
+impl Default for SecurityScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// # TODO(P1): Release v0.3.0 - Security Scanner Enhancements
 /// - [ ] Add auto-update for blocklist from GitHub
 /// - [ ] Implement fetch_cve_info() for real CVE lookups

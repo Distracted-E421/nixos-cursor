@@ -453,11 +453,11 @@ impl P2PService {
                     log::info!("Disconnected from peer {}: {:?}", peer_id, cause);
                 }
                 
-                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                    if let Some(peer) = peer_id {
-                        log::warn!("Failed to connect to {}: {}", peer, error);
-                    }
+                SwarmEvent::OutgoingConnectionError { peer_id: Some(peer), error, .. } => {
+                    log::warn!("Failed to connect to {}: {}", peer, error);
                 }
+                
+                SwarmEvent::OutgoingConnectionError { peer_id: None, .. } => {}
                 
                 _ => {}
             }

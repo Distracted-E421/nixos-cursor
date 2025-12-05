@@ -156,7 +156,7 @@ fn extract_lexical_text(root: &Value) -> String {
     cleaned
 }
 
-fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>, in_paragraph: bool) {
+fn extract_lexical_text_recursive(node: &Value, parts: &mut Vec<String>, _in_paragraph: bool) {
     // If this node has "text" field, it's a text node
     if let Some(text) = node.get("text").and_then(|v| v.as_str()) {
         if !text.is_empty() {
@@ -375,15 +375,24 @@ pub enum ContentType {
     Mixed,
 }
 
-impl ContentType {
-    pub fn from_str(s: &str) -> Self {
-        match s {
+impl std::str::FromStr for ContentType {
+    type Err = std::convert::Infallible;
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
             "code" => ContentType::Code,
             "terminal" => ContentType::Terminal,
             "markdown" => ContentType::Markdown,
             "mixed" => ContentType::Mixed,
             _ => ContentType::Text,
-        }
+        })
+    }
+}
+
+impl ContentType {
+    /// Parse from string (convenience method)
+    pub fn parse(s: &str) -> Self {
+        s.parse().unwrap_or_default()
     }
 
     pub fn as_str(&self) -> &'static str {
@@ -429,6 +438,10 @@ pub struct DisplayPreference {
     pub style: String,     // "default", "bubble", "compact", "collapsed", "highlight", "monospace"
     pub collapsed_by_default: bool,
 }
+
+/// Internal type for message parsing during import
+/// (msg_id, role, content, sequence, tool_call, thinking)
+type ParsedMessage = (String, String, String, usize, Option<ToolCallInfo>, Option<String>);
 
 /// Statistics about message types for analytics
 #[derive(Debug, Clone, Default)]
@@ -1114,14 +1127,7 @@ impl ChatDatabase {
                 .prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE ? ORDER BY key")?;
             let pattern = format!("bubbleId:{}:%", conv_id);
 
-            let mut messages: Vec<(
-                String,
-                String,
-                String,
-                usize,
-                Option<ToolCallInfo>,
-                Option<String>,
-            )> = Vec::new();
+            let mut messages: Vec<ParsedMessage> = Vec::new();
             let mut title_candidates = Vec::new();
 
             // Query and handle value as either BLOB or TEXT
@@ -1139,7 +1145,7 @@ impl ChatDatabase {
                     Err(_) => continue,
                 };
 
-                let msg_id = key.split(':').last().unwrap_or("").to_string();
+                let msg_id = key.split(':').next_back().unwrap_or("").to_string();
 
                 if let Ok(data) = serde_json::from_slice::<Value>(&value) {
                     let msg_type = data.get("type").and_then(|v| v.as_i64()).unwrap_or(0);
@@ -1290,7 +1296,7 @@ mod tests {
 
         // Get it back
         let value = db.get_config_f32("test.float", 0.0);
-        assert!((value - 3.14).abs() < 0.001);
+        assert!((value - std::f32::consts::PI).abs() < 0.01);
 
         // Default for missing key
         let default = db.get_config_f32("missing.key", 42.0);
