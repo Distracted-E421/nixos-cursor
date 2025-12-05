@@ -1,253 +1,140 @@
 # nixos-cursor
 
-**Status**: v0.1.3 (Stable) - **48 Versions Available**  
-**License**: MIT  
-**Maintained by**: e421  
-**Credits**: Version tracking by [oslook](https://github.com/oslook)
+**v0.2.0 Stable** · **48 Versions** · **NixOS + macOS**  
+[![CI](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml/badge.svg)](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A production-ready **NixOS and macOS** package for **Cursor IDE** with built-in support for **Model Context Protocol (MCP) servers**, automated updates, and a **Multi-Version Manager** with **48 historical versions** spanning four eras for ultimate workflow stability.
-
----
-
-## 🚀 Cursor Studio - Modern IDE Manager (Recommended)
-
-> **Cursor Studio** is the modern, fast, native replacement for the legacy Python tools:
-> - 📊 **Modern Dashboard** - Stats, version management, quick actions
-> - 🔐 **Security Scanning** - Detect API keys and sensitive data in chats
-> - 🎨 **VS Code Themes** - Full theme support with customization
-> - 💻 **CLI Interface** - `cursor-studio-cli` for automation
-> - 🏠 **Home Manager Module** - Declarative NixOS configuration
->
-> **Quick Start:**
-> ```bash
-> # Try it without installing
-> nix run github:Distracted-E421/nixos-cursor#cursor-studio
-> 
-> # CLI interface
-> nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
-> ```
->
-> **Or add to your flake:**
-> ```nix
-> home.packages = [
->   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio
->   inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # Optional
-> ];
-> ```
->
-> 📖 **[Cursor Studio README →](cursor-studio-egui/README.md)** | **[Migration Guide →](docs/MIGRATION.md)**
-> 
-> ⚠️ **Note:** The legacy `cursor-manager` and `cursor-chat-library` (Python/tkinter) are deprecated and will be removed in v1.0.0. See the [Migration Guide](docs/MIGRATION.md) for upgrade instructions.
+The **definitive Cursor IDE package for NixOS** — featuring multi-version management, MCP server integration, and the new **Cursor Studio** native application.
 
 ---
 
-> **Why Multi-Version Support?**
-> With the deprecation of custom agent modes in Cursor 2.1.x, many users found their workflows disrupted. This package provides a comprehensive **Version Manager** with a polished GUI that allows you to run any of **48 versions** (spanning 2.1.x, 2.0.x, 1.7.x, and 1.6.x) side-by-side with isolated configurations.
->
-> Multi-version packages install to unique paths (`/share/cursor-VERSION/`, `/bin/cursor-VERSION`), enabling simultaneous installation without path conflicts. We refuse to have our workflows dictated on a whim, so we built the tools to take control back.
+## 🚀 Quick Start
 
-**Supported Platforms:**
+```bash
+# Try Cursor Studio (GUI) without installing
+nix run github:Distracted-E421/nixos-cursor#cursor-studio
 
-| Platform | Support Level | Format |
-|----------|--------------|--------|
-| x86_64-linux | ✅ Full | AppImage |
-| aarch64-linux | ✅ Full | AppImage |
-| x86_64-darwin | 🧪 Experimental | DMG |
-| aarch64-darwin | 🧪 Experimental | DMG (Universal) |
-
----
-
-### 🍎 macOS Users: We Need Your Help
-
-> **Darwin support is built but needs hash verification!**
->
-> We've implemented full 48-version support for macOS (both Intel and Apple Silicon), but we need macOS users to help compute the SHA256 hashes for the DMG files. This is a 5-minute task that makes a huge difference!
->
-> **Quick contribution** (literally 5 minutes):
->
-> ```bash
-> curl -L -o cursor.dmg "https://downloads.cursor.com/production/ba90f2f88e4911312761abab9492c42442117cfe/darwin/universal/Cursor-darwin-universal.dmg"
-> nix hash file cursor.dmg  # Copy this output and open an issue!
-> ```
->
-> 📖 **[Full Darwin Testing Guide →](docs/DARWIN_TESTING.md)**
->
-> Every hash you contribute brings macOS support closer to production-ready!
-
----
-
-**Version Coverage (48 total):**
-
-- **2.1.x Latest Era**: 11 versions (2.1.6 - 2.1.34)
-- **2.0.x Custom Modes Era**: 17 versions (2.0.11 - 2.0.77)
-- **1.7.x Classic Era**: 19 versions (1.7.11 - 1.7.54)
-- **1.6.x Legacy Era**: 1 version (1.6.45)
-
-See [CURSOR_VERSION_TRACKING.md](CURSOR_VERSION_TRACKING.md) for the full manifest.
-
----
-
-## Features
-
-### Unique Capabilities (Not Possible in Base Cursor)
-
-- **Shared Auth & Docs Across Versions**: Keep your Cursor login and indexed documentation synced across ALL versions via optional globalStorage sharing - something base Cursor cannot do to my knowledge (and has lost me a lot of time reindexing to have them again)
-- **Concurrent Multi-Version Launches**: Run 2.0.77 and 1.7.54 simultaneously in separate windows with separate configs
-- **Cross-Version Settings Sync**: Automatically copy your settings/keybindings to new version installs
-
-### Core Features
-
-- **Multi-Version Manager**: **37 versions** available (2.0.x, 1.7.x, 1.6.x)
-- **Modern GUI**: Dropdown menus organized by era for easy selection
-- **Isolated User Data**: Each version keeps its own settings/extensions in `~/.cursor-VERSION/`
-- **Settings Sync**: Optional sync of keybindings and settings between versions
-- Native NixOS packaging of Cursor IDE 2.0.77 (Stable)
-- Wayland + X11 support with GPU acceleration
-- MCP server integration (filesystem, memory, NixOS, GitHub, Playwright)
-- Automated update system with daily notifications
-- One-command updates (`cursor-update`)
-- GPU fixes (libGL, libxkbfile) for NixOS compatibility
-
----
-
-## 📦 Install Size & Requirements
-
-**Disk Space Requirements** (Fresh NixOS 25.11 KDE Desktop):
-
-| Configuration | Effective New Space | Download Size (Cachix) |
-|---------------|---------------------|------------------------|
-| **Minimal** (cursor only) | ~500-800 MB | ~400 MB |
-| **Standard** (+ MCP servers) | ~800-1200 MB | ~500 MB |
-| **Full** (+ Playwright browser) | ~2-3 GB | ~1.5 GB |
-
-**Why "Effective New Space"?** Many dependencies (GTK3, mesa, glib) are already included in a standard NixOS KDE desktop. The numbers above represent actual *additional* disk usage.
-
-### Component Breakdown
-
-| Component | Closure Size | Already in KDE | Effective New |
-|-----------|--------------|----------------|---------------|
-| Cursor 2.0.77 (AppImage) | 1798 MB | ~1300 MB | ~500 MB |
-| cursor-studio (Rust GUI) | ~150 MB | ~50 MB | ~100 MB |
-| Node.js 22 (MCP servers) | 210 MB | ~100 MB | ~110 MB |
-| uv (mcp-nixos) | 104 MB | ~80 MB | ~25 MB |
-| Google Chrome (Playwright) | 1689 MB | ~800 MB | ~900 MB |
-
-### 🚀 Cachix Binary Cache
-
-All 48 Cursor versions are **pre-built and cached** on `nixos-cursor.cachix.org`:
-
-```
-Without Cachix:  Build from AppImage = ~5-10 minutes + 1.8GB download
-With Cachix:     Fetch pre-built    = ~30 seconds + 400MB download
+# Or run Cursor directly
+nix run github:Distracted-E421/nixos-cursor#cursor
 ```
 
-The flake automatically configures Cachix - no setup required!
-
-### Space-Saving Tips
-
-1. **Use one version**: If you don't need multi-version, stick with `cursor` (saves ~500MB per additional version)
-2. **Skip Playwright browser**: Only enable `mcp.playwright.enable` if you need browser automation (~1.5GB)
-3. **Enable auto-cleanup**: cursor-studio can remove old versions automatically
-4. **npm lazy loading**: MCP npm packages only download on first use (~50-100MB in ~/.npm/)
-
----
-
-## Quick Start
-
-### **Option A: Direct Package Installation (Recommended)**
-
-Add to your `flake.nix` inputs:
+### Add to Your Flake
 
 ```nix
+# flake.nix
 {
-  inputs.nixos-cursor = {
-    url = "github:Distracted-E421/nixos-cursor";
-    inputs.nixpkgs.follows = "nixpkgs";  # Optional
-  };
+  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor";
 }
 ```
 
-Then in your Home Manager configuration:
-
 ```nix
+# In your Home Manager or NixOS configuration
 { inputs, pkgs, ... }: {
   home.packages = [
-    # Install multiple versions simultaneously (no conflicts!)
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest (2.0.77)
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_0_64   # Specific version
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-1_7_54   # Classic version
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # Modern GUI manager (recommended)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest stable (2.0.77)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # GUI manager
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # CLI (optional)
   ];
 }
 ```
 
-**Important**: Pass `inputs` to Home Manager:
+---
+
+## ✨ What's New in v0.2.0
+
+### Cursor Studio — Native Rust Application
+
+A complete rewrite from Python/Tkinter to **Rust/egui**:
+
+| Feature | Description |
+|---------|-------------|
+| 📊 **Dashboard** | Stats, quick actions, version overview |
+| 💬 **Chat Library** | Import, search, bookmark, export conversations |
+| 🔐 **Security** | Sensitive data scanning, NPM blocklist |
+| 🎨 **Themes** | Full VS Code theme support |
+| 🔄 **Sync** | P2P and server sync infrastructure (experimental) |
+| 🏠 **Home Manager** | Declarative configuration via Nix |
+
+### Multi-Version Management
+
+- **48 versions** available (2.1.x, 2.0.x, 1.7.x, 1.6.x)
+- **Isolated configs** — each version has its own `~/.cursor-VERSION/`
+- **Run concurrently** — 2.0.77 and 1.7.54 side-by-side
+- **Shared auth** — keep login synced across versions (optional)
+
+---
+
+## 📦 Available Packages
+
+| Package | Description |
+|---------|-------------|
+| `cursor` | Latest stable Cursor IDE (2.0.77) |
+| `cursor-studio` | GUI: Version manager + Chat library |
+| `cursor-studio-cli` | CLI interface for automation |
+| `cursor-2_0_77` | Specific version |
+| `cursor-1_7_54` | Classic version |
+| `cursor-1_6_45` | Legacy version |
+
+**All 48 versions**: See [cursor-versions.nix](cursor-versions.nix)
+
+---
+
+## 🏠 Home Manager Module
+
+### Basic Setup
 
 ```nix
-home-manager.extraSpecialArgs = { inherit inputs; };
-```
-
-After installation, you'll have:
-
-- `cursor` → Launches 2.0.77
-- `cursor-2.0.77` → Launches 2.0.77
-- `cursor-1.x.xx` → Launches specified version (assuming it is supported, see below)
-- `cursor-studio` → Modern GUI version manager + chat library
-- `cursor-studio-cli` → CLI interface for automation
-
-### **Option B: nix run (No Installation)**
-
-```bash
-# Launch Cursor Studio (GUI manager + chat library)
-nix run github:Distracted-E421/nixos-cursor#cursor-studio
-
-# Use the CLI
-nix run github:Distracted-E421/nixos-cursor#cursor-studio-cli -- --help
-
-# Or run specific versions directly:
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54
-nix run github:Distracted-E421/nixos-cursor#cursor-1_6_45
-
-# Run multiple versions concurrently:
-nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77 &
-nix run github:Distracted-E421/nixos-cursor#cursor-1_7_54 &
-```
-
-**For Local Development:**
-
-```bash
-CURSOR_FLAKE_URI=. nix run .#cursor-studio --impure
-```
-
-**Available Versions**:
-
-- **2_0_x**: 2_0_77, 2_0_75, 2_0_74, 2_0_73, 2_0_69, 2_0_64, 2_0_63, 2_0_60, 2_0_57, 2_0_54, 2_0_52, 2_0_43, 2_0_40, 2_0_38, 2_0_34, 2_0_32, 2_0_11
-- **1_7_x**: 1_7_54, 1_7_53, 1_7_52, 1_7_46, 1_7_44, 1_7_43, 1_7_40, 1_7_39, 1_7_38, 1_7_36, 1_7_33, 1_7_28, 1_7_25, 1_7_23, 1_7_22, 1_7_17, 1_7_16, 1_7_12, 1_7_11
-- **1_6_x**: 1_6_45
-
-See [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) for full details.
-
-### **Option C: Home Manager Module (Advanced)**
-
-For declarative settings management:
-
-```nix
-{
-  inputs.nixos-cursor.url = "github:Distracted-E421/nixos-cursor";
+{ inputs, ... }: {
+  imports = [ inputs.nixos-cursor.homeManagerModules.default ];
   
-  outputs = { nixos-cursor, home-manager, ... }: {
-    homeConfigurations.youruser = home-manager.lib.homeManagerConfiguration {
-      modules = [
-        nixos-cursor.homeManagerModules.default
-        {
-          programs.cursor = {
-            enable = true;
-            updateCheck.enable = true;
-            mcp.enable = false;
-          };
-        }
-      ];
+  programs.cursor = {
+    enable = true;
+    updateCheck.enable = true;
+  };
+}
+```
+
+### With MCP Servers
+
+```nix
+programs.cursor = {
+  enable = true;
+  
+  mcp = {
+    enable = true;
+    
+    # File access for AI
+    filesystem.enable = true;
+    filesystem.paths = [ "~/projects" "~/.config" ];
+    
+    # Persistent memory
+    memory.enable = true;
+    
+    # NixOS package/option search
+    nixos.enable = true;
+    
+    # GitHub integration (with secrets)
+    github.enable = true;
+    github.tokenFile = config.sops.secrets.github-token.path;
+    
+    # Browser automation
+    playwright.enable = true;
+  };
+};
+```
+
+### Cursor Studio Module
+
+```nix
+{ inputs, ... }: {
+  imports = [ inputs.nixos-cursor.homeManagerModules.cursor-studio ];
+  
+  programs.cursor-studio = {
+    enable = true;
+    settings = {
+      ui.fontScale = 1.0;
+      ui.theme = "dark";
+      security.scanOnImport = true;
     };
   };
 }
@@ -255,98 +142,95 @@ For declarative settings management:
 
 ---
 
-## Update System
+## 🔐 Security
 
-Cursor includes an automated update system that:
+All sensitive data is handled securely:
 
-- Checks for updates daily via systemd timer
-- Shows desktop notifications when updates available
-- Provides one-command updates: `cursor-update`
-- Maintains Nix reproducibility guarantees
-
-**Why?** Cursor can't self-update on NixOS (read-only `/nix/store`). This system provides convenience while respecting Nix principles.
-
----
-
-## Roadmap
-
-I committed to making nixos-cursor the definitive way to run Cursor on NixOS. Here's what's planned:
-
-### Near-Term (v0.2.x)
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Newer Version Support** | Add 2.1.x versions as they release (with caveats documented) | Ongoing |
-| **Missing Version Backfill** | Fill gaps in 1.6.x and early 1.7.x coverage | Planned |
-| **ARM64 Support** | Add aarch64-linux packages for Apple Silicon & ARM devices | Planned |
-| **Cachix Binary Cache** | Pre-built binaries for faster installation | Planned |
-
-### Mid-Term (v0.3.x - v0.5.x)
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Custom Modes Reimplementation** | Bring back custom agent modes for 2.1.x via patching/injection | Research |
-| **Community Bug Patches** | Retroactively fix known bugs in popular versions (1.7.54, 2.0.77) | Research |
-| **Extension Compatibility Layer** | Ensure Open VSX extensions work across all versions | Planned |
-| **Declarative MCP Configuration** | Full MCP server management via Nix modules | Planned |
-
-### Long-Term (v1.0+)
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **GPUI-based Manager** | Rewrite version manager in Rust/GPUI (Zed-style) | Exploring |
-| **Electron Bypass Layer** | Native rendering layer to bypass Electron overhead | Exploring |
-| **Cross-Version Workspace Sync** | Share workspaces and indexed docs between versions | Exploring |
-| **Community Plugin System** | Allow community-contributed patches and features | Exploring |
-
-### Community-Driven
-
-**Want something? Ask for it!** We prioritize based on community interest:
-
-- **Bug Reports**: [Open an issue](https://github.com/Distracted-E421/nixos-cursor/issues/new?template=bug_report.md)
-- **Feature Requests**: [Start a discussion](https://github.com/Distracted-E421/nixos-cursor/discussions)
-- **Contributions**: See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-**Current Community Requests:**
-
-- *None yet - be the first!*
-
----
-
-## Development & Contributing
-
-This is a personal project maintained by e421. If you'd like to contribute or have suggestions, feel free to open an issue or reach out!
-
-### Documentation
-
-- [Version Manager Guide](VERSION_MANAGER_GUIDE.md) - Complete guide to managing 37 versions
-- [Cursor Version Tracking](CURSOR_VERSION_TRACKING.md) - Full version manifest with URLs and hashes
-- [Test Suite](tests/multi-version-test.sh) - Automated testing for all versions
-
----
-
-## License & Proprietary Note
-
-**Packaging Code**: MIT License - See [LICENSE](LICENSE) file.
-
-**Cursor Binary**: Proprietary (Unfree).
-This flake downloads the official AppImage from Cursor's servers (`downloader.cursor.sh` or `downloads.cursor.com`) and wraps it for NixOS compatibility. We do not redistribute the binary itself. You must comply with Cursor's Terms of Service when using this software.
-
-## 🔐 Security First
-
-Unlike many AI tools that suggest storing tokens in plaintext, **nixos-cursor enforces secure defaults**:
-
-- ✅ API tokens read at runtime from encrypted files
+- ✅ Tokens read at runtime from encrypted files
 - ✅ First-class support for [sops-nix](https://github.com/Mic92/sops-nix) and [agenix](https://github.com/ryantm/agenix)
-- ✅ Tokens never stored in Nix store or mcp.json
-- ✅ Works with any file-based secrets manager
+- ✅ Never stored in Nix store or mcp.json
+- ✅ NPM blocklist with known malicious packages
+- ✅ Sensitive data detection in chat history
 
 ```nix
-# Secure pattern - token from encrypted sops file
-programs.cursor.mcp.github = {
-  enable = true;
-  tokenFile = config.sops.secrets.github-mcp-token.path;
-};
+# Secure token pattern
+programs.cursor.mcp.github.tokenFile = config.sops.secrets.github-token.path;
 ```
 
-See [SECURITY.md](SECURITY.md) for our full security principles and setup guides.
+See [SECURITY.md](SECURITY.md) for details.
+
+---
+
+## 🗺️ Roadmap
+
+### v0.2.x (Current)
+
+- [x] Cursor Studio GUI (Rust/egui)
+- [x] 48 version support
+- [x] Security scanning
+- [x] Chat library with bookmarks
+- [x] Home Manager modules
+- [ ] Window size persistence
+- [ ] Global search across chats
+
+### v0.3.0 (Next)
+
+- [ ] **P2P Sync** — Sync chats across devices via local network
+- [ ] **Server Sync** — Central server for cloud sync
+- [ ] **CLI/TUI** — Headless interfaces
+- [ ] **2.1.x versions** — Add newer releases
+
+### v1.0.0 (Future)
+
+- [ ] Custom modes reimplementation for 2.1.x
+- [ ] Plugin system
+- [ ] AI integration (summaries, auto-titles)
+
+---
+
+## 🖥️ Platform Support
+
+| Platform | Status | Format |
+|----------|--------|--------|
+| x86_64-linux | ✅ Full | AppImage |
+| aarch64-linux | ✅ Full | AppImage |
+| x86_64-darwin | 🧪 Experimental | DMG |
+| aarch64-darwin | 🧪 Experimental | DMG |
+
+### macOS Users
+
+Darwin support needs hash verification. Help us test:
+
+```bash
+curl -L -o cursor.dmg "https://downloads.cursor.com/production/.../darwin/universal/Cursor-darwin-universal.dmg"
+nix hash file cursor.dmg  # Share this in an issue!
+```
+
+See [docs/DARWIN_TESTING.md](docs/DARWIN_TESTING.md)
+
+---
+
+## 📖 Documentation
+
+- [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) — Multi-version usage
+- [SECURITY.md](SECURITY.md) — Security principles
+- [CHANGELOG.md](CHANGELOG.md) — Release history
+- [cursor-studio-egui/README.md](cursor-studio-egui/README.md) — Cursor Studio details
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## 📄 License
+
+**Packaging code**: MIT License
+
+**Cursor binary**: Proprietary. Downloaded from official servers, not redistributed.
+
+---
+
+**Maintained by [e421](https://github.com/Distracted-E421)** · **Version tracking by [oslook](https://github.com/oslook)**

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - 2025-12-03
+## [0.2.0] - 2025-12-05
 
 > 🎉 **First stable release of Cursor Studio** - A complete rewrite from Python/Tkinter to Rust/egui
 
@@ -16,25 +16,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security Features** - Sensitive data detection, NPM malicious package scanning
 - **Full Bookmark System** - Persistent bookmarks that survive reimports
 - **48 Cursor Versions** - Multi-version management with isolated configs
+- **Modular Build System** - Fast iteration with `--lite` builds (~2 min)
 
 ### Added
 
-- **Security Panel Improvements**:
+- **Security Panel**:
   - Dynamic audit log showing actual scan results and import status
   - Feature checklist showing implemented vs planned features
-  - "Under active development" status indicator
-  - Stable category display (fixed potential flickering)
+  - NPM package security scanner with embedded blocklist
+  - Sensitive data detection (API keys, passwords, secrets)
 
-- **Sync Panel** (Coming Soon):
-  - P2P and Server sync marked as "Coming Soon"
-  - Infrastructure prepared for multi-device synchronization
-  - Device info display with hostname detection
+- **Sync Infrastructure** (Experimental):
+  - P2P sync via libp2p (mDNS discovery, Noise encryption)
+  - Server sync mode with REST API (axum)
+  - SurrealDB integration for sync-capable storage
+  - Device ID persistence and management
+
+- **Build System**:
+  - Modular feature flags (full, p2p-sync, server-sync, minimal)
+  - Fast `--lite` builds without sync features (~2 min)
+  - Aggressive parallelization (16 cores, mold linker)
+  - `rebuild.nu` script for optimized local builds
+
+- **CI/CD**:
+  - Full GitHub Actions pipeline with Nix builds
+  - Home Manager module validation
+  - NPM security scanning workflow
+  - Linux-only restriction for egui (Wayland/X11)
+
+### Fixed
+
+- libclang path for surrealdb-librocksdb-sys bindgen
+- Home Manager module evaluation (functions are lambdas)
+- NPM artifact naming with scoped packages
+- ajv date-time format validation
+- Multiple clippy warnings for clean CI
 
 ### Notes
 
-- P2P/Server sync features are implemented but disabled in stable release
-- Security features under active development
-- See pre-release branch for experimental features
+- P2P/Server sync features are implemented but marked experimental
+- macOS builds require manual cargo build (Nix packaging Linux-only)
+- See cursor-studio-egui/ROADMAP.md for planned features
 
 ---
 
