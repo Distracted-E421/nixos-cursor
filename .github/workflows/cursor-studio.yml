@@ -160,13 +160,15 @@ jobs:
         run: |
           echo "Checking cursor-studio-egui Home Manager module..."
           cd cursor-studio-egui
-          nix eval .#homeManagerModules.default --json > /dev/null
-          echo "✅ cursor-studio-egui Home Manager module syntax is valid"
+          # HM modules are functions (lambdas), nix eval prints their location
+          nix eval .#homeManagerModules.default
+          echo "✅ cursor-studio-egui Home Manager module exists"
 
-      - name: Validate main flake Home Manager module
+      - name: Validate main flake Home Manager module  
         run: |
           echo "Checking main flake Home Manager module..."
-          nix eval .#homeManagerModules.default --json > /dev/null 2>&1 || echo "Note: Main flake HM module may not be defined"
+          # HM modules are functions, nix eval prints their location
+          nix eval .#homeManagerModules.default || echo "Note: Main flake HM module may not be defined"
           echo "✅ Home Manager module check complete"
 
       - name: Check example configurations

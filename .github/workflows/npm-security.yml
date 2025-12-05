@@ -214,11 +214,18 @@ jobs:
             jq '.vulnerabilities | to_entries[] | select(.value.severity == "high")' audit-results.json
           fi
 
+      - name: Create safe artifact name
+        id: artifact-name
+        run: |
+          # Sanitize package name for artifact: replace @ and / with safe chars
+          SAFE_NAME=$(echo "${{ matrix.package }}" | tr '@/' '__')
+          echo "name=$SAFE_NAME" >> $GITHUB_OUTPUT
+          
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: scan-results-${{ matrix.package }}
+          name: scan-results-${{ steps.artifact-name.outputs.name }}
           path: scan-workspace/
           retention-days: 7
 
