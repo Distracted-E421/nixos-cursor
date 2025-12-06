@@ -219,6 +219,27 @@ impl<'a> D2Parser<'a> {
             .unwrap_or(line.len());
         
         let raw_id = line[..id_end].trim();
+        
+        // Check if this is a property of the current container (e.g., "shape: cylinder")
+        // Known property names that should update the container, not create a new node
+        let known_properties = ["shape", "fill", "stroke", "stroke-width", "stroke-dash", 
+            "font-color", "font-size", "bold", "italic", "opacity", "shadow", "3d", 
+            "multiple", "border-radius", "label", "icon", "tooltip", "link", "near",
+            "width", "height", "top", "left", "style"];
+        
+        if let Some(parent_id) = self.container_stack.last() {
+            if known_properties.contains(&raw_id.to_lowercase().as_str()) {
+                // This is a property assignment for the current container
+                if let Some(colon_pos) = line.find(':') {
+                    let value = line[colon_pos + 1..].trim();
+                    if let Some(existing) = self.graph.nodes.get_mut(parent_id) {
+                        Self::update_node_property_static(existing, raw_id, value);
+                    }
+                }
+                return Ok(None);
+            }
+        }
+        
         let id = if raw_id.is_empty() {
             return Ok(None);
         } else {
