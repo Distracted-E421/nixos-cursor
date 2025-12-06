@@ -5,6 +5,7 @@
 pub mod approval;
 pub mod chat;
 pub mod database;
+pub mod diagram;
 pub mod security;
 pub mod theme;
 pub mod version_registry;
@@ -12,6 +13,7 @@ pub mod versions;
 
 // Re-export commonly used types
 pub use approval::{ApprovalManager, ApprovalMode, ApprovalOperation, ApprovalResult};
+pub use diagram::{D2Graph, D2Node, D2Edge, D2Shape, D2Viewer, DiagramTheme};
 pub use versions::{
     download_and_verify, download_and_verify_simple, download_version_sync,
     get_available_versions, get_cache_dir, get_latest_stable, get_version_info, install_version,

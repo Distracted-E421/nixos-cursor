@@ -1,0 +1,113 @@
+# Cursor Studio D2 Viewer Demo
+# This diagram demonstrates native D2 rendering capabilities
+
+direction: right
+
+title: "Cursor Studio Architecture"
+
+# ==================== CURSOR IDE LAYER ====================
+
+cursor: "Cursor IDE" {
+    shape: rectangle
+    style.fill: "#1a1a2e"
+    style.stroke: "#4cc9f0"
+    
+    agent: "AI Agent" {
+        shape: hexagon
+        style.fill: "#2d1b4e"
+    }
+    
+    context: "Context Window" {
+        shape: document
+        style.fill: "#1a3a5c"
+    }
+    
+    mcp: "MCP Servers" {
+        shape: package
+        style.fill: "#1e3d34"
+    }
+}
+
+# ==================== DATABASE LAYER ====================
+
+databases: "Databases" {
+    shape: rectangle
+    style.fill: "#16213e"
+    style.stroke: "#e94560"
+    
+    global_db: "Global state.vscdb" {
+        shape: cylinder
+        style.fill: "#0f4c75"
+    }
+    
+    workspace_db: "Workspace Databases" {
+        shape: cylinder
+        style.fill: "#1b262c"
+    }
+}
+
+# ==================== CURSOR STUDIO LAYER ====================
+
+studio: "cursor-studio" {
+    shape: rectangle
+    style.fill: "#0f0f23"
+    style.stroke: "#00ff9f"
+    
+    sync: "Sync Engine" {
+        shape: diamond
+        style.fill: "#1a1a2e"
+    }
+    
+    viewer: "D2 Viewer" {
+        shape: rectangle
+        style.fill: "#2d1b4e"
+        style.stroke: "#ff00ff"
+    }
+    
+    conv_browser: "Conversation Browser" {
+        shape: rectangle
+        style.fill: "#1e3d34"
+    }
+    
+    monitor: "Context Monitor" {
+        shape: hexagon
+        style.fill: "#3d1a1a"
+    }
+}
+
+# ==================== EXTERNAL STORAGE ====================
+
+storage: "External Storage" {
+    shape: rectangle
+    style.fill: "#1a1a1a"
+    style.stroke: "#ffd700"
+    
+    ext_db: "conversations.db" {
+        shape: cylinder
+        style.fill: "#2a2a2a"
+    }
+    
+    docs_db: "docs.db" {
+        shape: cylinder
+        style.fill: "#2a2a2a"
+    }
+}
+
+# ==================== CONNECTIONS ====================
+
+# Data flow from Cursor to Studio
+cursor.agent -> studio.sync: "Messages"
+cursor.context -> studio.monitor: "Context"
+cursor.mcp -> studio.sync: "Tool calls"
+
+# Database access
+databases.global_db -> studio.sync: "Read"
+databases.workspace_db -> studio.conv_browser: "Metadata"
+
+# Storage sync
+studio.sync -> storage.ext_db: "Sync"
+studio.viewer -> storage.docs_db: "Diagrams"
+
+# Internal studio connections
+studio.sync -> studio.conv_browser
+studio.monitor -> studio.viewer
