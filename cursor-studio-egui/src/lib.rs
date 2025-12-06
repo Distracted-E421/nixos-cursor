@@ -8,6 +8,7 @@ pub mod database;
 pub mod diagram;
 pub mod security;
 pub mod theme;
+pub mod theme_loader;
 pub mod version_registry;
 pub mod versions;
 
