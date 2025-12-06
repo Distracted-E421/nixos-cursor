@@ -2,7 +2,11 @@
 
 **Date:** December 6, 2025  
 **Purpose:** Determine optimal language for Cursor data sync daemon  
-**Status:** Research Complete - Awaiting Decision
+**Status:** ✅ DECIDED - Elixir with Named Pipes IPC
+
+> **Decision:** Elixir chosen for multi-machine sync, hot reloading, and fault tolerance.  
+> **IPC Method:** Named pipes (simpler than gRPC, lighter than sockets)  
+> **Future:** Hybrid approach with Rust NIFs if performance requires
 
 ---
 
@@ -444,4 +448,14 @@ cursor-studio-egui/src/sync/
 
 ---
 
-**Decision Needed:** Confirm Rust for v1.0, or prefer Elixir for better hot reload?
+## ✅ Decision Made: Elixir
+
+**Rationale:**
+- Multi-machine sync is a priority → BEAM distributed nodes
+- Hot reloading is important for development iteration
+- Fault tolerance via OTP supervisors
+- Named pipes for IPC (simpler than alternatives)
+
+**Implementation:** See `sync-daemon-elixir/` directory
+
+**Future Hybrid Path:** If performance profiling shows bottlenecks, add Rust NIFs via Rustler.
