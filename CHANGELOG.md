@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Data Pipeline Control Research** (docs/internal/DATA_PIPELINE_CONTROL_ROADMAP.md):
+  - Comprehensive documentation of Cursor's internal database structure
+  - Discovered 25,105+ messages stored as JSON blobs in `cursorDiskKV` table
+  - Mapped key patterns: `bubbleId`, `checkpointId`, `codeBlockDiff`, `composerData`
+  - Identified `docsReferences`, `webReferences`, `toolResults` fields in message structure
+  - Speculative roadmap for v0.3.0/v0.4.0 data pipeline control features
+
+- **Conversation Sync POC** (scripts/python/cursor_sync_poc.py):
+  - Working proof-of-concept for syncing Cursor conversations to external SQLite
+  - Syncs messages, conversations, and tool calls from all workspace databases
+  - Commands: `sync`, `watch` (continuous), `stats`, `export`
+  - Tested successfully: 25,179 messages, 67 conversations synced
+
+### Research Findings
+
+- Cursor stores conversations in `~/.config/Cursor/User/globalStorage/state.vscdb`
+- Workspace-specific data in `~/.config/Cursor/User/workspaceStorage/{hash}/state.vscdb`
+- Messages are JSON blobs with rich metadata including thinking blocks, tool results
+- Docs system appears server-side (no local cache found) - MCP-based alternative planned
+
 ## [0.2.0] - 2025-12-05
 
 > 🎉 **First stable release of Cursor Studio** - A complete rewrite from Python/Tkinter to Rust/egui
