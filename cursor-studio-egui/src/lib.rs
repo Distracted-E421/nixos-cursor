@@ -7,6 +7,7 @@ pub mod chat;
 pub mod database;
 pub mod diagram;
 pub mod security;
+pub mod sync;
 pub mod theme;
 pub mod theme_loader;
 pub mod version_registry;
