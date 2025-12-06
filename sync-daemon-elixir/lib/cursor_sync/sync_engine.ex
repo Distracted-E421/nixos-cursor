@@ -224,11 +224,8 @@ defmodule CursorSync.SyncEngine do
 
   defp read_conversations(workspace) do
     workspace_storage = Application.get_env(:cursor_sync, :workspace_storage)
-    
-    case CursorReader.read_conversations(workspace_storage, workspace) do
-      {:ok, conversations} -> {:ok, conversations}
-      {:error, reason} -> {:error, {:read_conversations, reason}}
-    end
+    # read_conversations always returns {:ok, _}, errors are handled internally
+    CursorReader.read_conversations(workspace_storage, workspace)
   end
 
   defp write_data(sync_db, messages, conversations) do
