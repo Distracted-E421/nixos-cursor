@@ -153,8 +153,8 @@ defmodule CursorSync.PipeServer do
   end
 
   defp open_and_read_pipe(path) do
-    Logger.debug("Opening command pipe for reading: #{path}")
-    
+    # Note: This blocks until a writer connects to the pipe
+    # Debug logging disabled to reduce noise
     case File.open(path, [:read, :binary]) do
       {:ok, file} ->
         # Read until EOF (pipe closes)
