@@ -17,20 +17,23 @@
 //! └─────────────────────────────────────────────┘
 //! ```
 
-pub mod daemon;
-pub mod watcher;
+pub mod config;
 pub mod cursor_db;
+pub mod daemon;
 pub mod external_db;
 pub mod models;
-pub mod config;
 pub mod pipe_client;
 pub mod ui;
+pub mod watcher;
 
-pub use daemon::{SyncDaemon, SyncEvent, SyncStats};
-pub use watcher::DatabaseWatcher;
-pub use cursor_db::CursorDatabaseReader;
-pub use external_db::ExternalDatabaseWriter;
-pub use models::{Conversation, Message, ToolCall, SyncState};
 pub use config::SyncConfig;
-pub use pipe_client::{PipeClient, AsyncPipeClient, DaemonCommand, DaemonResponse, DaemonEvent, DaemonStatus, ClientError};
-pub use ui::{SyncStatusPanel, SyncStatusIndicator};
+pub use cursor_db::CursorDatabaseReader;
+pub use daemon::{SyncDaemon, SyncEvent, SyncStats};
+pub use external_db::ExternalDatabaseWriter;
+pub use models::{Conversation, Message, SyncState, ToolCall};
+pub use pipe_client::{
+    AsyncPipeClient, ClientError, DaemonCommand, DaemonEvent, DaemonResponse, DaemonStatus,
+    PipeClient,
+};
+pub use ui::{SyncStatusIndicator, SyncStatusPanel};
+pub use watcher::DatabaseWatcher;

@@ -5,6 +5,7 @@ mod approval;
 mod chat;
 mod database;
 mod security;
+mod sync;
 mod theme;
 mod versions;
 
@@ -417,6 +418,9 @@ struct CursorStudio {
     p2p_daemon_process: Option<std::process::Child>,
     p2p_daemon_port: u16,
 
+    // Elixir sync daemon panel
+    sync_daemon_panel: sync::SyncStatusPanel,
+
     // Version download state
     available_versions: Vec<AvailableVersion>,
     download_state: DownloadState,
@@ -627,6 +631,9 @@ impl CursorStudio {
             p2p_daemon_running: false,
             p2p_daemon_process: None,
             p2p_daemon_port: 4001,
+
+            // Elixir sync daemon panel
+            sync_daemon_panel: sync::SyncStatusPanel::new(),
 
             // Version download state
             available_versions: get_available_versions(),
@@ -4491,27 +4498,45 @@ impl CursorStudio {
     }
 
     fn show_sync_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
-        ui.vertical(|ui| {
+        egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(12.0);
 
-            // Coming Soon Banner
+            // ======================================
+            // ELIXIR SYNC DAEMON (Primary)
+            // ======================================
             egui::Frame::none()
-                .fill(theme.accent.linear_multiply(0.2))
+                .fill(theme.code_bg)
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    // Render the Elixir sync daemon panel
+                    self.sync_daemon_panel.ui(ui);
+                });
+            
+            ui.add_space(16.0);
+            ui.separator();
+            ui.add_space(16.0);
+
+            // ======================================
+            // LEGACY: Coming Soon Banner
+            // ======================================
+            egui::Frame::none()
+                .fill(theme.accent.linear_multiply(0.15))
                 .rounding(Rounding::same(8.0))
                 .inner_margin(egui::Margin::same(12.0))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("🚀").size(16.0));
+                        ui.label(RichText::new("🔮").size(16.0));
                         ui.add_space(8.0);
                         ui.vertical(|ui| {
                             ui.label(
-                                RichText::new("Coming Soon")
+                                RichText::new("Future: P2P & Server Sync")
                                     .color(theme.accent)
                                     .strong()
                                     .size(14.0),
                             );
                             ui.label(
-                                RichText::new("P2P & Server sync in development")
+                                RichText::new("Multi-device sync planned for v0.4.0")
                                     .color(theme.fg_dim)
                                     .size(11.0),
                             );
@@ -4523,7 +4548,7 @@ impl CursorStudio {
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
                 ui.label(
-                    RichText::new("SYNC STATUS")
+                    RichText::new("DEVICE INFO")
                         .size(11.0)
                         .color(theme.fg_dim)
                         .strong(),
