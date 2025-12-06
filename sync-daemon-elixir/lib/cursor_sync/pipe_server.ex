@@ -205,22 +205,36 @@ defmodule CursorSync.PipeServer do
   end
 
   defp execute_command("sync", command) do
-    workspace = Map.get(command, "workspace")
-    
-    case CursorSync.SyncEngine.sync(workspace) do
-      {:ok, stats} -> %{ok: true, data: stats}
-      {:error, reason} -> %{ok: false, error: inspect(reason)}
+    case ensure_engine_ready() do
+      :ok ->
+        workspace = Map.get(command, "workspace")
+        case CursorSync.SyncEngine.sync(workspace) do
+          {:ok, stats} -> %{ok: true, data: stats}
+          {:error, reason} -> %{ok: false, error: inspect(reason)}
+        end
+      {:error, reason} ->
+        %{ok: false, error: reason}
     end
   end
 
   defp execute_command("status", _command) do
-    status = CursorSync.SyncEngine.status()
-    %{ok: true, data: status}
+    case ensure_engine_ready() do
+      :ok ->
+        status = CursorSync.SyncEngine.status()
+        %{ok: true, data: status}
+      {:error, reason} ->
+        %{ok: false, error: reason}
+    end
   end
 
   defp execute_command("stats", _command) do
-    stats = CursorSync.SyncEngine.stats()
-    %{ok: true, data: stats}
+    case ensure_engine_ready() do
+      :ok ->
+        stats = CursorSync.SyncEngine.stats()
+        %{ok: true, data: stats}
+      {:error, reason} ->
+        %{ok: false, error: reason}
+    end
   end
 
   defp execute_command("stop", _command) do
@@ -236,5 +250,18 @@ defmodule CursorSync.PipeServer do
   defp execute_command(unknown, _command) do
     Logger.warning("Unknown command: #{unknown}")
     %{ok: false, error: "Unknown command: #{unknown}"}
+  end
+
+  # Wait for SyncEngine to be ready (with timeout)
+  defp ensure_engine_ready(retries \\ 10) do
+    case Process.whereis(CursorSync.SyncEngine) do
+      nil when retries > 0 ->
+        Process.sleep(100)
+        ensure_engine_ready(retries - 1)
+      nil ->
+        {:error, "SyncEngine not ready (timeout)"}
+      _pid ->
+        :ok
+    end
   end
 end

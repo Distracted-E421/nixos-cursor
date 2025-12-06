@@ -18,13 +18,13 @@
 //! {"ok": false, "error": "message"}
 //! ```
 
+use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
-use serde::{Deserialize, Serialize};
 
 /// Default pipe paths
 const DEFAULT_CMD_PIPE: &str = "/tmp/cursor-sync-cmd.pipe";
@@ -172,12 +172,14 @@ impl PipeClient {
     pub fn send_command(&self, command: DaemonCommand) -> Result<DaemonResponse, ClientError> {
         // Check if pipes exist
         if !self.cmd_pipe.exists() {
-            return Err(ClientError::PipeNotFound(self.cmd_pipe.display().to_string()));
+            return Err(ClientError::PipeNotFound(
+                self.cmd_pipe.display().to_string(),
+            ));
         }
 
         // Serialize command
-        let json = serde_json::to_string(&command)
-            .map_err(|e| ClientError::WriteError(e.to_string()))?;
+        let json =
+            serde_json::to_string(&command).map_err(|e| ClientError::WriteError(e.to_string()))?;
 
         // Write to command pipe (this will block until daemon reads)
         let mut cmd_file = OpenOptions::new()
@@ -185,10 +187,10 @@ impl PipeClient {
             .open(&self.cmd_pipe)
             .map_err(|e| ClientError::WriteError(e.to_string()))?;
 
-        writeln!(cmd_file, "{}", json)
-            .map_err(|e| ClientError::WriteError(e.to_string()))?;
+        writeln!(cmd_file, "{}", json).map_err(|e| ClientError::WriteError(e.to_string()))?;
 
-        cmd_file.flush()
+        cmd_file
+            .flush()
             .map_err(|e| ClientError::WriteError(e.to_string()))?;
 
         drop(cmd_file); // Close the pipe to signal EOF
@@ -209,17 +211,15 @@ impl PipeClient {
                 .and_then(|file| {
                     let reader = BufReader::new(file);
                     let mut lines = reader.lines();
-                    
+
                     match lines.next() {
-                        Some(Ok(line)) => {
-                            serde_json::from_str(&line)
-                                .map_err(|e| ClientError::ParseError(e.to_string()))
-                        }
+                        Some(Ok(line)) => serde_json::from_str(&line)
+                            .map_err(|e| ClientError::ParseError(e.to_string())),
                         Some(Err(e)) => Err(ClientError::ReadError(e.to_string())),
                         None => Err(ClientError::ReadError("Empty response".to_string())),
                     }
                 });
-            
+
             let _ = tx.send(result);
         });
 
@@ -245,36 +245,40 @@ impl PipeClient {
     /// Get daemon status
     pub fn status(&self) -> Result<DaemonStatus, ClientError> {
         let response = self.send_command(DaemonCommand::Status)?;
-        
+
         if !response.ok {
             return Err(ClientError::DaemonError(
-                response.error.unwrap_or_else(|| "Unknown error".to_string())
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
 
-        response.data
+        response
+            .data
             .ok_or_else(|| ClientError::ParseError("No data in response".to_string()))
             .and_then(|data| {
-                serde_json::from_value(data)
-                    .map_err(|e| ClientError::ParseError(e.to_string()))
+                serde_json::from_value(data).map_err(|e| ClientError::ParseError(e.to_string()))
             })
     }
 
     /// Get sync statistics
     pub fn stats(&self) -> Result<SyncStats, ClientError> {
         let response = self.send_command(DaemonCommand::Stats)?;
-        
+
         if !response.ok {
             return Err(ClientError::DaemonError(
-                response.error.unwrap_or_else(|| "Unknown error".to_string())
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string()),
             ));
         }
 
-        response.data
+        response
+            .data
             .ok_or_else(|| ClientError::ParseError("No data in response".to_string()))
             .and_then(|data| {
-                serde_json::from_value(data)
-                    .map_err(|e| ClientError::ParseError(e.to_string()))
+                serde_json::from_value(data).map_err(|e| ClientError::ParseError(e.to_string()))
             })
     }
 
@@ -292,9 +296,7 @@ pub struct AsyncPipeClient {
 impl AsyncPipeClient {
     /// Create a new async client
     pub fn new() -> Self {
-        Self {
-            command_tx: None,
-        }
+        Self { command_tx: None }
     }
 
     /// Start the background communication thread
@@ -308,7 +310,7 @@ impl AsyncPipeClient {
             // Check if daemon is running
             if !client.is_daemon_running() {
                 let _ = event_tx.send(DaemonEvent::Error(
-                    "Daemon not running (pipes not found)".to_string()
+                    "Daemon not running (pipes not found)".to_string(),
                 ));
                 return;
             }
@@ -331,7 +333,7 @@ impl AsyncPipeClient {
         });
 
         self.command_tx = Some(command_tx);
-        
+
         // Return the receiver - caller owns it
         event_rx
     }
@@ -344,7 +346,6 @@ impl AsyncPipeClient {
             false
         }
     }
-
 }
 
 impl Default for AsyncPipeClient {
