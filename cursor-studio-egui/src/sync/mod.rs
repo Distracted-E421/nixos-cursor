@@ -24,6 +24,7 @@ pub mod external_db;
 pub mod models;
 pub mod config;
 pub mod pipe_client;
+pub mod ui;
 
 pub use daemon::{SyncDaemon, SyncEvent, SyncStats};
 pub use watcher::DatabaseWatcher;
@@ -32,3 +33,4 @@ pub use external_db::ExternalDatabaseWriter;
 pub use models::{Conversation, Message, ToolCall, SyncState};
 pub use config::SyncConfig;
 pub use pipe_client::{PipeClient, AsyncPipeClient, DaemonCommand, DaemonResponse, DaemonEvent, DaemonStatus, ClientError};
+pub use ui::{SyncStatusPanel, SyncStatusIndicator};

@@ -220,13 +220,16 @@ defmodule CursorSync.Database.ExternalWriter do
     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
     """
     
+    # Handle token_count which might be a map or integer
+    token_count = normalize_token_count(message.token_count)
+    
     params = [
       message.id,
       message.conversation_id,
-      message.type,
-      message.created_at,
-      message.model,
-      message.token_count,
+      normalize_integer(message.type),
+      normalize_integer(message.created_at),
+      to_string_or_nil(message.model),
+      token_count,
       if(message.has_thinking, do: 1, else: 0),
       if(message.has_tool_calls, do: 1, else: 0),
       message.raw_data
@@ -301,4 +304,35 @@ defmodule CursorSync.Database.ExternalWriter do
       _ -> 0
     end
   end
+
+  # Normalize token count - can be integer, map, or nil
+  defp normalize_token_count(nil), do: 0
+  defp normalize_token_count(count) when is_integer(count), do: count
+  defp normalize_token_count(%{"inputTokens" => input, "outputTokens" => output}) do
+    (input || 0) + (output || 0)
+  end
+  defp normalize_token_count(%{} = map) do
+    # Try to sum any numeric values in the map
+    map
+    |> Map.values()
+    |> Enum.filter(&is_integer/1)
+    |> Enum.sum()
+  end
+  defp normalize_token_count(_), do: 0
+
+  # Normalize integers (some fields might be strings or nil)
+  defp normalize_integer(nil), do: nil
+  defp normalize_integer(val) when is_integer(val), do: val
+  defp normalize_integer(val) when is_binary(val) do
+    case Integer.parse(val) do
+      {int, _} -> int
+      :error -> nil
+    end
+  end
+  defp normalize_integer(_), do: nil
+
+  # Convert to string or nil
+  defp to_string_or_nil(nil), do: nil
+  defp to_string_or_nil(val) when is_binary(val), do: val
+  defp to_string_or_nil(val), do: inspect(val)
 end
