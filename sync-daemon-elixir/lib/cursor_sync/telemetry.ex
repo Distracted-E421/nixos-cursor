@@ -96,26 +96,29 @@ defmodule CursorSync.Telemetry do
   end
 
   def measure_sync_stats do
-    # Check if SyncEngine is alive before calling
+    # Check if SyncEngine is alive and not busy
     case Process.whereis(CursorSync.SyncEngine) do
       nil -> :ok
       _pid ->
-        stats = CursorSync.SyncEngine.stats()
-        
-        :telemetry.execute(
-          [:cursor_sync, :stats],
-          %{
-            total_syncs: stats.total_syncs,
-            successful_syncs: stats.successful_syncs,
-            failed_syncs: stats.failed_syncs,
-            messages_synced: stats.messages_synced,
-            avg_duration: stats.avg_duration_ms
-          },
-          %{}
-        )
+        # Use short timeout to avoid blocking if sync is in progress
+        try do
+          stats = GenServer.call(CursorSync.SyncEngine, :stats, 1000)
+          
+          :telemetry.execute(
+            [:cursor_sync, :stats],
+            %{
+              total_syncs: stats.total_syncs,
+              successful_syncs: stats.successful_syncs,
+              failed_syncs: stats.failed_syncs,
+              messages_synced: stats.messages_synced,
+              avg_duration: stats.avg_duration_ms
+            },
+            %{}
+          )
+        catch
+          :exit, _ -> :ok  # Timeout or busy, skip this measurement
+        end
     end
-  rescue
-    _ -> :ok
   end
 
   def measure_memory do
