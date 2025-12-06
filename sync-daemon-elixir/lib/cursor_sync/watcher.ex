@@ -107,9 +107,9 @@ defmodule CursorSync.Watcher do
   def handle_info(:restart_watcher, state) do
     Logger.info("Restarting FileSystem watcher")
     
-    # Stop old watcher if running
-    if state.watcher_pid do
-      FileSystem.stop(state.watcher_pid)
+    # Stop old watcher if running (send exit signal)
+    if state.watcher_pid && Process.alive?(state.watcher_pid) do
+      Process.exit(state.watcher_pid, :shutdown)
     end
     
     # Start new watcher
@@ -139,8 +139,10 @@ defmodule CursorSync.Watcher do
       # Add to watched paths
       paths = [path | state.watched_paths] |> Enum.uniq()
       
-      # Restart watcher with new paths
-      FileSystem.stop(state.watcher_pid)
+      # Restart watcher with new paths (graceful shutdown)
+      if state.watcher_pid && Process.alive?(state.watcher_pid) do
+        Process.exit(state.watcher_pid, :shutdown)
+      end
       {:ok, watcher_pid} = FileSystem.start_link(dirs: paths)
       FileSystem.subscribe(watcher_pid)
       

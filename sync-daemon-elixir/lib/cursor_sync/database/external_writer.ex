@@ -140,7 +140,7 @@ defmodule CursorSync.Database.ExternalWriter do
         
         case Exqlite.Sqlite3.prepare(conn, sql) do
           {:ok, stmt} ->
-            Exqlite.Sqlite3.bind(conn, stmt, [key, json, now])
+            :ok = Exqlite.Sqlite3.bind(stmt, [key, json, now])
             result = Exqlite.Sqlite3.step(conn, stmt)
             Exqlite.Sqlite3.release(conn, stmt)
             
@@ -166,7 +166,7 @@ defmodule CursorSync.Database.ExternalWriter do
         
         case Exqlite.Sqlite3.prepare(conn, sql) do
           {:ok, stmt} ->
-            Exqlite.Sqlite3.bind(conn, stmt, [key])
+            :ok = Exqlite.Sqlite3.bind(stmt, [key])
             
             result = case Exqlite.Sqlite3.step(conn, stmt) do
               {:row, [json]} -> 
@@ -234,7 +234,7 @@ defmodule CursorSync.Database.ExternalWriter do
     
     case Exqlite.Sqlite3.prepare(conn, sql) do
       {:ok, stmt} ->
-        Exqlite.Sqlite3.bind(conn, stmt, params)
+        :ok = Exqlite.Sqlite3.bind(stmt, params)
         result = Exqlite.Sqlite3.step(conn, stmt)
         Exqlite.Sqlite3.release(conn, stmt)
         
@@ -268,7 +268,7 @@ defmodule CursorSync.Database.ExternalWriter do
     
     case Exqlite.Sqlite3.prepare(conn, sql) do
       {:ok, stmt} ->
-        Exqlite.Sqlite3.bind(conn, stmt, params)
+        :ok = Exqlite.Sqlite3.bind(stmt, params)
         result = Exqlite.Sqlite3.step(conn, stmt)
         Exqlite.Sqlite3.release(conn, stmt)
         

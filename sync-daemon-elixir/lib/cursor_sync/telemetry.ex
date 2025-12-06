@@ -55,7 +55,7 @@ defmodule CursorSync.Telemetry do
         [:cursor_sync, :pipe, :command],
         [:cursor_sync, :watcher, :event]
       ],
-      &handle_event/4,
+      &__MODULE__.handle_event/4,
       nil
     )
   end
@@ -64,7 +64,7 @@ defmodule CursorSync.Telemetry do
     Logger.debug("Sync started: workspace=#{inspect(metadata[:workspace])}")
   end
 
-  def handle_event([:cursor_sync, :sync, :stop], measurements, metadata, _config) do
+  def handle_event([:cursor_sync, :sync, :stop], measurements, _metadata, _config) do
     Logger.info(
       "Sync completed: messages=#{measurements[:messages]}, " <>
       "conversations=#{measurements[:conversations]}, " <>
@@ -96,19 +96,24 @@ defmodule CursorSync.Telemetry do
   end
 
   def measure_sync_stats do
-    stats = CursorSync.SyncEngine.stats()
-    
-    :telemetry.execute(
-      [:cursor_sync, :stats],
-      %{
-        total_syncs: stats.total_syncs,
-        successful_syncs: stats.successful_syncs,
-        failed_syncs: stats.failed_syncs,
-        messages_synced: stats.messages_synced,
-        avg_duration: stats.avg_duration_ms
-      },
-      %{}
-    )
+    # Check if SyncEngine is alive before calling
+    case Process.whereis(CursorSync.SyncEngine) do
+      nil -> :ok
+      _pid ->
+        stats = CursorSync.SyncEngine.stats()
+        
+        :telemetry.execute(
+          [:cursor_sync, :stats],
+          %{
+            total_syncs: stats.total_syncs,
+            successful_syncs: stats.successful_syncs,
+            failed_syncs: stats.failed_syncs,
+            messages_synced: stats.messages_synced,
+            avg_duration: stats.avg_duration_ms
+          },
+          %{}
+        )
+    end
   rescue
     _ -> :ok
   end

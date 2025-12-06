@@ -220,7 +220,7 @@ defmodule CursorSync.Database.CursorReader do
   end
 
   defp maybe_filter_workspace(messages, nil), do: messages
-  defp maybe_filter_workspace(messages, workspace) do
+  defp maybe_filter_workspace(messages, _workspace) do
     # Would need to cross-reference with workspace conversation IDs
     # For now, return all messages (full implementation requires workspace metadata)
     messages

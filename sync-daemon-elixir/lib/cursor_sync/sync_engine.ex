@@ -102,7 +102,7 @@ defmodule CursorSync.SyncEngine do
   end
 
   @impl true
-  def handle_call({:sync, workspace}, _from, %{syncing: true} = state) do
+  def handle_call({:sync, _workspace}, _from, %{syncing: true} = state) do
     Logger.warning("Sync already in progress, skipping")
     {:reply, {:error, :sync_in_progress}, state}
   end
