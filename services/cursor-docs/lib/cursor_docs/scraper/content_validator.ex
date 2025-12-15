@@ -139,10 +139,11 @@ defmodule CursorDocs.Scraper.ContentValidator do
     {~r/respond\s+(?:only\s+)?with\s+(?:yes|no|true|false)/i, :output_manipulation, :medium},
     {~r/always\s+(?:say|respond|answer)/i, :output_manipulation, :low},
 
-    # Encoding bypasses
-    {~r/base64\s*:\s*[A-Za-z0-9+\/=]{20,}/i, :encoded_payload, :high},
-    {~r/\\x[0-9a-f]{2}/i, :hex_encoding, :medium},
-    {~r/&#x?[0-9a-f]+;/i, :html_encoding, :low},
+    # Encoding bypasses (only flag suspicious patterns, not common entities)
+    {~r/base64\s*:\s*[A-Za-z0-9+\/=]{50,}/i, :encoded_payload, :high},
+    {~r/\\x[0-9a-f]{2}(?:\\x[0-9a-f]{2}){5,}/i, :hex_encoding, :medium},
+    # Skip common HTML entities (39=', 34=", 60=<, 62=>, 38=&, 160=nbsp)
+    {~r/&#x?(?![0-9]{1,3};)[0-9a-f]{4,};/i, :html_encoding, :low},
 
     # Delimiter attacks
     {~r/<\|(?:system|user|assistant)\|>/i, :delimiter_injection, :high},
