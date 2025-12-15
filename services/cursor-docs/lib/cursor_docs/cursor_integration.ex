@@ -34,19 +34,12 @@ defmodule CursorDocs.CursorIntegration do
 
   require Logger
 
-  alias CursorDocs.{Scraper, Storage.SQLite}
+  alias CursorDocs.Scraper
+  alias Exqlite.Sqlite3
 
   @cursor_config_base "~/.config/Cursor"
   @global_storage_path "User/globalStorage/state.vscdb"
   @workspace_storage_pattern "User/workspaceStorage/*/state.vscdb"
-
-  # Keys where Cursor stores docs configuration
-  @docs_keys [
-    "cursor.docs",
-    "selectedDocs",
-    "docs.customDocs",
-    "aiContext.docs"
-  ]
 
   # Client API
 
@@ -99,23 +92,21 @@ defmodule CursorDocs.CursorIntegration do
       known_docs: MapSet.new()
     }
 
-    # Initial sync on startup
-    send(self(), :initial_sync)
+    # Initial sync on startup (delayed to not block startup)
+    Process.send_after(self(), :initial_sync, 1000)
 
     {:ok, state}
   end
 
   @impl true
   def handle_info(:initial_sync, state) do
-    case do_sync_docs(state) do
-      {:ok, count, new_state} ->
-        Logger.info("Initial sync: found #{count} docs from Cursor")
-        {:noreply, new_state}
-
-      {:error, reason} ->
-        Logger.warning("Initial sync failed: #{inspect(reason)}")
-        {:noreply, state}
+    {count, new_state} = do_sync_docs(state)
+    if count > 0 do
+      Logger.info("Initial sync: found #{count} docs from Cursor")
+    else
+      Logger.debug("Initial sync: no docs found in Cursor")
     end
+    {:noreply, new_state}
   end
 
   @impl true
@@ -131,28 +122,17 @@ defmodule CursorDocs.CursorIntegration do
 
   @impl true
   def handle_info({:resync, _path}, state) do
-    case do_sync_docs(state) do
-      {:ok, count, new_state} when count > 0 ->
-        Logger.info("Found #{count} new docs from Cursor")
-        {:noreply, new_state}
-
-      {:ok, _count, new_state} ->
-        {:noreply, new_state}
-
-      {:error, _reason} ->
-        {:noreply, state}
+    {count, new_state} = do_sync_docs(state)
+    if count > 0 do
+      Logger.info("Found #{count} new docs from Cursor")
     end
+    {:noreply, new_state}
   end
 
   @impl true
   def handle_call(:sync_docs, _from, state) do
-    case do_sync_docs(state) do
-      {:ok, count, new_state} ->
-        {:reply, {:ok, count}, new_state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {count, new_state} = do_sync_docs(state)
+    {:reply, {:ok, count}, new_state}
   end
 
   @impl true
@@ -204,7 +184,7 @@ defmodule CursorDocs.CursorIntegration do
       last_sync: DateTime.utc_now()
     }
 
-    {:ok, queued_count, new_state}
+    {queued_count, new_state}
   end
 
   defp read_all_cursor_docs do
@@ -216,17 +196,18 @@ defmodule CursorDocs.CursorIntegration do
       find_workspace_dbs()
       |> Enum.flat_map(&read_docs_from_db/1)
 
-    # Deduplicate by URL
+    # Deduplicate by URL and remove nils
     (global_docs ++ workspace_docs)
+    |> Enum.reject(&is_nil/1)
     |> Enum.uniq_by(& &1.url)
   end
 
   defp read_docs_from_db(db_path) do
     if File.exists?(db_path) do
-      case Exqlite.Sqlite3.open(db_path, mode: :readonly) do
+      case Sqlite3.open(db_path, mode: :readonly) do
         {:ok, conn} ->
           docs = extract_docs_from_db(conn)
-          Exqlite.Sqlite3.close(conn)
+          Sqlite3.close(conn)
           docs
 
         {:error, reason} ->
@@ -234,46 +215,69 @@ defmodule CursorDocs.CursorIntegration do
           []
       end
     else
+      Logger.debug("Cursor database not found: #{db_path}")
       []
     end
   end
 
   defp extract_docs_from_db(conn) do
     # Try multiple table/key patterns Cursor might use
-    docs_from_item_table(conn) ++ docs_from_kv_table(conn)
+    item_docs = safe_query_docs(conn, "ItemTable")
+    kv_docs = safe_query_docs(conn, "cursorDiskKV")
+
+    item_docs ++ kv_docs
   end
 
-  defp docs_from_item_table(conn) do
-    # ItemTable stores VS Code settings
-    query = """
-    SELECT key, value FROM ItemTable
-    WHERE key LIKE '%docs%' OR key LIKE '%Docs%'
-    """
+  defp safe_query_docs(conn, table_name) do
+    # First check if the table exists
+    check_sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
 
-    case Exqlite.Sqlite3.execute(conn, query) do
-      {:ok, rows} ->
-        rows
-        |> Enum.flat_map(fn [_key, value] -> parse_docs_value(value) end)
+    case query_rows(conn, check_sql, [table_name]) do
+      {:ok, [_row | _]} ->
+        # Table exists, query it
+        query_sql = """
+        SELECT key, value FROM #{table_name}
+        WHERE key LIKE '%docs%' OR key LIKE '%Docs%' OR key LIKE 'selectedDocs%'
+        """
 
-      {:error, _} ->
+        case query_rows(conn, query_sql, []) do
+          {:ok, rows} ->
+            rows
+            |> Enum.flat_map(fn [_key, value] -> parse_docs_value(value) end)
+            |> Enum.reject(&is_nil/1)
+
+          {:error, reason} ->
+            Logger.debug("Query failed on #{table_name}: #{inspect(reason)}")
+            []
+        end
+
+      _ ->
+        # Table doesn't exist
         []
     end
   end
 
-  defp docs_from_kv_table(conn) do
-    # cursorDiskKV stores Cursor-specific data
-    query = """
-    SELECT key, value FROM cursorDiskKV
-    WHERE key LIKE '%docs%' OR key LIKE '%Docs%' OR key LIKE 'selectedDocs%'
-    """
+  # Query helper using prepare/bind/step pattern
+  defp query_rows(conn, sql, params) do
+    case Sqlite3.prepare(conn, sql) do
+      {:ok, stmt} ->
+        if params != [] do
+          Sqlite3.bind(stmt, params)
+        end
+        rows = collect_rows(conn, stmt, [])
+        Sqlite3.release(conn, stmt)
+        {:ok, rows}
 
-    case Exqlite.Sqlite3.execute(conn, query) do
-      {:ok, rows} ->
-        rows
-        |> Enum.flat_map(fn [_key, value] -> parse_docs_value(value) end)
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
-      {:error, _} ->
-        []
+  defp collect_rows(conn, stmt, acc) do
+    case Sqlite3.step(conn, stmt) do
+      {:row, row} -> collect_rows(conn, stmt, [row | acc])
+      :done -> Enum.reverse(acc)
+      {:error, _reason} -> Enum.reverse(acc)
     end
   end
 
@@ -282,13 +286,20 @@ defmodule CursorDocs.CursorIntegration do
     case Jason.decode(value) do
       {:ok, data} when is_list(data) ->
         # List of doc objects
-        Enum.map(data, &normalize_doc/1)
+        data
+        |> Enum.map(&normalize_doc/1)
+        |> Enum.reject(&is_nil/1)
 
       {:ok, %{"docs" => docs}} when is_list(docs) ->
-        Enum.map(docs, &normalize_doc/1)
+        docs
+        |> Enum.map(&normalize_doc/1)
+        |> Enum.reject(&is_nil/1)
 
-      {:ok, %{"url" => url} = doc} ->
-        [normalize_doc(doc)]
+      {:ok, %{"url" => _url} = doc} ->
+        case normalize_doc(doc) do
+          nil -> []
+          doc -> [doc]
+        end
 
       {:ok, _} ->
         []
@@ -296,14 +307,16 @@ defmodule CursorDocs.CursorIntegration do
       {:error, _} ->
         # Try as plain URL
         if String.starts_with?(value, "http") do
-          [%{url: String.trim(value), name: nil, status: "unknown"}]
+          [%{url: String.trim(value), name: derive_name(value), status: "unknown", pages_indexed: 0}]
         else
           []
         end
     end
   end
 
-  defp normalize_doc(%{"url" => url} = doc) do
+  defp parse_docs_value(_), do: []
+
+  defp normalize_doc(%{"url" => url} = doc) when is_binary(url) and url != "" do
     %{
       url: url,
       name: doc["name"] || doc["title"] || derive_name(url),
@@ -312,7 +325,7 @@ defmodule CursorDocs.CursorIntegration do
     }
   end
 
-  defp normalize_doc(%{url: url} = doc) do
+  defp normalize_doc(%{url: url} = doc) when is_binary(url) and url != "" do
     %{
       url: url,
       name: doc[:name] || derive_name(url),
@@ -328,12 +341,17 @@ defmodule CursorDocs.CursorIntegration do
     host = uri.host || ""
 
     # Extract meaningful name from host
-    host
-    |> String.split(".")
-    |> Enum.reject(&(&1 in ["www", "docs", "api", "com", "org", "io", "dev"]))
-    |> List.first()
-    |> Kernel.||("docs")
-    |> String.capitalize()
+    name =
+      host
+      |> String.split(".")
+      |> Enum.reject(&(&1 in ["www", "docs", "api", "com", "org", "io", "dev", "net"]))
+      |> List.first()
+
+    if name && name != "" do
+      String.capitalize(name)
+    else
+      "Docs"
+    end
   end
 
   defp derive_name(_), do: "Unknown"
@@ -350,14 +368,17 @@ defmodule CursorDocs.CursorIntegration do
     # Watch the Cursor config directory for database changes
     config_dir = Path.expand(@cursor_config_base)
 
-    case FileSystem.start_link(dirs: [config_dir]) do
-      {:ok, pid} ->
-        FileSystem.subscribe(pid)
-        {:ok, pid}
+    if File.dir?(config_dir) do
+      case FileSystem.start_link(dirs: [config_dir]) do
+        {:ok, pid} ->
+          FileSystem.subscribe(pid)
+          {:ok, pid}
 
-      error ->
-        error
+        error ->
+          error
+      end
+    else
+      {:error, :cursor_config_not_found}
     end
   end
 end
-
