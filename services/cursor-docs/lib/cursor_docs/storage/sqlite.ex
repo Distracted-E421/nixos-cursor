@@ -184,7 +184,8 @@ defmodule CursorDocs.Storage.SQLite do
 
   @impl true
   def handle_call({:get_source, id}, _from, state) do
-    sql = "SELECT id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed FROM doc_sources WHERE id = ?"
+    sql =
+      "SELECT id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed FROM doc_sources WHERE id = ?"
 
     case fetch_one(state.conn, sql, [id]) do
       {:ok, [id, url, name, status, pages, chunks, config, created, indexed]} ->
@@ -199,6 +200,7 @@ defmodule CursorDocs.Storage.SQLite do
           created_at: created,
           last_indexed: indexed
         }
+
         {:reply, {:ok, source}, state}
 
       {:ok, nil} ->
@@ -211,22 +213,25 @@ defmodule CursorDocs.Storage.SQLite do
 
   @impl true
   def handle_call(:list_sources, _from, state) do
-    sql = "SELECT id, url, name, status, pages_count, chunks_count, created_at, last_indexed FROM doc_sources ORDER BY created_at DESC"
+    sql =
+      "SELECT id, url, name, status, pages_count, chunks_count, created_at, last_indexed FROM doc_sources ORDER BY created_at DESC"
 
     case fetch_all(state.conn, sql, []) do
       {:ok, rows} ->
-        sources = Enum.map(rows, fn [id, url, name, status, pages, chunks, created, indexed] ->
-          %{
-            id: id,
-            url: url,
-            name: name,
-            status: status,
-            pages_count: pages,
-            chunks_count: chunks,
-            created_at: created,
-            last_indexed: indexed
-          }
-        end)
+        sources =
+          Enum.map(rows, fn [id, url, name, status, pages, chunks, created, indexed] ->
+            %{
+              id: id,
+              url: url,
+              name: name,
+              status: status,
+              pages_count: pages,
+              chunks_count: chunks,
+              created_at: created,
+              last_indexed: indexed
+            }
+          end)
+
         {:reply, {:ok, sources}, state}
 
       error ->
@@ -254,13 +259,26 @@ defmodule CursorDocs.Storage.SQLite do
     VALUES (?, ?, ?, ?, ?, ?, ?)
     """
 
-    params = [id, attrs[:source_id], attrs[:url], attrs[:title], attrs[:content], attrs[:position] || 0, now]
+    params = [
+      id,
+      attrs[:source_id],
+      attrs[:url],
+      attrs[:title],
+      attrs[:content],
+      attrs[:position] || 0,
+      now
+    ]
 
     case execute_with_params(state.conn, sql, params) do
       :ok ->
         # Insert into FTS index
         fts_sql = "INSERT INTO doc_chunks_fts (source_id, title, content) VALUES (?, ?, ?)"
-        execute_with_params(state.conn, fts_sql, [attrs[:source_id], attrs[:title], attrs[:content]])
+
+        execute_with_params(state.conn, fts_sql, [
+          attrs[:source_id],
+          attrs[:title],
+          attrs[:content]
+        ])
 
         {:reply, {:ok, %{id: id}}, state}
 
@@ -284,13 +302,27 @@ defmodule CursorDocs.Storage.SQLite do
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        params = [id, chunk[:source_id], chunk[:url], chunk[:title], chunk[:content], chunk[:position] || 0, now]
+        params = [
+          id,
+          chunk[:source_id],
+          chunk[:url],
+          chunk[:title],
+          chunk[:content],
+          chunk[:position] || 0,
+          now
+        ]
 
         case execute_with_params(state.conn, sql, params) do
           :ok ->
             # FTS index
             fts_sql = "INSERT INTO doc_chunks_fts (source_id, title, content) VALUES (?, ?, ?)"
-            execute_with_params(state.conn, fts_sql, [chunk[:source_id], chunk[:title], chunk[:content]])
+
+            execute_with_params(state.conn, fts_sql, [
+              chunk[:source_id],
+              chunk[:title],
+              chunk[:content]
+            ])
+
             acc + 1
 
           _ ->
@@ -314,40 +346,43 @@ defmodule CursorDocs.Storage.SQLite do
     {sql, params} =
       if sources == [] do
         {"""
-        SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
-               bm25(doc_chunks_fts) as score
-        FROM doc_chunks_fts fts
-        JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
-        WHERE doc_chunks_fts MATCH ?
-        ORDER BY score
-        LIMIT ?
-        """, [escaped_query, limit]}
+         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
+                bm25(doc_chunks_fts) as score
+         FROM doc_chunks_fts fts
+         JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
+         WHERE doc_chunks_fts MATCH ?
+         ORDER BY score
+         LIMIT ?
+         """, [escaped_query, limit]}
       else
         placeholders = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
+
         {"""
-        SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
-               bm25(doc_chunks_fts) as score
-        FROM doc_chunks_fts fts
-        JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
-        WHERE doc_chunks_fts MATCH ? AND c.source_id IN (#{placeholders})
-        ORDER BY score
-        LIMIT ?
-        """, [escaped_query] ++ sources ++ [limit]}
+         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
+                bm25(doc_chunks_fts) as score
+         FROM doc_chunks_fts fts
+         JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
+         WHERE doc_chunks_fts MATCH ? AND c.source_id IN (#{placeholders})
+         ORDER BY score
+         LIMIT ?
+         """, [escaped_query] ++ sources ++ [limit]}
       end
 
     case fetch_all(state.conn, sql, params) do
       {:ok, rows} ->
-        chunks = Enum.map(rows, fn [id, source_id, url, title, content, position, score] ->
-          %{
-            id: id,
-            source_id: source_id,
-            url: url,
-            title: title,
-            content: content,
-            position: position,
-            score: score
-          }
-        end)
+        chunks =
+          Enum.map(rows, fn [id, source_id, url, title, content, position, score] ->
+            %{
+              id: id,
+              source_id: source_id,
+              url: url,
+              title: title,
+              content: content,
+              position: position,
+              score: score
+            }
+          end)
+
         {:reply, {:ok, chunks}, state}
 
       error ->
@@ -381,11 +416,14 @@ defmodule CursorDocs.Storage.SQLite do
     case Sqlite3.prepare(conn, sql) do
       {:ok, stmt} ->
         Sqlite3.bind(stmt, params)
-        result = case Sqlite3.step(conn, stmt) do
-          {:row, row} -> {:ok, row}
-          :done -> {:ok, nil}
-          {:error, reason} -> {:error, reason}
-        end
+
+        result =
+          case Sqlite3.step(conn, stmt) do
+            {:row, row} -> {:ok, row}
+            :done -> {:ok, nil}
+            {:error, reason} -> {:error, reason}
+          end
+
         Sqlite3.release(conn, stmt)
         result
 

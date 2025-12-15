@@ -60,6 +60,7 @@ defmodule CursorDocs.MixProject do
       # Telemetry
       {:telemetry, "~> 1.2"},
       {:telemetry_metrics, "~> 1.0"},
+      {:telemetry_poller, "~> 1.1"},
 
       # File watching (for Cursor DB changes)
       {:file_system, "~> 1.0"},

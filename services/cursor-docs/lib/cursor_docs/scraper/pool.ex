@@ -24,14 +24,19 @@ defmodule CursorDocs.Scraper.Pool do
   """
   @spec stats() :: map()
   def stats do
-    children = DynamicSupervisor.count_children(__MODULE__)
+    try do
+      children = DynamicSupervisor.count_children(__MODULE__)
 
-    %{
-      active: children[:active] || 0,
-      specs: children[:specs] || 0,
-      supervisors: children[:supervisors] || 0,
-      workers: children[:workers] || 0
-    }
+      %{
+        active: children[:active] || 0,
+        specs: children[:specs] || 0,
+        supervisors: children[:supervisors] || 0,
+        workers: children[:workers] || 0
+      }
+    catch
+      :exit, _ ->
+        %{active: 0, specs: 0, supervisors: 0, workers: 0}
+    end
   end
 
   @doc """
