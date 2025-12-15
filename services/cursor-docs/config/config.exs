@@ -1,38 +1,28 @@
 import Config
 
 # CursorDocs configuration
+
+# Database location
 config :cursor_docs,
-  # Database path (SurrealDB data directory)
-  db_path: System.get_env("CURSOR_DOCS_DB_PATH", "~/.local/share/cursor-docs"),
+  db_path: "~/.local/share/cursor-docs"
 
-  # Number of concurrent browser instances for scraping
-  browser_pool_size: String.to_integer(System.get_env("CURSOR_DOCS_BROWSER_POOL", "3")),
+# Rate limiting for web scraping
+config :cursor_docs, :rate_limit,
+  requests_per_second: 2,
+  burst: 5
 
-  # Content chunking settings
-  chunk_size: String.to_integer(System.get_env("CURSOR_DOCS_CHUNK_SIZE", "1500")),
-  chunk_overlap: String.to_integer(System.get_env("CURSOR_DOCS_CHUNK_OVERLAP", "200")),
-
-  # Scraping settings
-  page_timeout: String.to_integer(System.get_env("CURSOR_DOCS_TIMEOUT", "30000")),
-  max_retries: String.to_integer(System.get_env("CURSOR_DOCS_RETRIES", "3")),
-
-  # Rate limiting
-  rate_limit: [
-    requests_per_second: 2,
-    burst: 5
-  ],
-
-  # Default crawl settings
-  default_max_pages: 100,
-  default_depth: 3
+# Scraping defaults
+config :cursor_docs, :scraping,
+  max_pages: 100,
+  max_depth: 3,
+  chunk_size: 1500,
+  chunk_overlap: 200,
+  timeout: 30_000
 
 # Logger configuration
 config :logger, :console,
-  format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :source_id]
-
-config :logger,
-  level: :info
+  format: "[$level] $message\n",
+  metadata: [:file, :line, :module]
 
 # Import environment specific config
 import_config "#{config_env()}.exs"

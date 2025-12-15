@@ -2,17 +2,31 @@ defmodule CursorDocs.Application do
   @moduledoc """
   OTP Application supervisor for CursorDocs.
 
-  Starts and supervises the following processes:
+  Starts and supervises:
 
-  - `CursorDocs.Storage.Surreal` - SurrealDB connection pool
-  - `CursorDocs.Scraper.Pool` - Playwright browser pool
+  - `CursorDocs.Storage.SQLite` - SQLite database connection
+  - `CursorDocs.CursorIntegration` - Cursor @docs sync and monitoring
+  - `CursorDocs.Scraper.Pool` - Browser pool for web scraping
   - `CursorDocs.Scraper.JobQueue` - Scraping job queue
+  - `CursorDocs.Scraper.RateLimiter` - Rate limiting
   - `CursorDocs.Telemetry` - Metrics and logging
 
-  The supervision tree is structured for fault tolerance:
-  - Storage failures don't affect ongoing scraping
-  - Individual browser crashes are isolated
-  - Job queue persists state to database
+  ## Architecture
+
+  ```
+  CursorDocs.Supervisor
+  ├── CursorDocs.Telemetry
+  ├── CursorDocs.Storage.SQLite
+  ├── CursorDocs.CursorIntegration    <-- Syncs from Cursor's @docs
+  ├── CursorDocs.Scraper.RateLimiter
+  ├── CursorDocs.Scraper.JobQueue
+  └── CursorDocs.Scraper.Pool
+  ```
+
+  The CursorIntegration module automatically:
+  1. Reads URLs from Cursor's @docs settings on startup
+  2. Watches for new docs being added in Cursor
+  3. Queues them for reliable local scraping
   """
 
   use Application
@@ -24,20 +38,23 @@ defmodule CursorDocs.Application do
     Logger.info("Starting CursorDocs application...")
 
     children = [
-      # Telemetry supervisor (first, to capture startup metrics)
+      # Telemetry first (captures startup metrics)
       CursorDocs.Telemetry,
 
       # Database connection
-      {CursorDocs.Storage.Surreal, surreal_config()},
+      {CursorDocs.Storage.SQLite, storage_config()},
 
-      # Browser pool for scraping
-      {CursorDocs.Scraper.Pool, pool_config()},
+      # Rate limiter (before pool so it's available)
+      {CursorDocs.Scraper.RateLimiter, rate_limit_config()},
 
-      # Job queue for managing scrape jobs
+      # Job queue
       CursorDocs.Scraper.JobQueue,
 
-      # Rate limiter
-      {CursorDocs.Scraper.RateLimiter, rate_limit_config()}
+      # Browser pool (optional - only if wallaby available)
+      # {CursorDocs.Scraper.Pool, pool_config()},
+
+      # Cursor integration - syncs @docs URLs automatically
+      CursorDocs.CursorIntegration
     ]
 
     opts = [strategy: :one_for_one, name: CursorDocs.Supervisor]
@@ -45,6 +62,7 @@ defmodule CursorDocs.Application do
     case Supervisor.start_link(children, opts) do
       {:ok, pid} ->
         Logger.info("CursorDocs started successfully")
+        setup_on_start()
         {:ok, pid}
 
       {:error, reason} = error ->
@@ -59,18 +77,20 @@ defmodule CursorDocs.Application do
     :ok
   end
 
-  defp surreal_config do
-    [
-      path: db_path(),
-      namespace: "cursor_docs",
-      database: "main"
-    ]
+  # Run setup tasks after startup
+  defp setup_on_start do
+    # Ensure database schema exists
+    spawn(fn ->
+      Process.sleep(500)  # Wait for GenServers to initialize
+      CursorDocs.Storage.SQLite.setup()
+    end)
   end
 
-  defp pool_config do
+  defp storage_config do
     [
-      size: Application.get_env(:cursor_docs, :browser_pool_size, 3),
-      max_overflow: 2
+      db_path: Application.get_env(:cursor_docs, :db_path, "~/.local/share/cursor-docs")
+               |> Path.expand()
+               |> Path.join("cursor_docs.db")
     ]
   end
 
@@ -79,10 +99,5 @@ defmodule CursorDocs.Application do
       requests_per_second: 2,
       burst: 5
     ])
-  end
-
-  defp db_path do
-    Application.get_env(:cursor_docs, :db_path, "~/.local/share/cursor-docs")
-    |> Path.expand()
   end
 end

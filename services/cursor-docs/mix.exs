@@ -28,37 +28,41 @@ defmodule CursorDocs.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :inets, :ssl],
       mod: {CursorDocs.Application, []}
     ]
   end
 
   defp deps do
     [
-      # Web scraping
-      {:playwright, "~> 1.0"},
+      # SQLite - for local storage AND reading Cursor's databases
+      {:exqlite, "~> 0.23"},
+
+      # HTTP client
+      {:req, "~> 0.5"},
+      {:finch, "~> 0.18"},
+
+      # HTML parsing
       {:floki, "~> 0.36"},
 
-      # Database
-      {:surrealdb, "~> 0.2"},
+      # Browser automation (ChromeDriver-based)
+      {:wallaby, "~> 0.30", runtime: false},
 
-      # HTTP/Networking
-      {:req, "~> 0.5"},
-      {:mint, "~> 1.6"},
-
-      # JSON handling
+      # JSON
       {:jason, "~> 1.4"},
 
       # CLI
       {:optimus, "~> 0.5"},
 
-      # MCP Protocol
-      {:plug_cowboy, "~> 2.7"},
-
-      # Utilities
+      # Process pooling
       {:nimble_pool, "~> 1.1"},
+
+      # Telemetry
       {:telemetry, "~> 1.2"},
       {:telemetry_metrics, "~> 1.0"},
+
+      # File watching (for Cursor DB changes)
+      {:file_system, "~> 1.0"},
 
       # Development
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
@@ -75,6 +79,7 @@ defmodule CursorDocs.MixProject do
       "cursor_docs.search": &search_docs/1,
       "cursor_docs.list": &list_docs/1,
       "cursor_docs.status": &status/1,
+      "cursor_docs.sync": &sync_from_cursor/1,
       "cursor_docs.server": &start_server/1,
       "cursor_docs.mcp": &start_mcp/1
     ]
@@ -82,7 +87,7 @@ defmodule CursorDocs.MixProject do
 
   defp setup_database(_args) do
     Mix.Task.run("app.start", [])
-    CursorDocs.Storage.Surreal.setup()
+    CursorDocs.Storage.SQLite.setup()
   end
 
   defp add_docs(args) do
@@ -105,9 +110,15 @@ defmodule CursorDocs.MixProject do
     CursorDocs.CLI.status()
   end
 
+  defp sync_from_cursor(_args) do
+    Mix.Task.run("app.start", [])
+    CursorDocs.CursorIntegration.sync_docs()
+  end
+
   defp start_server(_args) do
     Mix.Task.run("app.start", [])
-    CursorDocs.Server.start()
+    # Keep running
+    Process.sleep(:infinity)
   end
 
   defp start_mcp(_args) do

@@ -5,16 +5,26 @@ defmodule CursorDocs do
   This service provides a reliable, local alternative to Cursor's built-in @docs
   feature, which frequently fails due to server-side crawling issues.
 
+  ## Key Feature: Cursor Integration
+
+  **No new workflow required!** CursorDocs automatically reads the same URLs
+  you've added via Cursor's Settings → Indexing & Docs, then indexes them
+  locally with much higher reliability.
+
   ## Features
 
-  - **Reliable Scraping**: Uses Playwright for full JavaScript rendering
-  - **Local Storage**: SurrealDB for fast, queryable storage
+  - **Cursor Sync**: Uses the same @docs URLs from Cursor's settings
+  - **Reliable Scraping**: Full JavaScript rendering via headless browser
+  - **Local Storage**: SQLite with FTS5 full-text search
   - **MCP Integration**: Seamless integration with Cursor via MCP protocol
   - **Fault Tolerant**: OTP supervision tree for automatic recovery
 
   ## Quick Start
 
-      # Add documentation
+      # Sync docs from Cursor's existing @docs
+      CursorDocs.sync_from_cursor()
+
+      # Or add documentation manually
       CursorDocs.add("https://docs.example.com/")
 
       # Search
@@ -27,12 +37,40 @@ defmodule CursorDocs do
 
   The service is built on these core components:
 
-  - `CursorDocs.Scraper` - Playwright-based web scraping
-  - `CursorDocs.Storage` - SurrealDB persistence layer
+  - `CursorDocs.CursorIntegration` - Syncs with Cursor's @docs settings
+  - `CursorDocs.Scraper` - Web scraping with JS rendering
+  - `CursorDocs.Storage.SQLite` - Local SQLite with FTS5
   - `CursorDocs.MCP` - Model Context Protocol server
 
   See individual module documentation for details.
   """
+
+  @doc """
+  Sync documentation from Cursor's existing @docs settings.
+
+  This is the **primary way** to use CursorDocs - it reads the same URLs
+  you've already configured in Cursor's Settings → Indexing & Docs.
+
+  ## Examples
+
+      iex> CursorDocs.sync_from_cursor()
+      {:ok, 5}  # Synced 5 docs from Cursor
+
+  """
+  @spec sync_from_cursor() :: {:ok, integer()} | {:error, term()}
+  def sync_from_cursor do
+    CursorDocs.CursorIntegration.sync_docs()
+  end
+
+  @doc """
+  List documentation URLs configured in Cursor.
+
+  Shows what Cursor has in its @docs settings without indexing them.
+  """
+  @spec list_cursor_docs() :: {:ok, list(map())} | {:error, term()}
+  def list_cursor_docs do
+    CursorDocs.CursorIntegration.list_cursor_docs()
+  end
 
   @doc """
   Add a documentation URL to be indexed.
@@ -60,26 +98,25 @@ defmodule CursorDocs do
   @doc """
   Search indexed documentation.
 
-  Returns chunks matching the query, sorted by relevance.
+  Returns chunks matching the query, sorted by relevance using FTS5 BM25.
 
   ## Options
 
     * `:limit` - Maximum results to return (default: 5)
-    * `:sources` - Filter by specific source names (list)
-    * `:min_score` - Minimum relevance score (default: 0.0)
+    * `:sources` - Filter by specific source IDs (list)
 
   ## Examples
 
       iex> CursorDocs.search("database queries")
-      {:ok, [%CursorDocs.Chunk{content: "...", score: 0.85}, ...]}
+      {:ok, [%{content: "...", score: 0.85}, ...]}
 
-      iex> CursorDocs.search("authentication", sources: ["Ecto", "Phoenix"])
+      iex> CursorDocs.search("authentication", sources: ["abc123"])
       {:ok, [...]}
 
   """
   @spec search(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
   def search(query, opts \\ []) do
-    CursorDocs.Storage.Search.search(query, opts)
+    CursorDocs.Storage.SQLite.search_chunks(query, opts)
   end
 
   @doc """
@@ -89,14 +126,14 @@ defmodule CursorDocs do
 
       iex> CursorDocs.list()
       {:ok, [
-        %CursorDocs.DocSource{name: "Ecto", pages: 234, status: :indexed},
-        %CursorDocs.DocSource{name: "Phoenix", pages: 567, status: :indexing}
+        %{name: "Ecto", pages_count: 234, status: "indexed"},
+        %{name: "Phoenix", pages_count: 567, status: "indexing"}
       ]}
 
   """
   @spec list() :: {:ok, list(map())} | {:error, term()}
   def list do
-    CursorDocs.Storage.Surreal.list_sources()
+    CursorDocs.Storage.SQLite.list_sources()
   end
 
   @doc """
@@ -104,20 +141,20 @@ defmodule CursorDocs do
 
   ## Options
 
-    * `:source` - Filter by source name
+    * `:source` - Filter by source ID
 
   ## Examples
 
       iex> CursorDocs.status()
       {:ok, [
-        %{source: "Ecto", status: :complete, pages: 234, errors: 2},
-        %{source: "Phoenix", status: :in_progress, pages: 123, queued: 444}
+        %{source: "abc123", status: :complete, pages: 234},
+        %{source: "def456", status: :in_progress, queued: 444}
       ]}
 
   """
   @spec status(keyword()) :: {:ok, list(map())} | {:error, term()}
   def status(opts \\ []) do
-    CursorDocs.Scraper.Job.status(opts)
+    CursorDocs.Scraper.JobQueue.status(opts)
   end
 
   @doc """
@@ -125,13 +162,13 @@ defmodule CursorDocs do
 
   ## Examples
 
-      iex> CursorDocs.remove("ecto")
+      iex> CursorDocs.remove("abc123")
       :ok
 
   """
   @spec remove(String.t()) :: :ok | {:error, term()}
   def remove(source_id) do
-    CursorDocs.Storage.Surreal.remove_source(source_id)
+    CursorDocs.Storage.SQLite.remove_source(source_id)
   end
 
   @doc """
