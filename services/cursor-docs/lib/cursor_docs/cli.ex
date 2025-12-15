@@ -20,22 +20,36 @@ defmodule CursorDocs.CLI do
   Add documentation from CLI.
   """
   def add(args) do
-    {opts, [url | _], _} = OptionParser.parse(args,
-      strict: [name: :string, max_pages: :integer]
+    {opts, urls, _} = OptionParser.parse(args,
+      strict: [name: :string, max_pages: :integer, follow: :boolean]
     )
 
-    IO.puts("📥 Adding documentation: #{url}")
+    case urls do
+      [] ->
+        IO.puts("❌ Usage: mix cursor_docs.add URL [--name NAME] [--max-pages N] [--follow]")
 
-    case CursorDocs.add(url, opts) do
-      {:ok, source} ->
-        IO.puts("✅ Queued for indexing")
-        IO.puts("   Name: #{source[:name]}")
-        IO.puts("   ID: #{source[:id]}")
-        IO.puts("")
-        IO.puts("Use `mix cursor_docs.status` to check progress")
+      [url | _] ->
+        IO.puts("📥 Adding documentation: #{url}")
+        IO.puts("   (This may take a moment...)\n")
 
-      {:error, reason} ->
-        IO.puts("❌ Failed: #{inspect(reason)}")
+        add_opts = [
+          name: opts[:name],
+          max_pages: opts[:max_pages] || 100,
+          follow_links: opts[:follow] || false
+        ] |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+
+        case CursorDocs.add(url, add_opts) do
+          {:ok, source} ->
+            IO.puts("✅ Indexed successfully!")
+            IO.puts("   Name: #{source[:name]}")
+            IO.puts("   ID: #{source[:id]}")
+            IO.puts("   Chunks: #{source[:chunks_count] || 0}")
+            IO.puts("")
+            IO.puts("Search with: mix cursor_docs.search \"your query\"")
+
+          {:error, reason} ->
+            IO.puts("❌ Failed: #{inspect(reason)}")
+        end
     end
   end
 
@@ -49,30 +63,48 @@ defmodule CursorDocs.CLI do
 
     query = Enum.join(query_parts, " ")
 
-    IO.puts("🔍 Searching: #{query}\n")
+    if query == "" do
+      IO.puts("❌ Usage: mix cursor_docs.search \"your query\" [--limit N]")
+    else
+      IO.puts("🔍 Searching: #{query}\n")
 
-    search_opts = [
-      limit: opts[:limit] || 5,
-      sources: if(opts[:source], do: [opts[:source]], else: [])
-    ]
+      search_opts = [
+        limit: opts[:limit] || 5,
+        sources: if(opts[:source], do: [opts[:source]], else: [])
+      ]
 
-    case CursorDocs.search(query, search_opts) do
-      {:ok, []} ->
-        IO.puts("No results found.")
+      case CursorDocs.search(query, search_opts) do
+        {:ok, []} ->
+          IO.puts("No results found.")
+          IO.puts("\nTip: Make sure you've added some documentation first:")
+          IO.puts("  mix cursor_docs.add https://hexdocs.pm/ecto/")
 
-      {:ok, results} ->
-        Enum.each(results, fn result ->
-          IO.puts("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-          IO.puts("📄 #{result[:title]}")
-          IO.puts("   URL: #{result[:url]}")
-          IO.puts("   Score: #{Float.round(result[:score] || 0.0, 2)}")
-          IO.puts("")
-          IO.puts(result[:snippet] || String.slice(result[:content], 0, 300))
-          IO.puts("")
-        end)
+        {:ok, results} ->
+          IO.puts("Found #{length(results)} result(s):\n")
 
-      {:error, reason} ->
-        IO.puts("❌ Search failed: #{inspect(reason)}")
+          Enum.each(results, fn result ->
+            IO.puts("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            IO.puts("📄 #{result[:title] || "Untitled"}")
+            IO.puts("   URL: #{result[:url]}")
+
+            score = result[:score]
+            if score do
+              IO.puts("   Relevance: #{Float.round(abs(score), 2)}")
+            end
+
+            IO.puts("")
+
+            # Show snippet
+            content = result[:content] || ""
+            snippet = String.slice(content, 0, 400)
+            snippet = if String.length(content) > 400, do: snippet <> "...", else: snippet
+            IO.puts(snippet)
+            IO.puts("")
+          end)
+
+        {:error, reason} ->
+          IO.puts("❌ Search failed: #{inspect(reason)}")
+      end
     end
   end
 
@@ -89,27 +121,34 @@ defmodule CursorDocs.CLI do
 
       {:ok, sources} ->
         # Header
-        IO.puts(String.pad_trailing("Name", 20) <>
-                String.pad_trailing("Pages", 8) <>
+        IO.puts(String.pad_trailing("Name", 25) <>
+                String.pad_trailing("Chunks", 10) <>
                 String.pad_trailing("Status", 12) <>
                 "URL")
-        IO.puts(String.duplicate("─", 80))
+        IO.puts(String.duplicate("─", 90))
 
         Enum.each(sources, fn source ->
           status_icon = case source[:status] do
             "indexed" -> "✅"
             "indexing" -> "⏳"
             "failed" -> "❌"
-            _ -> "⏸️"
+            "pending" -> "⏸️"
+            _ -> "❓"
           end
 
+          name = String.slice(source[:name] || "Unknown", 0, 23)
+          url = String.slice(source[:url] || "", 0, 45)
+
           IO.puts(
-            String.pad_trailing(source[:name] || "Unknown", 20) <>
-            String.pad_trailing("#{source[:pages_count] || 0}", 8) <>
+            String.pad_trailing(name, 25) <>
+            String.pad_trailing("#{source[:chunks_count] || 0}", 10) <>
             String.pad_trailing("#{status_icon} #{source[:status]}", 12) <>
-            (source[:url] || "")
+            url
           )
         end)
+
+        IO.puts("")
+        IO.puts("Total: #{length(sources)} source(s)")
 
       {:error, reason} ->
         IO.puts("❌ Failed to list: #{inspect(reason)}")
@@ -117,27 +156,55 @@ defmodule CursorDocs.CLI do
   end
 
   @doc """
-  Check scraping job status.
+  Check scraping status - shows all sources and their indexing state.
   """
   def status do
-    IO.puts("📊 Scraping Status\n")
+    IO.puts("📊 Documentation Status\n")
 
-    case CursorDocs.status() do
+    case CursorDocs.list() do
       {:ok, []} ->
-        IO.puts("No active scraping jobs.")
+        IO.puts("No documentation sources found.")
+        IO.puts("Add some with: mix cursor_docs.add <url>")
 
-      {:ok, jobs} ->
-        Enum.each(jobs, fn job ->
-          IO.puts("• #{job[:source] || "Unknown"}")
-          IO.puts("  Status: #{job[:status]}")
-          IO.puts("  Pages: #{job[:pages] || 0}")
-          IO.puts("  Queued: #{job[:queued] || 0}")
-          IO.puts("")
-        end)
+      {:ok, sources} ->
+        indexing = Enum.filter(sources, fn s -> s[:status] == "indexing" end)
+        indexed = Enum.filter(sources, fn s -> s[:status] == "indexed" end)
+        failed = Enum.filter(sources, fn s -> s[:status] == "failed" end)
+        pending = Enum.filter(sources, fn s -> s[:status] == "pending" end)
+
+        total_chunks = Enum.reduce(sources, 0, fn s, acc -> acc + (s[:chunks_count] || 0) end)
+
+        IO.puts("Summary:")
+        IO.puts("  ✅ Indexed: #{length(indexed)}")
+        IO.puts("  ⏳ Indexing: #{length(indexing)}")
+        IO.puts("  ⏸️  Pending: #{length(pending)}")
+        IO.puts("  ❌ Failed: #{length(failed)}")
+        IO.puts("  📊 Total chunks: #{total_chunks}")
+        IO.puts("")
+
+        if length(sources) > 0 do
+          IO.puts("Sources:")
+          Enum.each(sources, fn source ->
+            status_icon = case source[:status] do
+              "indexed" -> "✅"
+              "indexing" -> "⏳"
+              "failed" -> "❌"
+              _ -> "⏸️"
+            end
+
+            IO.puts("  #{status_icon} #{source[:name]} (#{source[:chunks_count] || 0} chunks)")
+            IO.puts("     #{source[:url]}")
+
+            if source[:last_indexed] do
+              IO.puts("     Last indexed: #{source[:last_indexed]}")
+            end
+
+            IO.puts("")
+          end)
+        end
 
       {:error, reason} ->
         IO.puts("❌ Failed to get status: #{inspect(reason)}")
     end
   end
 end
-

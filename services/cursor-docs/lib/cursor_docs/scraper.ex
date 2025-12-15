@@ -4,14 +4,13 @@ defmodule CursorDocs.Scraper do
 
   Orchestrates the scraping pipeline:
   1. Accept URL for indexing
-  2. Queue initial page for scraping
-  3. Scrape page, extract content and links
-  4. Queue discovered links
-  5. Repeat until max pages reached or no more links
+  2. Fetch page, extract content and links
+  3. Store chunks in SQLite
+  4. Optionally follow discovered links
 
   ## Usage
 
-      # Add documentation for scraping
+      # Add documentation for scraping (synchronous, blocks until first page done)
       {:ok, source} = Scraper.add("https://docs.example.com/")
 
       # Refresh existing documentation
@@ -19,30 +18,32 @@ defmodule CursorDocs.Scraper do
 
   """
 
-  alias CursorDocs.{Storage.SQLite, Scraper.JobQueue, Scraper.Extractor}
-  alias CursorDocs.{Scraper.RateLimiter, Telemetry}
+  alias CursorDocs.{Storage.SQLite, Scraper.Extractor, Scraper.RateLimiter}
 
   require Logger
 
   @default_max_pages 100
-  @default_depth 3
   @chunk_size 1500
   @chunk_overlap 200
 
   @doc """
   Add a new documentation URL for scraping.
 
+  This function scrapes the initial URL synchronously, so it blocks until
+  the first page is indexed. This ensures the CLI shows meaningful results.
+
   ## Options
 
     * `:name` - Display name for the documentation
     * `:max_pages` - Maximum pages to scrape (default: 100)
-    * `:depth` - Maximum crawl depth (default: 3)
+    * `:follow_links` - Whether to follow discovered links (default: false for now)
 
   """
   @spec add(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def add(url, opts \\ []) do
     name = Keyword.get(opts, :name, derive_name(url))
     max_pages = Keyword.get(opts, :max_pages, @default_max_pages)
+    follow_links = Keyword.get(opts, :follow_links, false)
 
     # Create source record
     source_attrs = %{
@@ -50,24 +51,43 @@ defmodule CursorDocs.Scraper do
       name: name,
       config: %{
         max_pages: max_pages,
-        depth: Keyword.get(opts, :depth, @default_depth)
+        follow_links: follow_links
       }
     }
 
     case SQLite.create_source(source_attrs) do
       {:ok, source} ->
-        # Queue initial URL
-        JobQueue.enqueue(source[:id], url, priority: 10)
-
-        # Start processing asynchronously
-        spawn(fn -> process_source(source[:id]) end)
-
         Logger.info("Started scraping #{name} (#{url})")
-        Telemetry.scrape_start(url, source[:id])
 
-        {:ok, source}
+        # Update status to indexing
+        SQLite.update_source(source[:id], %{status: "indexing"})
 
-      error ->
+        # Scrape the initial URL synchronously
+        case scrape_url(source[:id], url, name) do
+          {:ok, result} ->
+            # Update source with results
+            SQLite.update_source(source[:id], %{
+              status: "indexed",
+              pages_count: 1,
+              chunks_count: result.chunks_count,
+              last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
+            })
+
+            # Optionally follow links in background
+            if follow_links and length(result.links) > 0 do
+              spawn(fn -> follow_links_async(source[:id], result.links, max_pages - 1) end)
+            end
+
+            {:ok, Map.merge(source, %{chunks_count: result.chunks_count, status: "indexed"})}
+
+          {:error, reason} ->
+            SQLite.update_source(source[:id], %{status: "failed"})
+            Logger.error("Failed to scrape #{url}: #{inspect(reason)}")
+            {:error, reason}
+        end
+
+      {:error, reason} = error ->
+        Logger.error("Failed to create source: #{inspect(reason)}")
         error
     end
   end
@@ -79,19 +99,23 @@ defmodule CursorDocs.Scraper do
   def refresh(source_id) do
     case SQLite.get_source(source_id) do
       {:ok, source} ->
-        # Cancel existing jobs
-        JobQueue.cancel(source_id)
-
-        # Queue root URL again
-        JobQueue.enqueue(source_id, source[:url], priority: 10)
-
-        # Update status
         SQLite.update_source(source_id, %{status: "indexing"})
 
-        # Start processing
-        spawn(fn -> process_source(source_id) end)
+        case scrape_url(source_id, source[:url], source[:name]) do
+          {:ok, result} ->
+            SQLite.update_source(source_id, %{
+              status: "indexed",
+              pages_count: 1,
+              chunks_count: result.chunks_count,
+              last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
+            })
 
-        {:ok, source}
+            {:ok, source}
+
+          {:error, reason} ->
+            SQLite.update_source(source_id, %{status: "failed"})
+            {:error, reason}
+        end
 
       error ->
         error
@@ -100,98 +124,83 @@ defmodule CursorDocs.Scraper do
 
   # Private Functions
 
-  defp process_source(source_id) do
-    case JobQueue.dequeue() do
-      {:ok, job} when job.source_id == source_id ->
-        process_job(job)
-        process_source(source_id)
-
-      {:ok, job} ->
-        # Job for different source, put it back and get ours
-        JobQueue.enqueue(job.source_id, job.url, priority: job.priority)
-        process_source(source_id)
-
-      {:empty} ->
-        # No more jobs, mark source as indexed
-        SQLite.update_source(source_id, %{
-          status: "indexed",
-          last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
-        })
-
-        Logger.info("Completed scraping source #{source_id}")
-    end
-  end
-
-  defp process_job(job) do
+  defp scrape_url(source_id, url, title) do
     # Rate limit
     RateLimiter.acquire()
 
-    # Use simple HTTP fetching (no JS rendering for now)
-    case fetch_and_extract(job.url) do
+    Logger.debug("Fetching #{url}")
+
+    case fetch_and_extract(url) do
       {:ok, extracted} ->
-        handle_extracted(job, extracted)
-        JobQueue.complete(job.id)
+        # Create chunks from content
+        chunks = chunk_content(extracted.content, extracted.title || title, source_id, url)
 
-      {:error, reason} ->
-        Logger.warning("Fetch failed for #{job.url}: #{inspect(reason)}")
-        JobQueue.fail(job.id, inspect(reason))
-    end
-  end
+        # Store chunks
+        case SQLite.store_chunks(chunks) do
+          {:ok, count} ->
+            Logger.info("Stored #{count} chunks for #{url}")
+            {:ok, %{chunks_count: count, links: extracted.links}}
 
-  defp fetch_and_extract(url) do
-    case Req.get(url, headers: [{"user-agent", "CursorDocs/1.0 (Documentation Indexer)"}]) do
-      {:ok, %{status: 200, body: body}} ->
-        Extractor.extract_from_html(body, url)
-
-      {:ok, %{status: status}} ->
-        {:error, "HTTP #{status}"}
+          {:error, reason} ->
+            Logger.error("Failed to store chunks: #{inspect(reason)}")
+            {:error, reason}
+        end
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp handle_extracted(job, extracted) do
-    # Create chunks from content
-    chunks = chunk_content(extracted.content, extracted.title, job)
+  defp fetch_and_extract(url) do
+    case Req.get(url,
+           headers: [{"user-agent", "CursorDocs/1.0 (Documentation Indexer)"}],
+           receive_timeout: 30_000,
+           redirect: true,
+           max_redirects: 5
+         ) do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        Extractor.extract_from_html(body, url)
 
-    # Store chunks
-    case SQLite.store_chunks(chunks) do
-      {:ok, count} ->
-        Logger.debug("Stored #{count} chunks for #{job.url}")
+      {:ok, %{status: status}} ->
+        {:error, "HTTP #{status}"}
 
-        # Update source page count
-        SQLite.update_source(job.source_id, %{
-          pages_count: {:increment, 1},
-          chunks_count: {:increment, count}
-        })
+      {:error, %{reason: reason}} ->
+        {:error, reason}
 
       {:error, reason} ->
-        Logger.error("Failed to store chunks: #{inspect(reason)}")
+        {:error, reason}
     end
-
-    # Queue discovered links (limit to same domain)
-    base_uri = URI.parse(job.url)
-
-    extracted.links
-    |> Enum.filter(fn link ->
-      link_uri = URI.parse(link)
-      link_uri.host == base_uri.host
-    end)
-    |> Enum.take(50)  # Limit links per page
-    |> Enum.each(fn link ->
-      JobQueue.enqueue(job.source_id, link, priority: 0)
-    end)
   end
 
-  defp chunk_content(content, title, job) do
+  defp follow_links_async(source_id, links, remaining) when remaining > 0 and links != [] do
+    # Get base domain to stay on same site
+    [first_link | rest] = links
+
+    case scrape_url(source_id, first_link, nil) do
+      {:ok, result} ->
+        SQLite.update_source(source_id, %{
+          pages_count: {:increment, 1},
+          chunks_count: {:increment, result.chunks_count}
+        })
+
+        follow_links_async(source_id, rest, remaining - 1)
+
+      {:error, _reason} ->
+        # Skip failed links, continue with rest
+        follow_links_async(source_id, rest, remaining)
+    end
+  end
+
+  defp follow_links_async(_source_id, _links, _remaining), do: :ok
+
+  defp chunk_content(content, title, source_id, url) do
     content
     |> split_into_chunks(@chunk_size, @chunk_overlap)
     |> Enum.with_index()
     |> Enum.map(fn {chunk_content, position} ->
       %{
-        source_id: job.source_id,
-        url: job.url,
+        source_id: source_id,
+        url: url,
         title: title,
         content: chunk_content,
         position: position
@@ -221,9 +230,13 @@ defmodule CursorDocs.Scraper do
         chunk
       end
 
-    next_start = start + String.length(chunk) - overlap
-
-    do_split_chunks(text, size, overlap, max(next_start, start + 1), [chunk | acc])
+    # Skip empty chunks
+    if String.trim(chunk) == "" do
+      do_split_chunks(text, size, overlap, start + size, acc)
+    else
+      next_start = start + String.length(chunk) - overlap
+      do_split_chunks(text, size, overlap, max(next_start, start + 1), [chunk | acc])
+    end
   end
 
   defp find_break_point(text) do
