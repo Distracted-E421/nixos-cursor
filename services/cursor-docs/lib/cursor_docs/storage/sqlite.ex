@@ -570,7 +570,8 @@ defmodule CursorDocs.Storage.SQLite do
     # FTS5 query - join terms with OR for broader matching
     query
     |> String.trim()
-    |> String.replace(~r/[^\w\s]/, "")  # Remove special chars
+    # Remove special chars
+    |> String.replace(~r/[^\w\s]/, "")
     |> String.split(~r/\s+/)
     |> Enum.reject(&(&1 == ""))
     |> Enum.join(" OR ")

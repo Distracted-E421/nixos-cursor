@@ -111,8 +111,8 @@ defmodule CursorDocs.Storage.Search do
   Get search suggestions based on indexed content.
   """
   @spec suggest(String.t(), keyword()) :: {:ok, list(String.t())} | {:error, term()}
-  def suggest(prefix, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 5)
+  def suggest(_prefix, opts \\ []) do
+    _limit = Keyword.get(opts, :limit, 5)
 
     # Simple prefix matching on titles
     # In a real implementation, this would use a proper autocomplete index
@@ -201,4 +201,3 @@ defmodule CursorDocs.Storage.Search do
 
   defp generate_snippet(_, _), do: ""
 end
-

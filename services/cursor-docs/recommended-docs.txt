@@ -1,0 +1,30 @@
+# Recommended Documentation Sources for cursor-docs
+# Use: mix cursor_docs.add <url>
+
+# === Elixir Core ===
+https://hexdocs.pm/elixir/Kernel.html
+https://hexdocs.pm/elixir/Enum.html
+https://hexdocs.pm/elixir/GenServer.html
+
+# === Phoenix Framework ===
+https://hexdocs.pm/phoenix/Phoenix.html
+https://hexdocs.pm/phoenix/Phoenix.Router.html
+https://hexdocs.pm/phoenix/Phoenix.Controller.html
+https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html
+
+# === Database ===
+https://hexdocs.pm/ecto/Ecto.html
+https://hexdocs.pm/ecto/Ecto.Query.html
+https://hexdocs.pm/ecto/Ecto.Changeset.html
+
+# === HTTP & Scraping ===
+https://hexdocs.pm/req/Req.html
+https://hexdocs.pm/floki/Floki.html
+
+# === NixOS ===
+https://nixos.org/manual/nix/stable/
+https://nixos.org/manual/nixos/stable/
+
+# === SQLite ===
+https://www.sqlite.org/docs.html
+https://www.sqlite.org/fts5.html

@@ -21,35 +21,75 @@ defmodule CursorDocs.CLI do
   """
   def add(args) do
     {opts, urls, _} = OptionParser.parse(args,
-      strict: [name: :string, max_pages: :integer, follow: :boolean]
+      strict: [name: :string, max_pages: :integer, follow: :boolean, force: :boolean]
     )
 
     case urls do
       [] ->
-        IO.puts("❌ Usage: mix cursor_docs.add URL [--name NAME] [--max-pages N] [--follow]")
+        IO.puts("❌ Usage: mix cursor_docs.add URL [--name NAME] [--max-pages N] [--force]")
 
       [url | _] ->
-        IO.puts("📥 Adding documentation: #{url}")
-        IO.puts("   (This may take a moment...)\n")
+        force? = opts[:force] == true
 
-        add_opts = [
-          name: opts[:name],
-          max_pages: opts[:max_pages] || 100,
-          follow_links: opts[:follow] || false
-        ] |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-
-        case CursorDocs.add(url, add_opts) do
-          {:ok, source} ->
-            IO.puts("✅ Indexed successfully!")
-            IO.puts("   Name: #{source[:name]}")
-            IO.puts("   ID: #{source[:id]}")
-            IO.puts("   Chunks: #{source[:chunks_count] || 0}")
+        # Check if URL already exists
+        case {check_existing_url(url), force?} do
+          {{:exists, source}, false} ->
+            IO.puts("ℹ️  Already indexed: #{source[:name]} (#{source[:chunks_count]} chunks)")
+            IO.puts("   Last indexed: #{source[:last_indexed]}")
             IO.puts("")
-            IO.puts("Search with: mix cursor_docs.search \"your query\"")
+            IO.puts("To re-index, use: mix cursor_docs.add #{url} --force")
 
-          {:error, reason} ->
-            IO.puts("❌ Failed: #{inspect(reason)}")
+          {{:exists, source}, true} ->
+            IO.puts("🔄 Re-indexing: #{url}")
+            IO.puts("   (This may take a moment...)\n")
+            do_refresh(source[:id])
+
+          {:not_found, _} ->
+            IO.puts("📥 Adding documentation: #{url}")
+            IO.puts("   (This may take a moment...)\n")
+
+            add_opts = [
+              name: opts[:name],
+              max_pages: opts[:max_pages] || 100,
+              follow_links: opts[:follow] || false
+            ] |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+
+            case CursorDocs.add(url, add_opts) do
+              {:ok, source} ->
+                IO.puts("✅ Indexed successfully!")
+                IO.puts("   Name: #{source[:name]}")
+                IO.puts("   ID: #{source[:id]}")
+                IO.puts("   Chunks: #{source[:chunks_count] || 0}")
+                IO.puts("")
+                IO.puts("Search with: mix cursor_docs.search \"your query\"")
+
+              {:error, reason} ->
+                IO.puts("❌ Failed: #{inspect(reason)}")
+            end
         end
+    end
+  end
+
+  defp check_existing_url(url) do
+    case CursorDocs.list() do
+      {:ok, sources} ->
+        case Enum.find(sources, fn s -> s[:url] == url end) do
+          nil -> :not_found
+          source -> {:exists, source}
+        end
+      _ -> :not_found
+    end
+  end
+
+  defp do_refresh(source_id) do
+    case CursorDocs.refresh(source_id) do
+      {:ok, source} ->
+        IO.puts("✅ Re-indexed successfully!")
+        IO.puts("   Name: #{source[:name]}")
+        IO.puts("   ID: #{source[:id]}")
+
+      {:error, reason} ->
+        IO.puts("❌ Refresh failed: #{inspect(reason)}")
     end
   end
 
