@@ -196,6 +196,124 @@ defmodule CursorDocs.CLI do
   end
 
   @doc """
+  Import docs from Cursor's database.
+  """
+  def import_cursor(args) do
+    {opts, _, _} = OptionParser.parse(args,
+      strict: [limit: :integer, dry_run: :boolean]
+    )
+
+    limit = opts[:limit] || 10
+    dry_run? = opts[:dry_run] == true
+
+    IO.puts("🔍 Reading docs from Cursor's database...")
+
+    case read_cursor_docs() do
+      {:ok, docs} ->
+        success_docs = Enum.filter(docs, fn d -> d["indexingStatus"] == "success" end)
+        IO.puts("   Found #{length(docs)} total docs (#{length(success_docs)} successfully indexed)")
+        IO.puts("")
+
+        # Sort by number of pages and take top N
+        sorted = success_docs
+          |> Enum.sort_by(fn d -> d["numPages"] || 0 end, :desc)
+          |> Enum.take(limit)
+
+        if dry_run? do
+          IO.puts("📋 Would import these #{length(sorted)} docs:")
+          Enum.each(sorted, fn doc ->
+            IO.puts("   📄 #{doc["name"]} (#{doc["numPages"]} pages)")
+            IO.puts("      #{doc["url"]}")
+          end)
+          IO.puts("\nRun without --dry-run to actually import.")
+        else
+          IO.puts("📥 Importing #{length(sorted)} docs...\n")
+
+          results = Enum.map(sorted, fn doc ->
+            url = doc["url"]
+            name = doc["name"]
+            IO.puts("   ⏳ #{name}...")
+
+            case CursorDocs.add(url, name: name, max_pages: 1, follow_links: false) do
+              {:ok, source} ->
+                IO.puts("   ✅ #{name} (#{source[:chunks_count]} chunks)")
+                {:ok, source}
+              {:error, reason} ->
+                IO.puts("   ❌ #{name}: #{inspect(reason)}")
+                {:error, reason}
+            end
+          end)
+
+          success = Enum.count(results, fn {status, _} -> status == :ok end)
+          IO.puts("\n✅ Imported #{success}/#{length(sorted)} docs")
+        end
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to read Cursor docs: #{inspect(reason)}")
+        IO.puts("   Make sure Cursor is installed at ~/.config/Cursor")
+    end
+  end
+
+  defp read_cursor_docs do
+    db_path = Path.expand("~/.config/Cursor/User/globalStorage/state.vscdb")
+
+    if File.exists?(db_path) do
+      # Use sqlite3 CLI to avoid opening the database (might be locked)
+      case System.cmd("sqlite3", [
+        db_path,
+        "SELECT value FROM ItemTable WHERE key = 'src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser'"
+      ]) do
+        {output, 0} ->
+          case Jason.decode(output) do
+            {:ok, data} -> {:ok, data["personalDocs"] || []}
+            {:error, _} -> {:error, :json_parse_failed}
+          end
+        {error, _} ->
+          {:error, error}
+      end
+    else
+      {:error, :cursor_not_found}
+    end
+  end
+
+  @doc """
+  List docs in Cursor's database (without importing).
+  """
+  def cursor_docs(_args \\ []) do
+    IO.puts("📚 Docs configured in Cursor\n")
+
+    case read_cursor_docs() do
+      {:ok, docs} ->
+        success = Enum.filter(docs, fn d -> d["indexingStatus"] == "success" end)
+        failed = Enum.filter(docs, fn d -> d["indexingStatus"] == "failure" end)
+
+        IO.puts("Status:")
+        IO.puts("  ✅ Successfully indexed: #{length(success)}")
+        IO.puts("  ❌ Failed to index: #{length(failed)}")
+        IO.puts("")
+
+        if length(failed) > 0 do
+          IO.puts("❌ Failed docs (these need our local scraper!):")
+          Enum.each(failed, fn d ->
+            IO.puts("   - #{d["name"]}: #{d["url"]}")
+          end)
+          IO.puts("")
+        end
+
+        IO.puts("✅ Top successfully indexed docs:")
+        success
+        |> Enum.sort_by(fn d -> d["numPages"] || 0 end, :desc)
+        |> Enum.take(20)
+        |> Enum.each(fn d ->
+          IO.puts("   📄 #{String.pad_trailing(d["name"], 25)} (#{String.pad_leading("#{d["numPages"]}", 5)} pages)")
+        end)
+
+      {:error, reason} ->
+        IO.puts("❌ Failed: #{inspect(reason)}")
+    end
+  end
+
+  @doc """
   Check scraping status - shows all sources and their indexing state.
   """
   def status do
