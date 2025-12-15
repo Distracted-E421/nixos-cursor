@@ -25,7 +25,7 @@ defmodule CursorDocs.Storage.Search do
       )
   """
 
-  alias CursorDocs.{Storage.Surreal, Telemetry}
+  alias CursorDocs.{Storage.SQLite, Telemetry}
 
   require Logger
 
@@ -64,7 +64,7 @@ defmodule CursorDocs.Storage.Search do
     # Sanitize query
     sanitized_query = sanitize_query(query)
 
-    case Surreal.search_chunks(sanitized_query, limit: limit * 2, sources: sources) do
+    case SQLite.search_chunks(sanitized_query, limit: limit * 2, sources: sources) do
       {:ok, chunks} ->
         results =
           chunks

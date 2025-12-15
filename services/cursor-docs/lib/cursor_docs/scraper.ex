@@ -19,7 +19,7 @@ defmodule CursorDocs.Scraper do
 
   """
 
-  alias CursorDocs.{Storage.Surreal, Scraper.Pool, Scraper.JobQueue, Scraper.Extractor}
+  alias CursorDocs.{Storage.SQLite, Scraper.JobQueue, Scraper.Extractor}
   alias CursorDocs.{Scraper.RateLimiter, Telemetry}
 
   require Logger
@@ -54,12 +54,12 @@ defmodule CursorDocs.Scraper do
       }
     }
 
-    case Surreal.create_source(source_attrs) do
+    case SQLite.create_source(source_attrs) do
       {:ok, source} ->
         # Queue initial URL
         JobQueue.enqueue(source[:id], url, priority: 10)
 
-        # Start processing
+        # Start processing asynchronously
         spawn(fn -> process_source(source[:id]) end)
 
         Logger.info("Started scraping #{name} (#{url})")
@@ -77,19 +77,16 @@ defmodule CursorDocs.Scraper do
   """
   @spec refresh(String.t()) :: {:ok, map()} | {:error, term()}
   def refresh(source_id) do
-    case Surreal.get_source(source_id) do
+    case SQLite.get_source(source_id) do
       {:ok, source} ->
         # Cancel existing jobs
         JobQueue.cancel(source_id)
-
-        # Clear existing chunks
-        # (In production, might want to keep old chunks until new ones ready)
 
         # Queue root URL again
         JobQueue.enqueue(source_id, source[:url], priority: 10)
 
         # Update status
-        Surreal.update_source(source_id, %{status: "indexing"})
+        SQLite.update_source(source_id, %{status: "indexing"})
 
         # Start processing
         spawn(fn -> process_source(source_id) end)
@@ -116,7 +113,7 @@ defmodule CursorDocs.Scraper do
 
       {:empty} ->
         # No more jobs, mark source as indexed
-        Surreal.update_source(source_id, %{
+        SQLite.update_source(source_id, %{
           status: "indexed",
           last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
         })
@@ -129,33 +126,28 @@ defmodule CursorDocs.Scraper do
     # Rate limit
     RateLimiter.acquire()
 
-    result = Pool.with_page(fn page ->
-      # Navigate to URL
-      case Playwright.Page.goto(page, job.url, wait_until: "networkidle") do
-        {:ok, _response} ->
-          # Wait for content to load
-          Process.sleep(1000)
-
-          # Extract content
-          Extractor.extract(page, job.url)
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end)
-
-    case result do
-      {:ok, {:ok, extracted}} ->
+    # Use simple HTTP fetching (no JS rendering for now)
+    case fetch_and_extract(job.url) do
+      {:ok, extracted} ->
         handle_extracted(job, extracted)
         JobQueue.complete(job.id)
 
-      {:ok, {:error, reason}} ->
-        Logger.warning("Extraction failed for #{job.url}: #{inspect(reason)}")
+      {:error, reason} ->
+        Logger.warning("Fetch failed for #{job.url}: #{inspect(reason)}")
         JobQueue.fail(job.id, inspect(reason))
+    end
+  end
+
+  defp fetch_and_extract(url) do
+    case Req.get(url, headers: [{"user-agent", "CursorDocs/1.0 (Documentation Indexer)"}]) do
+      {:ok, %{status: 200, body: body}} ->
+        Extractor.extract_from_html(body, url)
+
+      {:ok, %{status: status}} ->
+        {:error, "HTTP #{status}"}
 
       {:error, reason} ->
-        Logger.warning("Page load failed for #{job.url}: #{inspect(reason)}")
-        JobQueue.fail(job.id, inspect(reason))
+        {:error, reason}
     end
   end
 
@@ -164,12 +156,12 @@ defmodule CursorDocs.Scraper do
     chunks = chunk_content(extracted.content, extracted.title, job)
 
     # Store chunks
-    case Surreal.store_chunks(chunks) do
+    case SQLite.store_chunks(chunks) do
       {:ok, count} ->
         Logger.debug("Stored #{count} chunks for #{job.url}")
 
         # Update source page count
-        Surreal.update_source(job.source_id, %{
+        SQLite.update_source(job.source_id, %{
           pages_count: {:increment, 1},
           chunks_count: {:increment, count}
         })
@@ -178,8 +170,14 @@ defmodule CursorDocs.Scraper do
         Logger.error("Failed to store chunks: #{inspect(reason)}")
     end
 
-    # Queue discovered links
+    # Queue discovered links (limit to same domain)
+    base_uri = URI.parse(job.url)
+
     extracted.links
+    |> Enum.filter(fn link ->
+      link_uri = URI.parse(link)
+      link_uri.host == base_uri.host
+    end)
     |> Enum.take(50)  # Limit links per page
     |> Enum.each(fn link ->
       JobQueue.enqueue(job.source_id, link, priority: 0)
@@ -205,7 +203,7 @@ defmodule CursorDocs.Scraper do
     do_split_chunks(text, size, overlap, 0, [])
   end
 
-  defp do_split_chunks(text, size, overlap, start, acc) when start >= byte_size(text) do
+  defp do_split_chunks(text, _size, _overlap, start, acc) when start >= byte_size(text) do
     Enum.reverse(acc)
   end
 
@@ -229,13 +227,17 @@ defmodule CursorDocs.Scraper do
   end
 
   defp find_break_point(text) do
-    # Look for paragraph break
-    case :binary.match(text, "\n\n", scope: {div(byte_size(text), 2), div(byte_size(text), 2)}) do
-      {pos, _} -> pos + 2
+    # Look for paragraph break in second half
+    text_bytes = byte_size(text)
+    half = div(text_bytes, 2)
+
+    case :binary.match(text, "\n\n", scope: {half, text_bytes - half}) do
+      {pos, _} ->
+        pos + 2
       :nomatch ->
         # Look for sentence break
         case Regex.run(~r/\. /, text, return: :index) do
-          [{pos, _}] when pos > div(byte_size(text), 2) -> pos + 2
+          [{pos, _}] when pos > half -> pos + 2
           _ -> nil
         end
     end
@@ -251,4 +253,3 @@ defmodule CursorDocs.Scraper do
     String.capitalize(domain)
   end
 end
-

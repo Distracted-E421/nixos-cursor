@@ -1,6 +1,6 @@
 defmodule CursorDocs.Storage.SQLite do
   @moduledoc """
-  SQLite storage backend for CursorDocs.
+  SQLite storage backend for CursorDocs using exqlite.
 
   Uses the same database format as Cursor where possible, making it easier
   to potentially share data or sync state.
@@ -20,6 +20,8 @@ defmodule CursorDocs.Storage.SQLite do
   use GenServer
 
   require Logger
+
+  alias Exqlite.Sqlite3
 
   @db_name "cursor_docs.db"
 
@@ -111,11 +113,11 @@ defmodule CursorDocs.Storage.SQLite do
 
     Logger.info("Opening SQLite database at #{db_path}")
 
-    case Exqlite.Sqlite3.open(db_path) do
+    case Sqlite3.open(db_path) do
       {:ok, conn} ->
         # Enable WAL mode for better concurrency
-        Exqlite.Sqlite3.execute(conn, "PRAGMA journal_mode=WAL")
-        Exqlite.Sqlite3.execute(conn, "PRAGMA synchronous=NORMAL")
+        Sqlite3.execute(conn, "PRAGMA journal_mode=WAL;")
+        Sqlite3.execute(conn, "PRAGMA synchronous=NORMAL;")
 
         {:ok, %{conn: conn, path: db_path}}
 
@@ -137,7 +139,7 @@ defmodule CursorDocs.Storage.SQLite do
 
     sql = """
     INSERT INTO doc_sources (id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     params = [
@@ -152,7 +154,7 @@ defmodule CursorDocs.Storage.SQLite do
       nil
     ]
 
-    case Exqlite.Sqlite3.execute(state.conn, sql, params) do
+    case execute_with_params(state.conn, sql, params) do
       :ok ->
         source = Map.merge(attrs, %{id: id, status: "pending", created_at: now})
         {:reply, {:ok, source}, state}
@@ -168,10 +170,10 @@ defmodule CursorDocs.Storage.SQLite do
     {sets, params} = build_update_params(attrs)
 
     if sets != "" do
-      sql = "UPDATE doc_sources SET #{sets} WHERE id = ?#{length(params) + 1}"
+      sql = "UPDATE doc_sources SET #{sets} WHERE id = ?"
       params = params ++ [id]
 
-      case Exqlite.Sqlite3.execute(state.conn, sql, params) do
+      case execute_with_params(state.conn, sql, params) do
         :ok -> {:reply, {:ok, %{id: id}}, state}
         error -> {:reply, error, state}
       end
@@ -182,10 +184,10 @@ defmodule CursorDocs.Storage.SQLite do
 
   @impl true
   def handle_call({:get_source, id}, _from, state) do
-    sql = "SELECT id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed FROM doc_sources WHERE id = ?1"
+    sql = "SELECT id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed FROM doc_sources WHERE id = ?"
 
-    case Exqlite.Sqlite3.execute(state.conn, sql, [id]) do
-      {:ok, [[id, url, name, status, pages, chunks, config, created, indexed]]} ->
+    case fetch_one(state.conn, sql, [id]) do
+      {:ok, [id, url, name, status, pages, chunks, config, created, indexed]} ->
         source = %{
           id: id,
           url: url,
@@ -199,7 +201,7 @@ defmodule CursorDocs.Storage.SQLite do
         }
         {:reply, {:ok, source}, state}
 
-      {:ok, []} ->
+      {:ok, nil} ->
         {:reply, {:error, :not_found}, state}
 
       error ->
@@ -211,7 +213,7 @@ defmodule CursorDocs.Storage.SQLite do
   def handle_call(:list_sources, _from, state) do
     sql = "SELECT id, url, name, status, pages_count, chunks_count, created_at, last_indexed FROM doc_sources ORDER BY created_at DESC"
 
-    case Exqlite.Sqlite3.execute(state.conn, sql) do
+    case fetch_all(state.conn, sql, []) do
       {:ok, rows} ->
         sources = Enum.map(rows, fn [id, url, name, status, pages, chunks, created, indexed] ->
           %{
@@ -234,11 +236,10 @@ defmodule CursorDocs.Storage.SQLite do
 
   @impl true
   def handle_call({:remove_source, id}, _from, state) do
-    # Delete chunks first (FTS)
-    Exqlite.Sqlite3.execute(state.conn, "DELETE FROM doc_chunks_fts WHERE source_id = ?1", [id])
-    Exqlite.Sqlite3.execute(state.conn, "DELETE FROM doc_chunks WHERE source_id = ?1", [id])
-    Exqlite.Sqlite3.execute(state.conn, "DELETE FROM scrape_jobs WHERE source_id = ?1", [id])
-    Exqlite.Sqlite3.execute(state.conn, "DELETE FROM doc_sources WHERE id = ?1", [id])
+    # Delete in order
+    execute_with_params(state.conn, "DELETE FROM doc_chunks WHERE source_id = ?", [id])
+    execute_with_params(state.conn, "DELETE FROM scrape_jobs WHERE source_id = ?", [id])
+    execute_with_params(state.conn, "DELETE FROM doc_sources WHERE id = ?", [id])
 
     {:reply, :ok, state}
   end
@@ -250,16 +251,16 @@ defmodule CursorDocs.Storage.SQLite do
 
     sql = """
     INSERT INTO doc_chunks (id, source_id, url, title, content, position, created_at)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """
 
-    params = [id, attrs[:source_id], attrs[:url], attrs[:title], attrs[:content], attrs[:position], now]
+    params = [id, attrs[:source_id], attrs[:url], attrs[:title], attrs[:content], attrs[:position] || 0, now]
 
-    case Exqlite.Sqlite3.execute(state.conn, sql, params) do
+    case execute_with_params(state.conn, sql, params) do
       :ok ->
         # Insert into FTS index
-        fts_sql = "INSERT INTO doc_chunks_fts (rowid, source_id, title, content) VALUES (last_insert_rowid(), ?1, ?2, ?3)"
-        Exqlite.Sqlite3.execute(state.conn, fts_sql, [attrs[:source_id], attrs[:title], attrs[:content]])
+        fts_sql = "INSERT INTO doc_chunks_fts (source_id, title, content) VALUES (?, ?, ?)"
+        execute_with_params(state.conn, fts_sql, [attrs[:source_id], attrs[:title], attrs[:content]])
 
         {:reply, {:ok, %{id: id}}, state}
 
@@ -272,7 +273,7 @@ defmodule CursorDocs.Storage.SQLite do
   def handle_call({:store_chunks, chunks}, _from, state) do
     now = DateTime.utc_now() |> DateTime.to_iso8601()
 
-    Exqlite.Sqlite3.execute(state.conn, "BEGIN TRANSACTION")
+    Sqlite3.execute(state.conn, "BEGIN TRANSACTION;")
 
     count =
       Enum.reduce(chunks, 0, fn chunk, acc ->
@@ -280,16 +281,16 @@ defmodule CursorDocs.Storage.SQLite do
 
         sql = """
         INSERT INTO doc_chunks (id, source_id, url, title, content, position, created_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        params = [id, chunk[:source_id], chunk[:url], chunk[:title], chunk[:content], chunk[:position], now]
+        params = [id, chunk[:source_id], chunk[:url], chunk[:title], chunk[:content], chunk[:position] || 0, now]
 
-        case Exqlite.Sqlite3.execute(state.conn, sql, params) do
+        case execute_with_params(state.conn, sql, params) do
           :ok ->
             # FTS index
-            fts_sql = "INSERT INTO doc_chunks_fts (source_id, title, content) VALUES (?1, ?2, ?3)"
-            Exqlite.Sqlite3.execute(state.conn, fts_sql, [chunk[:source_id], chunk[:title], chunk[:content]])
+            fts_sql = "INSERT INTO doc_chunks_fts (source_id, title, content) VALUES (?, ?, ?)"
+            execute_with_params(state.conn, fts_sql, [chunk[:source_id], chunk[:title], chunk[:content]])
             acc + 1
 
           _ ->
@@ -297,7 +298,7 @@ defmodule CursorDocs.Storage.SQLite do
         end
       end)
 
-    Exqlite.Sqlite3.execute(state.conn, "COMMIT")
+    Sqlite3.execute(state.conn, "COMMIT;")
 
     {:reply, {:ok, count}, state}
   end
@@ -307,32 +308,34 @@ defmodule CursorDocs.Storage.SQLite do
     limit = Keyword.get(opts, :limit, 5)
     sources = Keyword.get(opts, :sources, [])
 
-    # FTS5 search
+    # Escape the query for FTS5
+    escaped_query = escape_fts_query(query)
+
     {sql, params} =
       if sources == [] do
         {"""
         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
                bm25(doc_chunks_fts) as score
         FROM doc_chunks_fts fts
-        JOIN doc_chunks c ON c.id = fts.rowid
-        WHERE doc_chunks_fts MATCH ?1
+        JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
+        WHERE doc_chunks_fts MATCH ?
         ORDER BY score
-        LIMIT ?2
-        """, [query, limit]}
+        LIMIT ?
+        """, [escaped_query, limit]}
       else
-        placeholders = sources |> Enum.with_index(3) |> Enum.map(fn {_, i} -> "?#{i}" end) |> Enum.join(", ")
+        placeholders = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
         {"""
         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
                bm25(doc_chunks_fts) as score
         FROM doc_chunks_fts fts
-        JOIN doc_chunks c ON c.id = fts.rowid
-        WHERE doc_chunks_fts MATCH ?1 AND c.source_id IN (#{placeholders})
+        JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
+        WHERE doc_chunks_fts MATCH ? AND c.source_id IN (#{placeholders})
         ORDER BY score
-        LIMIT ?2
-        """, [query, limit] ++ sources}
+        LIMIT ?
+        """, [escaped_query] ++ sources ++ [limit]}
       end
 
-    case Exqlite.Sqlite3.execute(state.conn, sql, params) do
+    case fetch_all(state.conn, sql, params) do
       {:ok, rows} ->
         chunks = Enum.map(rows, fn [id, source_id, url, title, content, position, score] ->
           %{
@@ -355,76 +358,135 @@ defmodule CursorDocs.Storage.SQLite do
   @impl true
   def terminate(_reason, state) do
     if state[:conn] do
-      Exqlite.Sqlite3.close(state.conn)
+      Sqlite3.close(state.conn)
     end
   end
 
   # Private Functions
 
+  defp execute_with_params(conn, sql, params) do
+    case Sqlite3.prepare(conn, sql) do
+      {:ok, stmt} ->
+        Sqlite3.bind(stmt, params)
+        result = step_until_done(conn, stmt)
+        Sqlite3.release(conn, stmt)
+        result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp fetch_one(conn, sql, params) do
+    case Sqlite3.prepare(conn, sql) do
+      {:ok, stmt} ->
+        Sqlite3.bind(stmt, params)
+        result = case Sqlite3.step(conn, stmt) do
+          {:row, row} -> {:ok, row}
+          :done -> {:ok, nil}
+          {:error, reason} -> {:error, reason}
+        end
+        Sqlite3.release(conn, stmt)
+        result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp fetch_all(conn, sql, params) do
+    case Sqlite3.prepare(conn, sql) do
+      {:ok, stmt} ->
+        Sqlite3.bind(stmt, params)
+        rows = collect_rows(conn, stmt, [])
+        Sqlite3.release(conn, stmt)
+        {:ok, rows}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp collect_rows(conn, stmt, acc) do
+    case Sqlite3.step(conn, stmt) do
+      {:row, row} -> collect_rows(conn, stmt, [row | acc])
+      :done -> Enum.reverse(acc)
+      {:error, _reason} -> Enum.reverse(acc)
+    end
+  end
+
+  defp step_until_done(conn, stmt) do
+    case Sqlite3.step(conn, stmt) do
+      {:row, _row} -> step_until_done(conn, stmt)
+      :done -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp setup_schema(conn) do
-    schema = """
-    -- Documentation sources
-    CREATE TABLE IF NOT EXISTS doc_sources (
-      id TEXT PRIMARY KEY,
-      url TEXT NOT NULL UNIQUE,
-      name TEXT,
-      status TEXT DEFAULT 'pending',
-      pages_count INTEGER DEFAULT 0,
-      chunks_count INTEGER DEFAULT 0,
-      config TEXT,
-      created_at TEXT,
-      last_indexed TEXT
-    );
+    statements = [
+      # Documentation sources
+      """
+      CREATE TABLE IF NOT EXISTS doc_sources (
+        id TEXT PRIMARY KEY,
+        url TEXT NOT NULL UNIQUE,
+        name TEXT,
+        status TEXT DEFAULT 'pending',
+        pages_count INTEGER DEFAULT 0,
+        chunks_count INTEGER DEFAULT 0,
+        config TEXT,
+        created_at TEXT,
+        last_indexed TEXT
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS idx_sources_status ON doc_sources(status)",
 
-    CREATE INDEX IF NOT EXISTS idx_sources_status ON doc_sources(status);
+      # Content chunks
+      """
+      CREATE TABLE IF NOT EXISTS doc_chunks (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        title TEXT,
+        content TEXT NOT NULL,
+        position INTEGER DEFAULT 0,
+        created_at TEXT,
+        FOREIGN KEY (source_id) REFERENCES doc_sources(id)
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS idx_chunks_source ON doc_chunks(source_id)",
 
-    -- Content chunks
-    CREATE TABLE IF NOT EXISTS doc_chunks (
-      id TEXT PRIMARY KEY,
-      source_id TEXT NOT NULL,
-      url TEXT NOT NULL,
-      title TEXT,
-      content TEXT NOT NULL,
-      position INTEGER DEFAULT 0,
-      created_at TEXT,
-      FOREIGN KEY (source_id) REFERENCES doc_sources(id)
-    );
+      # FTS5 virtual table for full-text search
+      """
+      CREATE VIRTUAL TABLE IF NOT EXISTS doc_chunks_fts USING fts5(
+        source_id,
+        title,
+        content
+      )
+      """,
 
-    CREATE INDEX IF NOT EXISTS idx_chunks_source ON doc_chunks(source_id);
+      # Scrape jobs
+      """
+      CREATE TABLE IF NOT EXISTS scrape_jobs (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        url TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        attempts INTEGER DEFAULT 0,
+        error TEXT,
+        created_at TEXT,
+        started_at TEXT,
+        completed_at TEXT,
+        FOREIGN KEY (source_id) REFERENCES doc_sources(id)
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS idx_jobs_source_status ON scrape_jobs(source_id, status)"
+    ]
 
-    -- FTS5 virtual table for full-text search
-    CREATE VIRTUAL TABLE IF NOT EXISTS doc_chunks_fts USING fts5(
-      source_id,
-      title,
-      content,
-      content=doc_chunks,
-      content_rowid=rowid
-    );
-
-    -- Scrape jobs
-    CREATE TABLE IF NOT EXISTS scrape_jobs (
-      id TEXT PRIMARY KEY,
-      source_id TEXT NOT NULL,
-      url TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      attempts INTEGER DEFAULT 0,
-      error TEXT,
-      created_at TEXT,
-      started_at TEXT,
-      completed_at TEXT,
-      FOREIGN KEY (source_id) REFERENCES doc_sources(id)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_jobs_source_status ON scrape_jobs(source_id, status);
-    """
-
-    # Execute each statement separately
-    schema
-    |> String.split(";")
-    |> Enum.each(fn stmt ->
-      stmt = String.trim(stmt)
-      if stmt != "" do
-        Exqlite.Sqlite3.execute(conn, stmt)
+    Enum.each(statements, fn sql ->
+      case Sqlite3.execute(conn, sql) do
+        :ok -> :ok
+        {:error, reason} -> Logger.warning("Schema statement failed: #{inspect(reason)}")
       end
     end)
 
@@ -435,23 +497,32 @@ defmodule CursorDocs.Storage.SQLite do
   defp build_update_params(attrs) do
     allowed = [:status, :pages_count, :chunks_count, :last_indexed, :name]
 
-    {sets, params, _idx} =
-      Enum.reduce(allowed, {[], [], 1}, fn key, {sets, params, idx} ->
+    {sets, params} =
+      Enum.reduce(allowed, {[], []}, fn key, {sets, params} ->
         case Map.get(attrs, key) do
           nil ->
-            {sets, params, idx}
+            {sets, params}
 
           {:increment, val} ->
             col = Atom.to_string(key)
-            {["#{col} = #{col} + ?#{idx}" | sets], [val | params], idx + 1}
+            {["#{col} = #{col} + ?" | sets], [val | params]}
 
           val ->
             col = Atom.to_string(key)
-            {["#{col} = ?#{idx}" | sets], [val | params], idx + 1}
+            {["#{col} = ?" | sets], [val | params]}
         end
       end)
 
     {sets |> Enum.reverse() |> Enum.join(", "), Enum.reverse(params)}
+  end
+
+  defp escape_fts_query(query) do
+    # Basic FTS5 query escaping - wrap terms in quotes
+    query
+    |> String.trim()
+    |> String.split(~r/\s+/)
+    |> Enum.map(fn term -> "\"#{term}\"" end)
+    |> Enum.join(" ")
   end
 
   defp default_db_path do
@@ -462,4 +533,3 @@ defmodule CursorDocs.Storage.SQLite do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false)
   end
 end
-

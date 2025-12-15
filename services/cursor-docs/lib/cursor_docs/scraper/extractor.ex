@@ -1,268 +1,148 @@
 defmodule CursorDocs.Scraper.Extractor do
   @moduledoc """
-  Content extraction from HTML pages.
+  HTML content extraction and processing.
 
-  Handles:
-  - Main content identification (removes nav, footer, sidebar, ads)
-  - Metadata extraction (title, description)
-  - Link discovery for crawling
-  - Text cleaning and normalization
+  Extracts clean text content from HTML pages, removing boilerplate
+  (navigation, footers, scripts) and extracting main content.
   """
 
   require Logger
 
   @doc """
-  Extract content from a Playwright page.
-
-  Returns a map with:
-  - `:title` - Page title
-  - `:description` - Meta description
-  - `:content` - Clean text content
-  - `:links` - Internal documentation links
-  - `:code_blocks` - Extracted code examples
+  Extract content from HTML string.
   """
-  @spec extract(Playwright.Page.t(), String.t()) :: {:ok, map()} | {:error, term()}
-  def extract(page, base_url) do
-    with {:ok, html} <- Playwright.Page.content(page),
-         {:ok, document} <- Floki.parse_document(html) do
-      title = extract_title(document)
-      description = extract_description(document)
-      content = extract_main_content(document)
-      links = extract_links(document, base_url)
-      code_blocks = extract_code_blocks(document)
+  @spec extract_from_html(String.t(), String.t()) :: {:ok, map()} | {:error, term()}
+  def extract_from_html(html, url) do
+    try do
+      {:ok, document} = Floki.parse_document(html)
+
+      # Remove unwanted elements
+      document =
+        document
+        |> Floki.filter_out("script")
+        |> Floki.filter_out("style")
+        |> Floki.filter_out("nav")
+        |> Floki.filter_out("footer")
+        |> Floki.filter_out("header")
+        |> Floki.filter_out("aside")
+        |> Floki.filter_out("noscript")
+        |> Floki.filter_out(".sidebar")
+        |> Floki.filter_out(".navigation")
+        |> Floki.filter_out(".toc")
+        |> Floki.filter_out("[role=navigation]")
+
+      # Extract title
+      title =
+        case Floki.find(document, "title") do
+          [] -> url
+          elements -> elements |> Floki.text() |> String.trim()
+        end
+
+      title = if title == "", do: url, else: title
+
+      # Extract description
+      description =
+        case Floki.find(document, "meta[name=description]") do
+          [] -> ""
+          elements ->
+            elements
+            |> Floki.attribute("content")
+            |> List.first()
+            |> Kernel.||("")
+            |> String.trim()
+        end
+
+      # Get main content - prefer main/article, fallback to body
+      main_content =
+        case Floki.find(document, "main, article, [role=main]") do
+          [] -> document
+          elements -> elements
+        end
+
+      # Extract text
+      text =
+        main_content
+        |> Floki.text(sep: "\n")
+        |> String.trim()
+        |> clean_text()
+
+      # Extract links for crawling
+      links =
+        document
+        |> Floki.find("a[href]")
+        |> Floki.attribute("href")
+        |> Enum.map(&resolve_url(&1, url))
+        |> Enum.filter(&valid_doc_url?/1)
+        |> Enum.uniq()
 
       {:ok, %{
         title: title,
         description: description,
-        content: content,
+        content: text,
         links: links,
-        code_blocks: code_blocks,
-        word_count: word_count(content)
+        url: url
       }}
+    rescue
+      e ->
+        Logger.error("Extraction failed for #{url}: #{inspect(e)}")
+        {:error, e}
     end
   end
 
-  @doc """
-  Extract content from raw HTML string.
-  """
-  @spec extract_from_html(String.t(), String.t()) :: {:ok, map()} | {:error, term()}
-  def extract_from_html(html, base_url) do
-    case Floki.parse_document(html) do
-      {:ok, document} ->
-        {:ok, %{
-          title: extract_title(document),
-          description: extract_description(document),
-          content: extract_main_content(document),
-          links: extract_links(document, base_url),
-          code_blocks: extract_code_blocks(document),
-          word_count: word_count(extract_main_content(document))
-        }}
-
-      error ->
-        error
-    end
-  end
-
-  # Private extraction functions
-
-  defp extract_title(document) do
-    # Try multiple selectors in order of preference
-    selectors = [
-      "h1",
-      "title",
-      ~s{meta[property="og:title"]},
-      ".page-title",
-      ".article-title"
-    ]
-
-    Enum.find_value(selectors, "Untitled", fn selector ->
-      case selector do
-        "meta" <> _ ->
-          document
-          |> Floki.find(selector)
-          |> Floki.attribute("content")
-          |> List.first()
-
-        _ ->
-          document
-          |> Floki.find(selector)
-          |> Floki.text()
-          |> case do
-            "" -> nil
-            text -> String.trim(text)
-          end
-      end
-    end)
-  end
-
-  defp extract_description(document) do
-    selectors = [
-      ~s{meta[name="description"]},
-      ~s{meta[property="og:description"]}
-    ]
-
-    Enum.find_value(selectors, "", fn selector ->
-      document
-      |> Floki.find(selector)
-      |> Floki.attribute("content")
-      |> List.first()
-    end)
-    |> Kernel.||("")
-    |> String.trim()
-    |> String.slice(0, 500)
-  end
-
-  defp extract_main_content(document) do
-    # Remove unwanted elements
-    document
-    |> remove_elements([
-      "script",
-      "style",
-      "nav",
-      "footer",
-      "header",
-      "aside",
-      ".sidebar",
-      ".navigation",
-      ".nav",
-      ".footer",
-      ".header",
-      ".menu",
-      ".ads",
-      ".advertisement",
-      ".cookie-banner",
-      ".cookie-notice",
-      "#cookie-consent",
-      ".social-share",
-      ".comments"
-    ])
-    |> find_main_content()
-    |> Floki.text(sep: "\n")
-    |> clean_text()
-  end
-
-  defp remove_elements(document, selectors) do
-    Enum.reduce(selectors, document, fn selector, doc ->
-      Floki.filter_out(doc, selector)
-    end)
-  end
-
-  defp find_main_content(document) do
-    # Try to find main content area
-    main_selectors = [
-      "main",
-      "article",
-      ~s{[role="main"]},
-      ".content",
-      ".main-content",
-      ".article-content",
-      ".documentation",
-      ".docs-content",
-      "#content",
-      "#main"
-    ]
-
-    Enum.find_value(main_selectors, document, fn selector ->
-      case Floki.find(document, selector) do
-        [] -> nil
-        found -> found
-      end
-    end)
-  end
-
-  defp extract_links(document, base_url) do
-    base_uri = URI.parse(base_url)
-
-    document
-    |> Floki.find("a")
-    |> Floki.attribute("href")
-    |> Enum.filter(&is_binary/1)
-    |> Enum.map(&resolve_url(&1, base_uri))
-    |> Enum.filter(&is_internal_doc_link?(&1, base_uri))
-    |> Enum.uniq()
-  end
-
-  defp resolve_url(href, base_uri) do
-    case URI.parse(href) do
-      %URI{host: nil, path: path} when is_binary(path) ->
-        # Relative URL
-        URI.merge(base_uri, href) |> URI.to_string()
-
-      %URI{host: host} when is_binary(host) ->
-        # Absolute URL
-        href
-
-      _ ->
-        nil
-    end
-  end
-
-  defp is_internal_doc_link?(nil, _base_uri), do: false
-  defp is_internal_doc_link?(url, base_uri) do
-    uri = URI.parse(url)
-
-    # Same host
-    uri.host == base_uri.host &&
-      # Not an anchor-only link
-      !is_nil(uri.path) &&
-      # Not a file download
-      !String.match?(uri.path || "", ~r/\.(pdf|zip|tar|gz|exe|dmg|pkg)$/i) &&
-      # Not a media file
-      !String.match?(uri.path || "", ~r/\.(jpg|jpeg|png|gif|svg|webp|mp4|webm)$/i)
-  end
-
-  defp extract_code_blocks(document) do
-    document
-    |> Floki.find("pre code, pre, code")
-    |> Enum.map(fn element ->
-      language = detect_language(element)
-      code = Floki.text(element) |> String.trim()
-
-      %{
-        language: language,
-        code: code
-      }
-    end)
-    |> Enum.reject(fn %{code: code} -> String.length(code) < 10 end)
-  end
-
-  defp detect_language(element) do
-    # Check class for language hint
-    classes =
-      element
-      |> Floki.attribute("class")
-      |> List.first()
-      |> Kernel.||("")
-
-    cond do
-      String.contains?(classes, "language-") ->
-        classes
-        |> String.split()
-        |> Enum.find(&String.starts_with?(&1, "language-"))
-        |> String.replace_prefix("language-", "")
-
-      String.contains?(classes, "highlight-") ->
-        classes
-        |> String.split()
-        |> Enum.find(&String.starts_with?(&1, "highlight-"))
-        |> String.replace_prefix("highlight-", "")
-
-      true ->
-        nil
-    end
-  end
-
+  # Clean up extracted text
   defp clean_text(text) do
     text
-    |> String.replace(~r/\n{3,}/, "\n\n")
-    |> String.replace(~r/[ \t]+/, " ")
-    |> String.replace(~r/^\s+$/m, "")
-    |> String.trim()
+    |> String.replace(~r/\n{3,}/, "\n\n")  # Collapse multiple newlines
+    |> String.replace(~r/ {2,}/, " ")       # Collapse multiple spaces
+    |> String.replace(~r/\t+/, " ")         # Replace tabs
   end
 
-  defp word_count(text) do
-    text
-    |> String.split(~r/\s+/)
-    |> Enum.count()
+  # Resolve relative URLs to absolute
+  defp resolve_url(href, base_url) when is_binary(href) do
+    href = String.trim(href)
+
+    cond do
+      String.starts_with?(href, "http://") or String.starts_with?(href, "https://") ->
+        href
+
+      String.starts_with?(href, "//") ->
+        "https:" <> href
+
+      String.starts_with?(href, "/") ->
+        base_uri = URI.parse(base_url)
+        "#{base_uri.scheme}://#{base_uri.host}#{href}"
+
+      String.starts_with?(href, "#") ->
+        nil  # Skip anchors
+
+      String.starts_with?(href, "mailto:") or String.starts_with?(href, "javascript:") ->
+        nil
+
+      true ->
+        # Relative path
+        base_uri = URI.parse(base_url)
+        base_path = base_uri.path || "/"
+        dir = Path.dirname(base_path)
+        "#{base_uri.scheme}://#{base_uri.host}#{Path.join(dir, href)}"
+    end
   end
+
+  defp resolve_url(_, _), do: nil
+
+  # Filter to only valid documentation URLs
+  defp valid_doc_url?(nil), do: false
+  defp valid_doc_url?(url) when is_binary(url) do
+    uri = URI.parse(url)
+
+    # Must have scheme and host
+    uri.scheme in ["http", "https"] and
+      is_binary(uri.host) and
+      uri.host != "" and
+      # Skip non-doc extensions
+      not String.match?(url, ~r/\.(png|jpg|jpeg|gif|svg|pdf|zip|tar|gz|mp4|mp3|wav)$/i) and
+      # Skip common non-content paths
+      not String.contains?(url, ["/login", "/signup", "/auth", "/api/", "/_"])
+  end
+
+  defp valid_doc_url?(_), do: false
 end
