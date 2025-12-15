@@ -1,19 +1,28 @@
 defmodule CursorDocs.Scraper.Extractor do
   @moduledoc """
-  HTML content extraction and processing.
+  HTML content extraction and processing with security validation.
 
-  Extracts clean text content from HTML pages, removing boilerplate
-  (navigation, footers, scripts) and extracting main content.
+  Features:
+  - Extracts clean text from HTML, removing boilerplate
+  - Detects hidden content and prompt injection attempts
+  - Validates content quality before indexing
+  - Produces AI-optimized semantic chunks
   """
 
   require Logger
 
+  alias CursorDocs.Scraper.ContentValidator
+
   @doc """
-  Extract content from HTML string.
+  Extract and validate content from HTML string.
+  Returns validated, security-checked content ready for indexing.
   """
   @spec extract_from_html(String.t(), String.t()) :: {:ok, map()} | {:error, term()}
   def extract_from_html(html, url) do
     try do
+      # Step 1: Security checks on raw HTML
+      {security_status, html} = run_security_checks(html, url)
+
       {:ok, document} = Floki.parse_document(html)
 
       # Remove unwanted elements
@@ -30,6 +39,8 @@ defmodule CursorDocs.Scraper.Extractor do
         |> Floki.filter_out(".navigation")
         |> Floki.filter_out(".toc")
         |> Floki.filter_out("[role=navigation]")
+        |> Floki.filter_out("[hidden]")
+        |> Floki.filter_out("[aria-hidden=true]")
 
       # Extract title
       title =
@@ -66,27 +77,105 @@ defmodule CursorDocs.Scraper.Extractor do
         |> String.trim()
         |> clean_text()
 
-      # Extract links for crawling
-      links =
-        document
-        |> Floki.find("a[href]")
-        |> Floki.attribute("href")
-        |> Enum.map(&resolve_url(&1, url))
-        |> Enum.filter(&valid_doc_url?/1)
-        |> Enum.uniq()
+      # Step 2: Quality validation
+      case ContentValidator.validate_quality(text) do
+        {:valid, quality_score} ->
+          # Extract links for crawling
+          links =
+            document
+            |> Floki.find("a[href]")
+            |> Floki.attribute("href")
+            |> Enum.map(&resolve_url(&1, url))
+            |> Enum.filter(&valid_doc_url?/1)
+            |> Enum.uniq()
 
-      {:ok, %{
-        title: title,
-        description: description,
-        content: text,
-        links: links,
-        url: url
-      }}
+          {:ok, %{
+            title: title,
+            description: description,
+            content: text,
+            links: links,
+            url: url,
+            quality_score: quality_score,
+            security_status: security_status
+          }}
+
+        {:invalid, reasons} ->
+          Logger.warning("Quality check failed for #{url}: #{inspect(reasons)}")
+          {:error, {:quality_failed, reasons}}
+      end
     rescue
       e ->
         Logger.error("Extraction failed for #{url}: #{inspect(e)}")
         {:error, e}
     end
+  end
+
+  @doc """
+  Extract and chunk content with full security and quality pipeline.
+  """
+  @spec extract_and_chunk(String.t(), String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
+  def extract_and_chunk(html, url, opts \\ []) do
+    source_name = Keyword.get(opts, :name, extract_source_name(url))
+
+    case extract_from_html(html, url) do
+      {:ok, extracted} ->
+        # Create semantic chunks
+        chunks = ContentValidator.semantic_chunk(extracted.content, opts)
+
+        formatted_chunks =
+          Enum.map(chunks, fn chunk ->
+            %{
+              content: chunk.content,
+              title: extracted.title,
+              url: url,
+              source_name: source_name,
+              position: chunk.position,
+              total_chunks: chunk.total,
+              quality_score: extracted.quality_score,
+              security_status: extracted.security_status,
+              char_count: chunk.char_count,
+              word_count: chunk.word_count,
+              has_code: chunk.has_code
+            }
+          end)
+
+        {:ok, %{chunks: formatted_chunks, links: extracted.links}}
+
+      error ->
+        error
+    end
+  end
+
+  # Run security checks and return sanitized HTML
+  defp run_security_checks(html, url) do
+    # Check for hidden content
+    hidden_result = ContentValidator.detect_hidden_content(html)
+    html = case hidden_result do
+      {:ok, clean} -> clean
+      {:suspicious, reasons, clean} ->
+        Logger.warning("Hidden content in #{url}: #{inspect(reasons)}")
+        clean
+    end
+
+    # Check for prompt injection
+    injection_result = ContentValidator.detect_prompt_injection(html)
+    case injection_result do
+      {:safe, _} ->
+        {:clean, html}
+
+      {:suspicious, threats, _} ->
+        Logger.warning("Suspicious patterns in #{url}: #{inspect(threats)}")
+        {:suspicious, html}
+
+      {:dangerous, threats, sanitized} ->
+        Logger.error("Prompt injection detected in #{url}: #{inspect(threats)}")
+        {:sanitized, sanitized}
+    end
+  end
+
+  defp extract_source_name(url) do
+    uri = URI.parse(url)
+    uri.host || "Unknown"
   end
 
   # Clean up extracted text
