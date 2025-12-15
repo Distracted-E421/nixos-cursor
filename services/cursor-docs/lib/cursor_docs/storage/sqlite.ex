@@ -346,13 +346,12 @@ defmodule CursorDocs.Storage.SQLite do
     # Escape the query for FTS5
     escaped_query = escape_fts_query(query)
 
+    # Query FTS5 directly - it contains all the content we need
     {sql, params} =
       if sources == [] do
         {"""
-         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
-                bm25(doc_chunks_fts) as score
-         FROM doc_chunks_fts fts
-         JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
+         SELECT rowid, source_id, title, content, bm25(doc_chunks_fts) as score
+         FROM doc_chunks_fts
          WHERE doc_chunks_fts MATCH ?
          ORDER BY score
          LIMIT ?
@@ -361,11 +360,9 @@ defmodule CursorDocs.Storage.SQLite do
         placeholders = sources |> Enum.map(fn _ -> "?" end) |> Enum.join(", ")
 
         {"""
-         SELECT c.id, c.source_id, c.url, c.title, c.content, c.position,
-                bm25(doc_chunks_fts) as score
-         FROM doc_chunks_fts fts
-         JOIN doc_chunks c ON c.source_id = fts.source_id AND c.title = fts.title
-         WHERE doc_chunks_fts MATCH ? AND c.source_id IN (#{placeholders})
+         SELECT rowid, source_id, title, content, bm25(doc_chunks_fts) as score
+         FROM doc_chunks_fts
+         WHERE doc_chunks_fts MATCH ? AND source_id IN (#{placeholders})
          ORDER BY score
          LIMIT ?
          """, [escaped_query] ++ sources ++ [limit]}
@@ -373,15 +370,19 @@ defmodule CursorDocs.Storage.SQLite do
 
     case fetch_all(state.conn, sql, params) do
       {:ok, rows} ->
+        # Get the URL from doc_sources for each result
         chunks =
-          Enum.map(rows, fn [id, source_id, url, title, content, position, score] ->
+          Enum.map(rows, fn [rowid, source_id, title, content, score] ->
+            # Look up the source URL
+            url = get_source_url(state.conn, source_id)
+
             %{
-              id: id,
+              id: "fts_#{rowid}",
               source_id: source_id,
               url: url,
               title: title,
               content: content,
-              position: position,
+              position: 0,
               score: score
             }
           end)
@@ -390,6 +391,14 @@ defmodule CursorDocs.Storage.SQLite do
 
       error ->
         {:reply, error, state}
+    end
+  end
+
+  # Helper to get source URL for search results
+  defp get_source_url(conn, source_id) do
+    case fetch_one(conn, "SELECT url FROM doc_sources WHERE id = ?", [source_id]) do
+      {:ok, [url]} -> url
+      _ -> nil
     end
   end
 
@@ -558,12 +567,13 @@ defmodule CursorDocs.Storage.SQLite do
   end
 
   defp escape_fts_query(query) do
-    # Basic FTS5 query escaping - wrap terms in quotes
+    # FTS5 query - join terms with OR for broader matching
     query
     |> String.trim()
+    |> String.replace(~r/[^\w\s]/, "")  # Remove special chars
     |> String.split(~r/\s+/)
-    |> Enum.map(fn term -> "\"#{term}\"" end)
-    |> Enum.join(" ")
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join(" OR ")
   end
 
   defp default_db_path do
