@@ -119,6 +119,9 @@ defmodule CursorDocs.Storage.SQLite do
         Sqlite3.execute(conn, "PRAGMA journal_mode=WAL;")
         Sqlite3.execute(conn, "PRAGMA synchronous=NORMAL;")
 
+        # Auto-setup schema on fresh database
+        setup_schema(conn)
+
         {:ok, %{conn: conn, path: db_path}}
 
       {:error, reason} ->
