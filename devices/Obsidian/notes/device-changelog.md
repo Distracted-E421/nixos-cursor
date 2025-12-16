@@ -1,3 +1,36 @@
+## 2025-12-16 20:50:00 - [FIX]
+
+**Description**: Fixed vector storage modules and tested cursor-docs integration
+
+**Files**:
+- services/cursor-docs/lib/cursor_docs/storage/vector/surrealdb.ex
+- services/cursor-docs/lib/cursor_docs/storage/vector/sqlite_vss.ex
+- services/cursor-docs/lib/cursor_docs/storage/vector/disabled.ex
+- cursor-studio-egui/src/docs/client.rs
+
+**Changes**:
+
+1. **Vector Storage Fixes**:
+   - Added missing `start_link/1` and `child_spec/1` to all vector storage modules
+   - Fixed GenServer supervision compatibility
+   - SurrealDB, sqlite-vss, and Disabled backends now start correctly
+
+2. **Rust Client Path Detection**:
+   - Updated `default_db_path()` to try multiple locations:
+     - cursor-docs-dev (development)
+     - cursor-docs (production)
+   - Auto-detects existing database
+
+3. **Testing Results**:
+   - cursor-docs application starts successfully
+   - Search functionality working (FTS5)
+   - Security quarantine pipeline flagging hidden content
+   - 3 indexed sources: Phoenix Router, Phoenix Overview, Nushell Dataframes
+
+**Commits**: dab29f9
+
+---
+
 ## 2025-12-16 14:00:00 - [FEATURE]
 
 **Description**: Comprehensive cursor-studio-egui update - naming, export, and polish
