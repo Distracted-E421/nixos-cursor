@@ -286,6 +286,39 @@ impl DocsClient {
         })
     }
 
+    /// Delete a source and all its chunks
+    pub fn delete_source(&self, source_id: &str) -> Result<(), String> {
+        // Need write access for delete
+        let flags = rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        
+        let conn = Connection::open_with_flags(&self.db_path, flags)
+            .map_err(|e| format!("Failed to open database for writing: {}", e))?;
+
+        // Delete chunks first (foreign key constraint)
+        conn.execute(
+            "DELETE FROM doc_chunks WHERE source_id = ?",
+            [source_id],
+        ).map_err(|e| format!("Failed to delete chunks: {}", e))?;
+
+        // Delete from FTS index
+        conn.execute(
+            "DELETE FROM doc_chunks_fts WHERE rowid IN (SELECT rowid FROM doc_chunks WHERE source_id = ?)",
+            [source_id],
+        ).ok(); // Ignore FTS errors (table might not exist)
+
+        // Delete source
+        let deleted = conn.execute(
+            "DELETE FROM doc_sources WHERE id = ?",
+            [source_id],
+        ).map_err(|e| format!("Failed to delete source: {}", e))?;
+
+        if deleted == 0 {
+            return Err("Source not found".to_string());
+        }
+
+        Ok(())
+    }
+
     /// Get default database path
     /// Get the default database path, trying multiple locations.
     /// Priority:
