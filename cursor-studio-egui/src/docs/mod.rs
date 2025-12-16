@@ -12,5 +12,5 @@ pub mod ui;
 
 pub use client::DocsClient;
 pub use models::*;
-pub use ui::DocsPanel;
+pub use ui::{DocsPanel, DocsPanelEvent, DocsTheme};
 

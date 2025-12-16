@@ -112,42 +112,6 @@ impl DocsClient {
         Ok(sources)
     }
 
-    /// Get aggregate statistics
-    pub fn get_stats(&self) -> Result<DocsStats, String> {
-        let conn = self.get_connection()?;
-
-        // Get source counts
-        let mut stmt = conn
-            .prepare(
-                r#"
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'indexed' THEN 1 ELSE 0 END) as indexed,
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-                    SUM(COALESCE(chunks_count, 0)) as total_chunks
-                FROM doc_sources
-                "#,
-            )
-            .map_err(|e| format!("Failed to prepare stats query: {}", e))?;
-
-        let stats = stmt
-            .query_row([], |row| {
-                Ok(DocsStats {
-                    total_sources: row.get::<_, i64>(0)? as usize,
-                    indexed_sources: row.get::<_, i64>(1)? as usize,
-                    pending_sources: row.get::<_, i64>(2)? as usize,
-                    failed_sources: row.get::<_, i64>(3)? as usize,
-                    total_chunks: row.get::<_, i64>(4)? as usize,
-                    total_alerts: 0,  // Would need security_alerts table
-                    recent_alerts: 0, // Would need security_alerts table
-                })
-            })
-            .map_err(|e| format!("Failed to get stats: {}", e))?;
-
-        Ok(stats)
-    }
-
     /// Get a single source by ID
     pub fn get_source(&self, source_id: &str) -> Result<Option<DocSource>, String> {
         let conn = self.get_connection()?;
@@ -275,6 +239,54 @@ impl DocsClient {
         Ok(chunks)
     }
 
+    /// Get statistics
+    pub fn get_stats(&self) -> Result<DocsStats, String> {
+        let conn = self.get_connection()?;
+
+        let total_sources: i64 = conn
+            .query_row("SELECT COUNT(*) FROM doc_sources", [], |row| row.get(0))
+            .unwrap_or(0);
+
+        let total_chunks: i64 = conn
+            .query_row("SELECT COUNT(*) FROM doc_chunks", [], |row| row.get(0))
+            .unwrap_or(0);
+
+        let indexed_sources: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM doc_sources WHERE status = 'indexed'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        let pending_sources: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM doc_sources WHERE status IN ('pending', 'indexing')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        let failed_sources: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM doc_sources WHERE status = 'failed'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        Ok(DocsStats {
+            total_sources: total_sources as usize,
+            total_chunks: total_chunks as usize,
+            indexed_sources: indexed_sources as usize,
+            pending_sources: pending_sources as usize,
+            failed_sources: failed_sources as usize,
+            total_alerts: 0,  // TODO: Add alerts table query
+            recent_alerts: 0, // TODO: Add recent alerts query
+        })
+    }
+
+    /// Get default database path
     /// Get the default database path, trying multiple locations.
     /// Priority:
     /// 1. cursor-docs-dev (development)
