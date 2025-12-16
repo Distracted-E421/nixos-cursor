@@ -300,6 +300,39 @@ enum Tab {
     Conversation(String),
 }
 
+/// Export format options for chat data
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+enum ExportFormat {
+    #[default]
+    Markdown,
+    MarkdownObsidian,
+    Json,
+    JsonLines,
+    OpenAIJsonl,
+    AlpacaJson,
+}
+
+impl ExportFormat {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Markdown => "Markdown",
+            Self::MarkdownObsidian => "Markdown (Obsidian)",
+            Self::Json => "JSON",
+            Self::JsonLines => "JSON Lines",
+            Self::OpenAIJsonl => "OpenAI JSONL (training)",
+            Self::AlpacaJson => "Alpaca JSON (training)",
+        }
+    }
+
+    fn file_extension(&self) -> &'static str {
+        match self {
+            Self::Markdown | Self::MarkdownObsidian => "md",
+            Self::Json | Self::AlpacaJson => "json",
+            Self::JsonLines | Self::OpenAIJsonl => "jsonl",
+        }
+    }
+}
+
 /// Actions to perform on bookmarks (collected during UI rendering, executed after)
 enum BookmarkAction {
     Add(String, String, usize), // conv_id, msg_id, msg_seq
@@ -361,6 +394,11 @@ struct CursorStudio {
     import_progress: Option<(usize, usize)>, // (current, total)
     import_warning_shown: bool,
     last_import_error: Option<String>,
+
+    // Export dialog state
+    show_export_dialog: bool,
+    export_format: ExportFormat,
+    export_output_dir: String,
 
     // Bookmark state
     current_bookmarks: Vec<Bookmark>,
@@ -582,6 +620,14 @@ impl CursorStudio {
             import_progress: None,
             import_warning_shown: false,
             last_import_error: None,
+            // Export dialog state
+            show_export_dialog: false,
+            export_format: ExportFormat::default(),
+            export_output_dir: dirs::document_dir()
+                .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
+                .join("cursor-exports")
+                .to_string_lossy()
+                .to_string(),
             // Bookmark state
             current_bookmarks: vec![],
             show_bookmark_panel: false,
@@ -3871,13 +3917,82 @@ impl CursorStudio {
                 }
 
                 if styled_button(ui, "⬆ Export", Vec2::new(80.0, 28.0))
-                    .on_hover_text("Export chats to markdown")
+                    .on_hover_text("Export chats to markdown or training data")
                     .clicked()
                 {
-                    self.set_status("Export feature coming soon");
+                    self.show_export_dialog = !self.show_export_dialog;
                 }
             });
             ui.add_space(8.0);
+
+            // Export dialog
+            if self.show_export_dialog {
+                ui.add_space(8.0);
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new("📤 Export Settings")
+                                .size(12.0)
+                                .color(theme.fg)
+                                .strong(),
+                        );
+                        ui.add_space(8.0);
+
+                        // Format selection
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Format:").size(11.0).color(theme.fg_dim));
+                            egui::ComboBox::from_id_salt("export_format")
+                                .selected_text(self.export_format.label())
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::Markdown, "Markdown");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::MarkdownObsidian, "Markdown (Obsidian)");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::Json, "JSON");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::JsonLines, "JSON Lines");
+                                    ui.separator();
+                                    ui.label(RichText::new("Training Data").size(10.0).color(theme.fg_dim));
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::OpenAIJsonl, "OpenAI JSONL");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::AlpacaJson, "Alpaca JSON");
+                                });
+                        });
+
+                        ui.add_space(4.0);
+
+                        // Output directory
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Output:").size(11.0).color(theme.fg_dim));
+                            ui.add(egui::TextEdit::singleline(&mut self.export_output_dir)
+                                .desired_width(180.0));
+                        });
+
+                        ui.add_space(8.0);
+
+                        ui.horizontal(|ui| {
+                            if styled_button_accent(ui, "Export All", Vec2::new(90.0, 26.0), theme).clicked() {
+                                let cmd = format!(
+                                    "cd ~/nixos-cursor/services/cursor-docs && mix cursor_docs.chat --export-all --format {} --output-dir {}",
+                                    self.export_format.file_extension(),
+                                    self.export_output_dir
+                                );
+                                self.set_status(&format!("Run: {}", cmd));
+                                self.show_export_dialog = false;
+                            }
+                            if styled_button(ui, "Cancel", Vec2::new(70.0, 26.0)).clicked() {
+                                self.show_export_dialog = false;
+                            }
+                        });
+
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new("Tip: Use cursor-docs CLI for batch exports")
+                                .size(9.0)
+                                .color(theme.fg_dim)
+                                .italics(),
+                        );
+                    });
+            }
         });
     }
 
