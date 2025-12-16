@@ -1,7 +1,7 @@
 defmodule CursorDocs.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.3.0-pre"
   @source_url "https://github.com/Distracted-E421/nixos-cursor"
 
   def project do

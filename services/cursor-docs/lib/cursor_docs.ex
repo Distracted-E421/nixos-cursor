@@ -14,10 +14,23 @@ defmodule CursorDocs do
   ## Features
 
   - **Cursor Sync**: Uses the same @docs URLs from Cursor's settings
-  - **Reliable Scraping**: Full JavaScript rendering via headless browser
-  - **Local Storage**: SQLite with FTS5 full-text search
+  - **Reliable Scraping**: HTTP-based with security validation
+  - **Smart Storage**: SurrealDB (vectors) or SQLite (FTS5) based on availability
+  - **Semantic Search**: Vector embeddings via Ollama for better results
+  - **Security**: Data quarantine, prompt injection detection, quality validation
   - **MCP Integration**: Seamless integration with Cursor via MCP protocol
   - **Fault Tolerant**: OTP supervision tree for automatic recovery
+
+  ## Storage Backends
+
+  | Feature              | SurrealDB | SQLite |
+  |---------------------|-----------|--------|
+  | Full-text search    | ✅        | ✅ FTS5 |
+  | Vector embeddings   | ✅        | ❌      |
+  | Semantic search     | ✅        | ❌      |
+  | Graph relationships | ✅        | ❌      |
+  | Cross-domain links  | ✅        | ❌      |
+  | Cursor DB reading   | ❌        | ✅      |
 
   ## Quick Start
 
@@ -27,19 +40,24 @@ defmodule CursorDocs do
       # Or add documentation manually
       CursorDocs.add("https://docs.example.com/")
 
-      # Search
+      # Search (uses semantic if available)
       CursorDocs.search("authentication")
 
       # List all indexed docs
       CursorDocs.list()
+
+      # Check storage status
+      CursorDocs.storage_status()
 
   ## Architecture
 
   The service is built on these core components:
 
   - `CursorDocs.CursorIntegration` - Syncs with Cursor's @docs settings
-  - `CursorDocs.Scraper` - Web scraping with JS rendering
-  - `CursorDocs.Storage.SQLite` - Local SQLite with FTS5
+  - `CursorDocs.Scraper` - Web scraping with security quarantine
+  - `CursorDocs.Storage` - Unified storage (SurrealDB or SQLite)
+  - `CursorDocs.Embeddings` - Vector embeddings via Ollama
+  - `CursorDocs.Security.Quarantine` - Data validation and sandboxing
   - `CursorDocs.MCP` - Model Context Protocol server
 
   See individual module documentation for details.
@@ -98,12 +116,14 @@ defmodule CursorDocs do
   @doc """
   Search indexed documentation.
 
-  Returns chunks matching the query, sorted by relevance using FTS5 BM25.
+  Uses semantic search (vector embeddings) if SurrealDB is available,
+  falls back to FTS5 full-text search on SQLite.
 
   ## Options
 
     * `:limit` - Maximum results to return (default: 5)
     * `:sources` - Filter by specific source IDs (list)
+    * `:semantic` - Force semantic search (default: auto)
 
   ## Examples
 
@@ -116,7 +136,24 @@ defmodule CursorDocs do
   """
   @spec search(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
   def search(query, opts \\ []) do
-    CursorDocs.Storage.SQLite.search_chunks(query, opts)
+    CursorDocs.Storage.search(query, opts)
+  end
+
+  @doc """
+  Search using only semantic embeddings.
+  Returns error if SurrealDB/Ollama not available.
+  """
+  @spec search_semantic(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
+  def search_semantic(query, opts \\ []) do
+    CursorDocs.Storage.search_semantic(query, opts)
+  end
+
+  @doc """
+  Search using only text matching (no embeddings).
+  """
+  @spec search_text(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
+  def search_text(query, opts \\ []) do
+    CursorDocs.Storage.search_text(query, opts)
   end
 
   @doc """
@@ -133,7 +170,7 @@ defmodule CursorDocs do
   """
   @spec list() :: {:ok, list(map())} | {:error, term()}
   def list do
-    CursorDocs.Storage.SQLite.list_sources()
+    CursorDocs.Storage.list_sources()
   end
 
   @doc """
@@ -158,6 +195,23 @@ defmodule CursorDocs do
   end
 
   @doc """
+  Get storage backend status and capabilities.
+
+  ## Examples
+
+      iex> CursorDocs.storage_status()
+      %{
+        backend: :surrealdb,
+        features: %{semantic_search: true, vector_embeddings: true, ...}
+      }
+
+  """
+  @spec storage_status() :: map()
+  def storage_status do
+    CursorDocs.Storage.status()
+  end
+
+  @doc """
   Remove a documentation source and all its chunks.
 
   ## Examples
@@ -168,7 +222,7 @@ defmodule CursorDocs do
   """
   @spec remove(String.t()) :: :ok | {:error, term()}
   def remove(source_id) do
-    CursorDocs.Storage.SQLite.remove_source(source_id)
+    CursorDocs.Storage.remove_source(source_id)
   end
 
   @doc """

@@ -1,6 +1,6 @@
 # cursor-docs - Local Documentation Indexing for Cursor
 
-A reliable, local alternative to Cursor's flaky `@docs` feature. **Zero workflow change** - it reads the same URLs you've already added in Cursor Settings.
+A reliable, local alternative to Cursor's flaky `@docs` feature with **semantic search** and **security validation**. **Zero workflow change** - it reads the same URLs you've already added in Cursor Settings.
 
 ## 🎯 The Problem
 
@@ -10,18 +10,34 @@ Cursor's built-in `@docs` indexing has a **widespread server-side bug** affectin
 - Silent failures (shows "indexed" but 0 pages)
 - No JavaScript rendering (fails on SPAs)
 - No way to debug or retry
+- **Vulnerable to prompt injection** in indexed content
 
 **This is NOT a NixOS or OS issue** - it affects all platforms.
 
 ## ✨ The Solution
 
-**cursor-docs** scrapes the same documentation URLs locally with:
+**cursor-docs** v0.2.0 scrapes the same documentation URLs locally with:
 
-- ✅ Full JavaScript rendering
-- ✅ FTS5 full-text search
+- ✅ **Semantic search** via vector embeddings (SurrealDB + Ollama)
+- ✅ **Security quarantine** - prompt injection & hidden text detection
+- ✅ **Quality validation** - filters error pages, login walls, junk
+- ✅ FTS5 full-text search (SQLite fallback)
 - ✅ Transparent error reporting
-- ✅ Automatic retry
+- ✅ Automatic retry with exponential backoff
 - ✅ MCP integration with Cursor
+
+## 📊 Storage Backends
+
+| Feature              | SurrealDB | SQLite |
+|---------------------|-----------|--------|
+| Full-text search    | ✅        | ✅ FTS5 |
+| Vector embeddings   | ✅        | ❌      |
+| Semantic search     | ✅        | ❌      |
+| Graph relationships | ✅        | ❌      |
+| Cross-domain links  | ✅        | ❌      |
+| Cursor DB reading   | ❌        | ✅      |
+
+cursor-docs automatically uses SurrealDB when available, falling back to SQLite.
 
 ## 🚀 Quick Start
 
@@ -38,13 +54,16 @@ mix cursor_docs.setup
 mix cursor_docs.sync
 
 # Or add docs manually
-mix cursor_docs.add https://hexdocs.pm/phoenix/
+mix cursor_docs.add https://hexdocs.pm/phoenix/Phoenix.Router.html
 
-# Search
+# Search (uses semantic if available)
 mix cursor_docs.search "authentication"
 
 # List indexed docs
 mix cursor_docs.list
+
+# Check storage status
+mix cursor_docs.status
 ```
 
 ## 🔄 Key Feature: Cursor Sync
@@ -53,8 +72,10 @@ The killer feature is **zero workflow change**:
 
 1. You add docs in Cursor Settings → Indexing & Docs (as normal)
 2. cursor-docs reads those same URLs from Cursor's SQLite database
-3. Indexes them locally with proper JS rendering
-4. Makes them available via MCP
+3. Runs them through **security quarantine**
+4. Indexes them locally with proper content extraction
+5. Generates **vector embeddings** for semantic search (if Ollama available)
+6. Makes them available via MCP
 
 ```elixir
 # Sync all docs from Cursor's settings
@@ -62,7 +83,122 @@ CursorDocs.sync_from_cursor()
 
 # See what Cursor has configured
 CursorDocs.list_cursor_docs()
+
+# Check storage status
+CursorDocs.storage_status()
 ```
+
+## 🔒 Security Pipeline
+
+**All external data is treated as radioactive** until validated:
+
+```
+URL → Fetch → [QUARANTINE ZONE] → Validate → Store
+
+            Hidden Content Detection
+                    ↓
+            Prompt Injection Scan
+                    ↓
+            Quality Validation
+                    ↓
+            Security Tier: clean/flagged/quarantined/blocked
+```
+
+### Security Features
+
+- **Hidden text detection**: CSS hiding, white-on-white text, zero-dimension elements
+- **Prompt injection detection**: "ignore previous instructions", role manipulation, delimiter attacks
+- **Quality validation**: Filters error pages, login walls, low-quality content
+- **Safe snapshots**: Never expose raw potentially-malicious content to users
+
+### Security Commands
+
+```bash
+# View security alerts
+mix cursor_docs.alerts
+
+# View quarantined content (pending review)
+mix cursor_docs.quarantine
+
+# Review and approve/reject quarantined items
+mix cursor_docs.quarantine --review ITEM_ID --action approve
+
+# Export alerts for cursor-studio
+mix cursor_docs.alerts --export
+```
+
+## 🧠 AI Provider Architecture
+
+cursor-docs is designed to be **useful without being a problem app**:
+
+- **No forced dependencies** - Works with SQLite + FTS5 alone
+- **No background daemons** - Unless you explicitly want them
+- **Hardware-aware** - Detects and uses what's available efficiently
+- **Pluggable** - Use Ollama, local models, or cloud APIs
+- **Graceful degradation** - Falls back to FTS5 if AI unavailable
+
+### Hardware Detection
+
+cursor-docs automatically detects your hardware:
+
+```bash
+mix run -e "IO.puts(CursorDocs.AI.Hardware.summary())"
+
+# Example output on Obsidian:
+# Hardware Profile:
+#   CPU: Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz (16 threads)
+#   RAM: 31GB
+#   GPU: NVIDIA GeForce RTX 2080 (8GB), Intel Arc A770 (16GB)
+#   Backend: cuda
+#   Batch Size: 32
+#   Model: nomic-embed-text
+#   Background OK: true
+```
+
+### Provider Priority
+
+1. **Ollama** (if running) - Uses existing Ollama installation
+2. **Local ONNX** (if models downloaded) - No daemon required
+3. **Disabled** - Graceful fallback to FTS5 keyword search
+
+### Quick Setup
+
+```bash
+# Option 1: Use existing Ollama
+ollama pull nomic-embed-text  # Best quality, 768 dimensions
+# or
+ollama pull all-minilm        # Faster, 384 dimensions
+
+# Option 2: Local ONNX (no daemon)
+mix cursor_docs.model download all-minilm
+
+# Option 3: FTS5 only (no AI)
+# Just works out of the box!
+```
+
+### Model Registry
+
+| Model | Provider | Dims | Quality | Speed | Size |
+|-------|----------|------|---------|-------|------|
+| nomic-embed-text | ollama | 768 | 92% | 75% | 274MB |
+| all-minilm | ollama | 384 | 82% | 95% | 45MB |
+| mxbai-embed-large | ollama | 1024 | 94% | 60% | 670MB |
+
+See [AI_PROVIDER_ARCHITECTURE.md](docs/AI_PROVIDER_ARCHITECTURE.md) for full documentation.
+
+## 📊 Optional: SurrealDB for Vector Storage
+
+For advanced semantic search with vector embeddings:
+
+```bash
+# Start SurrealDB (if not already running)
+surreal start --user root --pass root file:~/.local/share/cursor-docs/surreal.db
+```
+
+With both SurrealDB and Ollama running, cursor-docs automatically:
+- Generates embeddings for all indexed chunks
+- Uses cosine similarity for semantic search
+- Falls back to FTS5 if unavailable
 
 ## 🏗️ Architecture
 
@@ -83,10 +219,16 @@ CursorDocs.list_cursor_docs()
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │               cursor-docs (Elixir/OTP)                      │ │
 │  │                                                             │ │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │ │
-│  │  │CursorIntegration│→ │ Scraper Pool    │→ │ SQLite+FTS5 │ │ │
-│  │  │ (reads Cursor)  │  │ (JS rendering)  │  │ (storage)   │ │ │
-│  │  └─────────────────┘  └─────────────────┘  └─────────────┘ │ │
+│  │  ┌──────────────┐  ┌───────────────┐  ┌─────────────────┐  │ │
+│  │  │Cursor        │→ │ Security      │→ │ Storage         │  │ │
+│  │  │Integration   │  │ Quarantine    │  │ (Surreal/SQLite)│  │ │
+│  │  └──────────────┘  └───────────────┘  └─────────────────┘  │ │
+│  │         │                                      ↑            │ │
+│  │         ↓                                      │            │ │
+│  │  ┌──────────────┐  ┌───────────────┐  ┌───────┴─────────┐  │ │
+│  │  │ Rate Limiter │→ │ Scraper       │→ │ Embeddings      │  │ │
+│  │  │              │  │ + Extractor   │  │ (Ollama)        │  │ │
+│  │  └──────────────┘  └───────────────┘  └─────────────────┘  │ │
 │  │                                                             │ │
 │  │                    ┌─────────────────┐                     │ │
 │  │                    │   MCP Server    │◄── Cursor queries   │ │
@@ -97,15 +239,23 @@ CursorDocs.list_cursor_docs()
 
 ## 📦 Dependencies
 
-Real Hex packages that exist:
-
 ```elixir
-{:exqlite, "~> 0.23"},     # SQLite with FTS5
-{:req, "~> 0.5"},          # HTTP client
-{:floki, "~> 0.36"},       # HTML parsing
-{:wallaby, "~> 0.30"},     # Browser automation (optional)
-{:jason, "~> 1.4"},        # JSON
-{:file_system, "~> 1.0"},  # Watch Cursor DB changes
+# Storage
+{:exqlite, "~> 0.23"},      # SQLite with FTS5
+
+# HTTP & Parsing
+{:req, "~> 0.5"},           # HTTP client
+{:floki, "~> 0.36"},        # HTML parsing
+
+# JSON
+{:jason, "~> 1.4"},
+
+# Telemetry
+{:telemetry, "~> 1.2"},
+{:telemetry_metrics, "~> 1.0"},
+
+# File watching
+{:file_system, "~> 1.0"},   # Watch Cursor DB changes
 ```
 
 ## 🔧 MCP Integration
@@ -136,7 +286,9 @@ Then use in Cursor chat:
 
 | What | Where |
 |------|-------|
-| cursor-docs DB | `~/.local/share/cursor-docs/cursor_docs.db` |
+| cursor-docs SQLite | `~/.local/share/cursor-docs/cursor_docs.db` |
+| cursor-docs SurrealDB | `~/.local/share/cursor-docs/surreal.db` |
+| Security alerts export | `/tmp/cursor-docs-alerts.json` |
 | Cursor global DB | `~/.config/Cursor/User/globalStorage/state.vscdb` |
 | Cursor workspace DBs | `~/.config/Cursor/User/workspaceStorage/*/state.vscdb` |
 
@@ -147,16 +299,28 @@ Then use in Cursor chat:
 mix cursor_docs.sync
 
 # Add manually
-mix cursor_docs.add URL [--name NAME] [--max-pages N]
+mix cursor_docs.add URL [--name NAME] [--max-pages N] [--force]
 
-# Search
+# Search (semantic if SurrealDB+Ollama, FTS5 otherwise)
 mix cursor_docs.search QUERY [--limit N]
 
 # List sources
 mix cursor_docs.list
 
-# Check status
+# Check status (including backend info)
 mix cursor_docs.status
+
+# Security alerts
+mix cursor_docs.alerts [--severity high] [--export]
+
+# Quarantine management
+mix cursor_docs.quarantine [--review ID --action approve|reject|keep_flagged]
+
+# Show Cursor's configured docs
+mix cursor_docs.cursor
+
+# Import from Cursor (with limits)
+mix cursor_docs.import [--limit N] [--dry-run]
 
 # Start MCP server (for Cursor)
 mix cursor_docs.mcp
@@ -179,6 +343,25 @@ mix credo
 
 # Generate docs
 mix docs
+```
+
+## 🛠️ Configuration
+
+Environment-specific config in `config/`:
+
+```elixir
+# config/config.exs
+config :cursor_docs,
+  db_path: "~/.local/share/cursor-docs",
+  rate_limit: [requests_per_second: 2, burst: 5]
+
+# SurrealDB (optional, enables semantic search)
+config :cursor_docs, :surrealdb,
+  endpoint: "http://localhost:8000",
+  namespace: "cursor",
+  database: "docs",
+  username: "root",
+  password: "root"
 ```
 
 ## 📝 See Also

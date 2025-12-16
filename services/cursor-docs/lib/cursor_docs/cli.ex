@@ -390,7 +390,7 @@ defmodule CursorDocs.CLI do
     end
   end
 
-  defp show_alerts(opts) do
+  defp show_alerts(_opts) do
     IO.puts("🔒 Security Alerts\n")
 
     case Alerts.get_stats() do
@@ -427,7 +427,7 @@ defmodule CursorDocs.CLI do
 
     # Show recent alerts
     case Alerts.get_alerts_for_gui(min_severity: 3) do
-      {:ok, alerts} when length(alerts) > 0 ->
+      {:ok, [_ | _] = alerts} ->
         IO.puts("Recent Alerts (Medium+):")
         IO.puts("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 

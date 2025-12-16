@@ -79,6 +79,14 @@ defmodule CursorDocs.Storage.SQLite do
   end
 
   @doc """
+  Clear all chunks for a source (before re-indexing).
+  """
+  @spec clear_chunks(String.t()) :: :ok | {:error, term()}
+  def clear_chunks(source_id) do
+    GenServer.call(__MODULE__, {:clear_chunks, source_id})
+  end
+
+  @doc """
   Store a content chunk.
   """
   @spec store_chunk(map()) :: {:ok, map()} | {:error, term()}
@@ -95,11 +103,43 @@ defmodule CursorDocs.Storage.SQLite do
   end
 
   @doc """
+  Check if a URL already exists as a source.
+  """
+  @spec source_exists?(String.t()) :: boolean()
+  def source_exists?(url) do
+    GenServer.call(__MODULE__, {:source_exists, url})
+  end
+
+  @doc """
+  Get source by URL.
+  """
+  @spec get_source_by_url(String.t()) :: {:ok, map()} | {:error, :not_found}
+  def get_source_by_url(url) do
+    GenServer.call(__MODULE__, {:get_source_by_url, url})
+  end
+
+  @doc """
   Search chunks using FTS5.
   """
   @spec search_chunks(String.t(), keyword()) :: {:ok, list(map())} | {:error, term()}
   def search_chunks(query, opts \\ []) do
     GenServer.call(__MODULE__, {:search_chunks, query, opts})
+  end
+
+  @doc """
+  Get all chunks for a source (for embedding generation).
+  """
+  @spec get_chunks_for_source(String.t()) :: {:ok, list(map())} | {:error, term()}
+  def get_chunks_for_source(source_id) do
+    GenServer.call(__MODULE__, {:get_chunks_for_source, source_id})
+  end
+
+  @doc """
+  Get a single chunk by ID.
+  """
+  @spec get_chunk(String.t()) :: {:ok, map()} | {:error, :not_found}
+  def get_chunk(chunk_id) do
+    GenServer.call(__MODULE__, {:get_chunk, chunk_id})
   end
 
   # Server Callbacks
@@ -244,12 +284,58 @@ defmodule CursorDocs.Storage.SQLite do
 
   @impl true
   def handle_call({:remove_source, id}, _from, state) do
-    # Delete in order
+    # Delete in order (also clear FTS)
+    execute_with_params(state.conn, "DELETE FROM doc_chunks_fts WHERE source_id = ?", [id])
     execute_with_params(state.conn, "DELETE FROM doc_chunks WHERE source_id = ?", [id])
     execute_with_params(state.conn, "DELETE FROM scrape_jobs WHERE source_id = ?", [id])
     execute_with_params(state.conn, "DELETE FROM doc_sources WHERE id = ?", [id])
 
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:clear_chunks, source_id}, _from, state) do
+    # Clear both regular table and FTS table
+    execute_with_params(state.conn, "DELETE FROM doc_chunks_fts WHERE source_id = ?", [source_id])
+    execute_with_params(state.conn, "DELETE FROM doc_chunks WHERE source_id = ?", [source_id])
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:source_exists, url}, _from, state) do
+    case fetch_one(state.conn, "SELECT COUNT(*) FROM doc_sources WHERE url = ?", [url]) do
+      {:ok, [count]} when count > 0 -> {:reply, true, state}
+      _ -> {:reply, false, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_source_by_url, url}, _from, state) do
+    sql =
+      "SELECT id, url, name, status, pages_count, chunks_count, config, created_at, last_indexed FROM doc_sources WHERE url = ?"
+
+    case fetch_one(state.conn, sql, [url]) do
+      {:ok, [id, url, name, status, pages, chunks, config, created, indexed]} ->
+        source = %{
+          id: id,
+          url: url,
+          name: name,
+          status: status,
+          pages_count: pages,
+          chunks_count: chunks,
+          config: Jason.decode!(config || "{}"),
+          created_at: created,
+          last_indexed: indexed
+        }
+
+        {:reply, {:ok, source}, state}
+
+      {:ok, nil} ->
+        {:reply, {:error, :not_found}, state}
+
+      error ->
+        {:reply, error, state}
+    end
   end
 
   @impl true
@@ -564,6 +650,66 @@ defmodule CursorDocs.Storage.SQLite do
       end)
 
     {sets |> Enum.reverse() |> Enum.join(", "), Enum.reverse(params)}
+  end
+
+  @impl true
+  def handle_call({:get_chunks_for_source, source_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, url, title, content, position, created_at
+    FROM doc_chunks
+    WHERE source_id = ?
+    ORDER BY position ASC
+    """
+
+    case fetch_all(state.conn, sql, [source_id]) do
+      {:ok, rows} ->
+        chunks = Enum.map(rows, fn [id, src_id, url, title, content, position, created_at] ->
+          %{
+            id: id,
+            source_id: src_id,
+            url: url,
+            title: title,
+            content: content,
+            position: position,
+            created_at: created_at
+          }
+        end)
+
+        {:reply, {:ok, chunks}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_chunk, chunk_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, url, title, content, position, created_at
+    FROM doc_chunks
+    WHERE id = ?
+    LIMIT 1
+    """
+
+    case fetch_all(state.conn, sql, [chunk_id]) do
+      {:ok, [[id, src_id, url, title, content, position, created_at]]} ->
+        chunk = %{
+          id: id,
+          source_id: src_id,
+          url: url,
+          title: title,
+          content: content,
+          position: position,
+          created_at: created_at
+        }
+        {:reply, {:ok, chunk}, state}
+
+      {:ok, []} ->
+        {:reply, {:error, :not_found}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   defp escape_fts_query(query) do

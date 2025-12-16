@@ -39,7 +39,7 @@ defmodule CursorDocs.Security.Quarantine do
 
   alias CursorDocs.Scraper.ContentValidator
 
-  @tiers [:clean, :flagged, :quarantined, :blocked]
+  # Security tiers: clean, flagged, quarantined, blocked
 
   # Alert severity levels
   @severity_critical 1
@@ -148,12 +148,12 @@ defmodule CursorDocs.Security.Quarantine do
   @impl true
   def handle_call({:all_alerts, opts}, _from, state) do
     min_severity = Keyword.get(opts, :min_severity, @severity_low)
-    
+
     alerts = :ets.tab2list(:security_alerts)
     |> Enum.map(fn {_, alert} -> alert end)
     |> Enum.filter(fn alert -> alert.severity <= min_severity end)
     |> Enum.sort_by(fn alert -> {alert.severity, alert.created_at} end)
-    
+
     {:reply, {:ok, alerts}, state}
   end
 
@@ -174,18 +174,18 @@ defmodule CursorDocs.Security.Quarantine do
           :reject -> :blocked
           :keep_flagged -> :flagged
         end
-        
-        updated = %{item | 
+
+        updated = %{item |
           tier: new_tier,
           reviewed_by: reviewer,
           reviewed_at: DateTime.utc_now()
         }
-        
+
         :ets.insert(:quarantine_items, {item_id, updated})
         Logger.info("Quarantine item #{item_id} marked as #{new_tier} by #{reviewer}")
         {:reply, {:ok, updated}, state}
-        
-      [] -> 
+
+      [] ->
         {:reply, {:error, :not_found}, state}
     end
   end
@@ -292,7 +292,7 @@ defmodule CursorDocs.Security.Quarantine do
         {:flagged, alerts, html}
 
       {:dangerous, threats, sanitized} ->
-        alerts = Enum.map(threats, fn {type, severity, matches} ->
+        alerts = Enum.map(threats, fn {type, _severity, matches} ->
           %{
             id: generate_id(),
             type: :prompt_injection,
@@ -361,10 +361,8 @@ defmodule CursorDocs.Security.Quarantine do
   # Safe Snapshot Generation
   # ============================================================================
 
-  @doc """
-  Creates a safe snapshot for UI display.
-  Never includes raw HTML or potentially dangerous content.
-  """
+  # Creates a safe snapshot for UI display.
+  # Never includes raw HTML or potentially dangerous content.
   defp create_safe_snapshot(html, url, alerts) do
     text = extract_text_safely(html)
 
@@ -443,4 +441,3 @@ defmodule CursorDocs.Security.Quarantine do
     end
   end
 end
-

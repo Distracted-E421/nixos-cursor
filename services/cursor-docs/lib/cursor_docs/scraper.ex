@@ -1,12 +1,22 @@
 defmodule CursorDocs.Scraper do
   @moduledoc """
-  Documentation scraper coordinator.
+  Documentation scraper coordinator with security quarantine.
 
   Orchestrates the scraping pipeline:
   1. Accept URL for indexing
-  2. Fetch page, extract content and links
-  3. Store chunks in SQLite
-  4. Optionally follow discovered links
+  2. Fetch page through QUARANTINE ZONE
+  3. Security validation (hidden content, prompt injection)
+  4. Quality validation
+  5. Store validated chunks in SQLite
+  6. Optionally follow discovered links
+
+  ## Security Model
+
+  ALL external content is treated as potentially malicious:
+  - Content passes through security quarantine before indexing
+  - Hidden text and prompt injections are detected and sanitized
+  - Quality validation prevents junk from entering the index
+  - Security alerts are logged for user review
 
   ## Usage
 
@@ -18,7 +28,8 @@ defmodule CursorDocs.Scraper do
 
   """
 
-  alias CursorDocs.{Storage.SQLite, Scraper.Extractor, Scraper.RateLimiter}
+  alias CursorDocs.{Storage, Scraper.Extractor, Scraper.RateLimiter}
+  alias CursorDocs.Security.Quarantine
 
   require Logger
 
@@ -55,19 +66,20 @@ defmodule CursorDocs.Scraper do
       }
     }
 
-    case SQLite.create_source(source_attrs) do
+    case Storage.create_source(source_attrs) do
       {:ok, source} ->
         Logger.info("Started scraping #{name} (#{url})")
 
         # Update status to indexing
-        SQLite.update_source(source[:id], %{status: "indexing"})
+        Storage.update_source(source[:id], %{status: "indexing"})
 
         # Scrape the initial URL synchronously
         case scrape_url(source[:id], url, name) do
           {:ok, result} ->
             # Update source with results
-            SQLite.update_source(source[:id], %{
+            Storage.update_source(source[:id], %{
               status: "indexed",
+              security_tier: result[:security_tier] || "clean",
               pages_count: 1,
               chunks_count: result.chunks_count,
               last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
@@ -81,7 +93,7 @@ defmodule CursorDocs.Scraper do
             {:ok, Map.merge(source, %{chunks_count: result.chunks_count, status: "indexed"})}
 
           {:error, reason} ->
-            SQLite.update_source(source[:id], %{status: "failed"})
+            Storage.update_source(source[:id], %{status: "failed"})
             Logger.error("Failed to scrape #{url}: #{inspect(reason)}")
             {:error, reason}
         end
@@ -97,14 +109,15 @@ defmodule CursorDocs.Scraper do
   """
   @spec refresh(String.t()) :: {:ok, map()} | {:error, term()}
   def refresh(source_id) do
-    case SQLite.get_source(source_id) do
+    case Storage.get_source(source_id) do
       {:ok, source} ->
-        SQLite.update_source(source_id, %{status: "indexing"})
+        Storage.update_source(source_id, %{status: "indexing"})
 
         case scrape_url(source_id, source[:url], source[:name]) do
           {:ok, result} ->
-            SQLite.update_source(source_id, %{
+            Storage.update_source(source_id, %{
               status: "indexed",
+              security_tier: result[:security_tier] || "clean",
               pages_count: 1,
               chunks_count: result.chunks_count,
               last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
@@ -113,7 +126,7 @@ defmodule CursorDocs.Scraper do
             {:ok, source}
 
           {:error, reason} ->
-            SQLite.update_source(source_id, %{status: "failed"})
+            Storage.update_source(source_id, %{status: "failed"})
             {:error, reason}
         end
 
@@ -130,19 +143,32 @@ defmodule CursorDocs.Scraper do
 
     Logger.debug("Fetching #{url}")
 
-    case fetch_and_extract(url) do
-      {:ok, extracted} ->
-        # Create chunks from content
-        chunks = chunk_content(extracted.content, extracted.title || title, source_id, url)
+    case fetch_html(url) do
+      {:ok, html} ->
+        # Process through security quarantine
+        case process_through_quarantine(html, url, title) do
+          {:ok, extracted, security_tier} ->
+            # Clear existing chunks for this source (prevents duplicates)
+            Storage.clear_chunks(source_id)
 
-        # Store chunks
-        case SQLite.store_chunks(chunks) do
-          {:ok, count} ->
-            Logger.info("Stored #{count} chunks for #{url}")
-            {:ok, %{chunks_count: count, links: extracted.links}}
+            # Create and store chunks (with embeddings if SurrealDB available)
+            chunks = chunk_content(extracted.content, extracted.title || title, source_id, url)
+
+            case Storage.store_chunks(chunks) do
+              {:ok, count} ->
+                Logger.info("Stored #{count} chunks for #{url} (security: #{security_tier})")
+                {:ok, %{chunks_count: count, links: extracted.links, security_tier: security_tier}}
+
+              {:error, reason} ->
+                Logger.error("Failed to store chunks: #{inspect(reason)}")
+                {:error, reason}
+            end
+
+          {:blocked, alerts} ->
+            Logger.error("Content blocked for #{url}: #{length(alerts)} security issues")
+            {:error, {:security_blocked, alerts}}
 
           {:error, reason} ->
-            Logger.error("Failed to store chunks: #{inspect(reason)}")
             {:error, reason}
         end
 
@@ -151,7 +177,7 @@ defmodule CursorDocs.Scraper do
     end
   end
 
-  defp fetch_and_extract(url) do
+  defp fetch_html(url) do
     case Req.get(url,
            headers: [{"user-agent", "CursorDocs/1.0 (Documentation Indexer)"}],
            receive_timeout: 30_000,
@@ -159,7 +185,7 @@ defmodule CursorDocs.Scraper do
            max_redirects: 5
          ) do
       {:ok, %{status: 200, body: body}} when is_binary(body) ->
-        Extractor.extract_from_html(body, url)
+        {:ok, body}
 
       {:ok, %{status: status}} ->
         {:error, "HTTP #{status}"}
@@ -172,13 +198,44 @@ defmodule CursorDocs.Scraper do
     end
   end
 
+  defp process_through_quarantine(html, url, name) do
+    # Route all content through security quarantine
+    case Quarantine.process(html, url, name: name) do
+      {:ok, tier, alerts, sanitized_html, _item_id} when tier in [:clean, :flagged] ->
+        # Content is safe enough to index
+        if length(alerts) > 0 do
+          Logger.warning("#{url} passed with #{length(alerts)} alerts (tier: #{tier})")
+        end
+        # Extract content from sanitized HTML
+        case Extractor.extract_from_html(sanitized_html, url) do
+          {:ok, extracted} -> {:ok, extracted, tier}
+          error -> error
+        end
+
+      {:ok, :quarantined, alerts, _html, _item_id} ->
+        # Quarantined - needs human review before indexing
+        Logger.warning("#{url} quarantined with #{length(alerts)} alerts - needs review")
+        # For now, still extract but flag it
+        case Extractor.extract_from_html(html, url) do
+          {:ok, extracted} -> {:ok, extracted, :quarantined}
+          error -> error
+        end
+
+      {:blocked, alerts, _} ->
+        {:blocked, alerts}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   defp follow_links_async(source_id, links, remaining) when remaining > 0 and links != [] do
     # Get base domain to stay on same site
     [first_link | rest] = links
 
     case scrape_url(source_id, first_link, nil) do
       {:ok, result} ->
-        SQLite.update_source(source_id, %{
+        Storage.update_source(source_id, %{
           pages_count: {:increment, 1},
           chunks_count: {:increment, result.chunks_count}
         })

@@ -1,3 +1,91 @@
+## 2025-12-16 06:00:00 - [CONFIG]
+
+**Description**: Created Nix flake for cursor-docs v0.3.0-pre with dev shells, NixOS module, and Home Manager module
+
+**Files**: 
+- services/cursor-docs/flake.nix (new - dev shells + modules)
+- services/cursor-docs/flake.lock (new - generated)
+- services/cursor-docs/docs/INSTALLATION.md (new - installation guide)
+- services/cursor-docs/mix.exs (version 0.3.0-pre)
+- services/cursor-docs/CHANGELOG.md (consolidated to 0.3.0-pre)
+
+**Notes**: 
+
+**Flake Features:**
+- `nix develop` - Development shell with Elixir, SQLite, optional backends
+- `nix develop .#full` - Full shell with all tools including ChromeDriver
+- NixOS module: `services.cursor-docs.enable`, `services.cursor-docs.surrealdb.enable`
+- Home Manager module: `programs.cursor-docs.enable`
+
+**Pre-release Branch:**
+To publish: `git checkout -b cursor-docs-0.3.0-pre && git push origin cursor-docs-0.3.0-pre`
+
+**Usage from other flakes:**
+```nix
+cursor-docs = {
+  url = "github:Distracted-E421/nixos-cursor?dir=services/cursor-docs&ref=cursor-docs-0.3.0-pre";
+};
+```
+
+---
+
+## 2025-12-16 05:30:00 - [SCRIPT]
+
+**Description**: Full implementation of tiered vector storage architecture for cursor-docs v0.3.0-pre - sqlite-vss, SurrealDB, embedding generator, and hybrid search
+
+**Files**: 
+- services/cursor-docs/lib/cursor_docs/storage/vector.ex (new - vector storage behaviour)
+- services/cursor-docs/lib/cursor_docs/storage/vector/disabled.ex (new - FTS5-only fallback)
+- services/cursor-docs/lib/cursor_docs/storage/vector/sqlite_vss.ex (new - embedded vectors)
+- services/cursor-docs/lib/cursor_docs/storage/vector/surrealdb.ex (new - server vectors)
+- services/cursor-docs/lib/cursor_docs/embeddings/generator.ex (new - AI embedding orchestration)
+- services/cursor-docs/lib/cursor_docs/search.ex (new - unified search interface)
+- services/cursor-docs/lib/cursor_docs/storage/sqlite.ex (added get_chunks_for_source, get_chunk)
+- services/cursor-docs/lib/cursor_docs/application.ex (updated - optional AI/vector services)
+- services/cursor-docs/docs/NIXOS_SERVICE_CONFIGURATION.md (new - NixOS setup guide)
+- services/cursor-docs/CHANGELOG.md (updated - v0.4.0)
+- services/cursor-docs/mix.exs (version 0.4.0)
+
+**Notes**: 
+
+**Tiered Architecture:**
+| Tier | Backend | Features | Use Case |
+|------|---------|----------|----------|
+| 1 | Disabled | FTS5 only | Zero setup, just works |
+| 2 | sqlite-vss | Embedded vectors | Semantic search, no daemon |
+| 3 | SurrealDB | Vectors + graphs | Power users, full pipeline |
+
+**Key Features:**
+- Graceful SurrealDB startup (Nice=19, IOSchedulingClass=idle, lazy connect)
+- Auto-detection of best available backend
+- Hybrid search combining semantic + keyword results
+- Hardware-aware batch sizing
+- NixOS systemd configuration examples
+
+This captures users from zero-setup to power users building full data pipelines.
+
+---
+
+## 2025-12-16 04:30:00 - [SCRIPT]
+
+**Description**: Designed and implemented pluggable AI provider architecture for cursor-docs v0.3.0 - hardware detection, model registry, and provider abstraction
+
+**Files**: 
+- services/cursor-docs/lib/cursor_docs/ai/provider.ex (new - provider behaviour)
+- services/cursor-docs/lib/cursor_docs/ai/hardware.ex (new - hardware detection)
+- services/cursor-docs/lib/cursor_docs/ai/model_registry.ex (new - verified models)
+- services/cursor-docs/lib/cursor_docs/ai/ollama.ex (new - Ollama provider)
+- services/cursor-docs/lib/cursor_docs/ai/local.ex (new - ONNX provider)
+- services/cursor-docs/lib/cursor_docs/ai/disabled.ex (new - FTS5 fallback)
+- services/cursor-docs/docs/AI_PROVIDER_ARCHITECTURE.md (new - design docs)
+- services/cursor-docs/CHANGELOG.md (new - version history)
+- services/cursor-docs/README.md (updated - AI provider section)
+- services/cursor-docs/mix.exs (version 0.3.0)
+
+**Notes**: Designed to be "useful without being a problem app" - no forced daemons, hardware-aware model selection, graceful FTS5 fallback. Hardware detection correctly identifies Obsidian's dual GPUs (RTX 2080 + Arc A770). Provider priority: Ollama → Local ONNX → Disabled. Model registry includes quality/speed benchmarks. Also addressed database architecture question - recommending sqlite-vss as default (embedded) with SurrealDB optional for power users.
+
+---
+
 ## 2025-12-06 19:00:00 - [SCRIPT]
 
 **Description**: Created Elixir sync daemon with OTP supervision, named pipes IPC, and full database integration

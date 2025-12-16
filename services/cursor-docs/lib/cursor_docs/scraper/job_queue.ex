@@ -138,6 +138,12 @@ defmodule CursorDocs.Scraper.JobQueue do
   end
 
   @impl true
+  def handle_info({:retry, job}, state) do
+    new_queue = :queue.in(job, state.queue)
+    {:noreply, %{state | queue: new_queue}}
+  end
+
+  @impl true
   def handle_call({:enqueue, source_id, url, opts}, _from, state) do
     # Check for duplicate
     if MapSet.member?(state.seen_urls, url) do
@@ -276,16 +282,9 @@ defmodule CursorDocs.Scraper.JobQueue do
     end
   end
 
-  @impl true
-  def handle_info({:retry, job}, state) do
-    new_queue = :queue.in(job, state.queue)
-    {:noreply, %{state | queue: new_queue}}
-  end
-
   # Private Functions
 
   defp generate_id do
     :crypto.strong_rand_bytes(8) |> Base.url_encode64(padding: false)
   end
 end
-
