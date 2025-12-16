@@ -288,10 +288,10 @@ enum SidebarMode {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RightSidebarMode {
-    ChatLibrary,
-    Index,  // Documentation indexer
-    Security,
-    Sync,
+    Archive,  // Chat history export/import
+    Index,    // Documentation indexer
+    Sentinel, // Security monitoring
+    Bridge,   // Cursor sync
 }
 
 #[derive(Clone)]
@@ -558,7 +558,7 @@ impl CursorStudio {
             left_sidebar_width: 280.0,
             right_sidebar_width: 300.0,
             left_mode: SidebarMode::Manager,
-            right_mode: RightSidebarMode::ChatLibrary,
+            right_mode: RightSidebarMode::Archive,
             tabs: vec![Tab::Dashboard],
             active_tab: 0,
             versions,
@@ -1975,12 +1975,12 @@ impl eframe::App for CursorStudio {
                     ui.horizontal(|ui| {
                         ui.add_space(8.0);
 
-                        // Chat Library button
-                        let chat_selected = self.right_mode == RightSidebarMode::ChatLibrary;
-                        let chat_btn = ui
+                        // Archive button (Chat History)
+                        let archive_selected = self.right_mode == RightSidebarMode::Archive;
+                        let archive_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("💬").size(16.0).color(
-                                    if chat_selected {
+                                egui::Button::new(RichText::new("📚").size(16.0).color(
+                                    if archive_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -1989,20 +1989,20 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Chat Library");
-                        if chat_btn.clicked() {
-                            self.right_mode = RightSidebarMode::ChatLibrary;
+                            .on_hover_text("Archive (Chat History)");
+                        if archive_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Archive;
                         }
-                        if chat_btn.hovered() {
+                        if archive_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
-                        // Security button
-                        let sec_selected = self.right_mode == RightSidebarMode::Security;
-                        let sec_btn = ui
+                        // Sentinel button (Security)
+                        let sentinel_selected = self.right_mode == RightSidebarMode::Sentinel;
+                        let sentinel_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("🔒").size(16.0).color(
-                                    if sec_selected {
+                                egui::Button::new(RichText::new("🛡️").size(16.0).color(
+                                    if sentinel_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -2011,20 +2011,20 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Security");
-                        if sec_btn.clicked() {
-                            self.right_mode = RightSidebarMode::Security;
+                            .on_hover_text("Sentinel (Security)");
+                        if sentinel_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Sentinel;
                         }
-                        if sec_btn.hovered() {
+                        if sentinel_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
-                        // Sync button
-                        let sync_selected = self.right_mode == RightSidebarMode::Sync;
-                        let sync_btn = ui
+                        // Bridge button (Sync)
+                        let bridge_selected = self.right_mode == RightSidebarMode::Bridge;
+                        let bridge_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("🔄").size(16.0).color(
-                                    if sync_selected {
+                                egui::Button::new(RichText::new("🔗").size(16.0).color(
+                                    if bridge_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -2033,11 +2033,11 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Sync");
-                        if sync_btn.clicked() {
-                            self.right_mode = RightSidebarMode::Sync;
+                            .on_hover_text("Bridge (Sync)");
+                        if bridge_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Bridge;
                         }
-                        if sync_btn.hovered() {
+                        if bridge_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
@@ -2067,10 +2067,10 @@ impl eframe::App for CursorStudio {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
                             let mode_label = match self.right_mode {
-                                RightSidebarMode::ChatLibrary => "CHATS",
+                                RightSidebarMode::Archive => "ARCHIVE",
                                 RightSidebarMode::Index => "INDEX",
-                                RightSidebarMode::Security => "SECURITY",
-                                RightSidebarMode::Sync => "SYNC",
+                                RightSidebarMode::Sentinel => "SENTINEL",
+                                RightSidebarMode::Bridge => "BRIDGE",
                             };
                             ui.label(
                                 RichText::new(mode_label)
@@ -2086,10 +2086,10 @@ impl eframe::App for CursorStudio {
 
                     // Show content based on mode
                     match self.right_mode {
-                        RightSidebarMode::ChatLibrary => self.show_chat_library(ui, theme),
+                        RightSidebarMode::Archive => self.show_archive_panel(ui, theme),
                         RightSidebarMode::Index => self.show_index_panel(ui, theme),
-                        RightSidebarMode::Security => self.show_security_panel(ui, theme),
-                        RightSidebarMode::Sync => self.show_sync_panel(ui, theme),
+                        RightSidebarMode::Sentinel => self.show_sentinel_panel(ui, theme),
+                        RightSidebarMode::Bridge => self.show_bridge_panel(ui, theme),
                     }
                 });
         }
@@ -3714,7 +3714,7 @@ impl CursorStudio {
         .on_hover_text(tooltip);
     }
 
-    fn show_chat_library(&mut self, ui: &mut egui::Ui, theme: Theme) {
+    fn show_archive_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         ui.vertical(|ui| {
             ui.add_space(12.0);
             ui.horizontal(|ui| {
@@ -3888,7 +3888,7 @@ impl CursorStudio {
     /// - [ ] Add Socket.dev links for package research
     /// - [ ] Implement audit log export functionality
     /// - [ ] Add scan history with timestamps
-    fn show_security_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+    fn show_sentinel_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
@@ -4529,7 +4529,7 @@ impl CursorStudio {
             });
     }
 
-    fn show_sync_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+    fn show_bridge_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(12.0);
 
