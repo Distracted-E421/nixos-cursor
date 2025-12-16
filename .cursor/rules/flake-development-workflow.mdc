@@ -1,0 +1,106 @@
+---
+alwaysApply: false
+description: Flake development workflow for sub-flakes and fast iteration
+globs:
+  - "flake.nix"
+  - "flake.lock"
+  - "**/flake.nix"
+---
+
+# Flake Development Workflow
+
+## ⚠️ NEVER Delete flake.lock for Updates
+
+Deleting `flake.lock` forces a **full re-evaluation** of all inputs, which can take 15-20+ minutes. 
+
+## ✅ Use `--override-input` Instead
+
+For fast iteration when working with sub-flakes like `nixos-cursor`:
+
+```bash
+# Override a specific input to use local path (instant)
+sudo nixos-rebuild switch --impure --flake .#Obsidian \
+  --override-input nixos-cursor path:/home/e421/nixos-cursor
+```
+
+**Benefits:**
+- No flake.lock modification needed
+- Only re-evaluates the changed input
+- Takes seconds instead of minutes
+- Perfect for development iteration
+
+## 🚀 Available Aliases (After Rebuild)
+
+| Alias | Description |
+|-------|-------------|
+| `cursor-studio-dev` | Run locally built cursor-studio binary directly |
+| `rebuild-cursor-dev` | Rebuild NixOS with local nixos-cursor (--override-input) |
+| `build-cursor-studio` | Quick cargo build for cursor-studio |
+
+## 📋 Development Workflow
+
+### For GUI Development (Fastest)
+
+1. Make changes in `~/nixos-cursor/cursor-studio-egui/`
+2. Build: `build-cursor-studio` or `cargo build --release`
+3. Test: `cursor-studio-dev`
+4. Iterate without touching NixOS at all
+
+### For NixOS Module Changes
+
+1. Make changes in `~/nixos-cursor/`
+2. Test with: `rebuild-cursor-dev`
+3. No flake.lock update needed
+4. Push when stable
+
+### For Production Updates
+
+Only when changes are stable and pushed to `pre-release`:
+
+```bash
+cd ~/homelab/nixos
+nix flake update nixos-cursor  # Updates just this input
+sudo nom-rebuild switch --impure --flake .#Obsidian
+```
+
+## 🔧 When to Update flake.lock
+
+**DO update flake.lock when:**
+- You've pushed stable changes to the remote branch
+- You want to pin a specific commit for production
+- Updating multiple inputs together
+
+**DON'T delete flake.lock when:**
+- Just testing local changes
+- Iterating on development
+- Debugging issues
+
+## 📝 Technical Details
+
+The `--override-input` flag:
+- Temporarily replaces an input at evaluation time
+- Does NOT modify `flake.lock`
+- Works with `path:` for local directories
+- Works with `github:user/repo/branch` for remote refs
+
+```bash
+# Override with local path
+--override-input nixos-cursor path:/home/e421/nixos-cursor
+
+# Override with specific branch
+--override-input nixos-cursor github:Distracted-E421/nixos-cursor/cursor-docs-0.3.0-pre
+
+# Override with specific commit
+--override-input nixos-cursor github:Distracted-E421/nixos-cursor/abc123
+```
+
+## 🎯 Summary
+
+| Task | Command | Time |
+|------|---------|------|
+| Test local GUI | `cursor-studio-dev` | Instant |
+| Build local | `build-cursor-studio` | ~40s |
+| Test with NixOS | `rebuild-cursor-dev` | ~2-5min |
+| Production update | `nix flake update nixos-cursor` | ~15-20min |
+
+**Rule of thumb:** Use the fastest option that tests what you need.
