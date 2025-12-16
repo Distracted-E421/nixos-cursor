@@ -1,3 +1,37 @@
+## 2025-12-16 14:00:00 - [FEATURE]
+
+**Description**: Comprehensive cursor-studio-egui update - naming, export, and polish
+
+**Files**:
+- cursor-studio-egui/src/main.rs (major updates)
+
+**Changes**:
+
+1. **Sub-App Naming Refactor**:
+   - ChatLibrary → Archive 📚
+   - Security → Sentinel 🛡️
+   - Sync → Bridge 🔗
+   - Index 📖 (unchanged)
+   - Updated icons, labels, and hover text
+
+2. **Export Dialog** (Archive panel):
+   - Format dropdown with 6 options:
+     - Markdown, Markdown (Obsidian)
+     - JSON, JSON Lines
+     - OpenAI JSONL, Alpaca JSON (training data)
+   - Output directory input
+   - Shows CLI command for batch exports
+
+3. **ExportFormat Enum**:
+   - New enum with label() and file_extension() methods
+   - Supports both documentation and training data formats
+
+**Commits**:
+- f853f1e: refactor(cursor-studio): Rename sub-apps
+- ac21d6f: feat(cursor-studio): Add export dialog
+
+---
+
 ## 2025-12-16 12:30:00 - [FEATURE]
 
 **Description**: Integrated Index (Documentation) panel into cursor-studio-egui + established Cursor Studio vision

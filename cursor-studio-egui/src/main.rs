@@ -288,10 +288,11 @@ enum SidebarMode {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RightSidebarMode {
-    Archive,  // Chat history export/import
-    Index,    // Documentation indexer
-    Sentinel, // Security monitoring
-    Bridge,   // Cursor sync
+    Archive,  // Chat history export/import 📚
+    Index,    // Documentation indexer 📖
+    Sentinel, // Security monitoring 🛡️
+    Bridge,   // Cursor sync 🔗
+    Forge,    // Data transform/training 🔥
 }
 
 #[derive(Clone)]
@@ -2109,6 +2110,28 @@ impl eframe::App for CursorStudio {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
+                        // Forge (Data Transform) button
+                        let forge_selected = self.right_mode == RightSidebarMode::Forge;
+                        let forge_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("🔥").size(16.0).color(
+                                    if forge_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Forge (Data Transform)");
+                        if forge_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Forge;
+                        }
+                        if forge_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
                         // Underline indicator for selected mode
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
@@ -2117,6 +2140,7 @@ impl eframe::App for CursorStudio {
                                 RightSidebarMode::Index => "INDEX",
                                 RightSidebarMode::Sentinel => "SENTINEL",
                                 RightSidebarMode::Bridge => "BRIDGE",
+                                RightSidebarMode::Forge => "FORGE",
                             };
                             ui.label(
                                 RichText::new(mode_label)
@@ -2136,6 +2160,7 @@ impl eframe::App for CursorStudio {
                         RightSidebarMode::Index => self.show_index_panel(ui, theme),
                         RightSidebarMode::Sentinel => self.show_sentinel_panel(ui, theme),
                         RightSidebarMode::Bridge => self.show_bridge_panel(ui, theme),
+                        RightSidebarMode::Forge => self.show_forge_panel(ui, theme),
                     }
                 });
         }
@@ -4976,6 +5001,153 @@ impl CursorStudio {
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 self.docs_panel.show(ui, &ThemeAdapter(theme));
+            });
+    }
+
+    /// Forge panel - Data transformation and training data preparation
+    fn show_forge_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                ui.add_space(12.0);
+
+                // Header
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("🔥 FORGE")
+                            .size(14.0)
+                            .color(theme.accent)
+                            .strong(),
+                    );
+                });
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("Data transformation & training preparation")
+                            .size(10.0)
+                            .color(theme.fg_dim),
+                    );
+                });
+
+                ui.add_space(16.0);
+
+                // Coming Soon Banner
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(16.0))
+                    .show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                RichText::new("🚧 Coming Soon")
+                                    .size(16.0)
+                                    .color(theme.warning)
+                                    .strong(),
+                            );
+                            ui.add_space(12.0);
+                            ui.label(
+                                RichText::new("The Forge will enable:")
+                                    .size(11.0)
+                                    .color(theme.fg),
+                            );
+                            ui.add_space(8.0);
+                        });
+
+                        let features = [
+                            "📊 Combine chats + docs into training datasets",
+                            "🔄 Transform to OpenAI/Alpaca/ShareGPT formats",
+                            "🧹 Quality filtering and deduplication",
+                            "✂️ Train/validation/test splits",
+                            "🔒 PII redaction and anonymization",
+                            "📈 Dataset statistics and visualization",
+                        ];
+
+                        for feature in features {
+                            ui.horizontal(|ui| {
+                                ui.add_space(24.0);
+                                ui.label(RichText::new(feature).size(10.0).color(theme.fg_dim));
+                            });
+                            ui.add_space(4.0);
+                        }
+                    });
+
+                ui.add_space(16.0);
+
+                // Quick Actions (placeholder)
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("QUICK ACTIONS")
+                            .size(10.0)
+                            .color(theme.fg_dim)
+                            .strong(),
+                    );
+                });
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    if styled_button(ui, "Export All Chats", Vec2::new(130.0, 28.0))
+                        .on_hover_text("Export all chats to training format")
+                        .clicked()
+                    {
+                        self.right_mode = RightSidebarMode::Archive;
+                        self.show_export_dialog = true;
+                    }
+                });
+
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    if styled_button(ui, "Index All Docs", Vec2::new(130.0, 28.0))
+                        .on_hover_text("View indexed documentation")
+                        .clicked()
+                    {
+                        self.right_mode = RightSidebarMode::Index;
+                    }
+                });
+
+                ui.add_space(16.0);
+
+                // CLI Reference
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new("CLI Reference")
+                                .size(11.0)
+                                .color(theme.fg)
+                                .strong(),
+                        );
+                        ui.add_space(8.0);
+
+                        let commands = [
+                            ("Export chats:", "mix cursor_docs.chat --export-all"),
+                            ("Index docs:", "mix cursor_docs.add https://docs.rs/..."),
+                            ("Search:", "mix cursor_docs.search \"query\""),
+                        ];
+
+                        for (label, cmd) in commands {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new(label).size(9.0).color(theme.fg_dim));
+                            });
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                ui.label(
+                                    RichText::new(cmd)
+                                        .size(9.0)
+                                        .color(theme.accent)
+                                        .monospace(),
+                                );
+                            });
+                            ui.add_space(4.0);
+                        }
+                    });
             });
     }
 
