@@ -69,6 +69,30 @@ defmodule CursorDocs.Storage.Vector.SurrealDB do
   @health_check_interval 30_000
 
   # ============================================================================
+  # GenServer API
+  # ============================================================================
+
+  @doc """
+  Starts the SurrealDB vector storage GenServer.
+  """
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Returns a child specification for supervision.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
+  end
+
+  # ============================================================================
   # Behaviour Implementation
   # ============================================================================
 

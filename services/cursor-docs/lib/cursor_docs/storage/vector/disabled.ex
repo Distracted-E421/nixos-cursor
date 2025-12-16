@@ -28,6 +28,21 @@ defmodule CursorDocs.Storage.Vector.Disabled do
 
   @behaviour CursorDocs.Storage.Vector
 
+  # No-op start_link for supervisor compatibility
+  def start_link(_opts \\ []) do
+    :ignore
+  end
+
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
+  end
+
   @impl true
   def name, do: "Disabled (FTS5 only)"
 

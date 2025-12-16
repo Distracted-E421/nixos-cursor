@@ -287,11 +287,27 @@ impl DocsClient {
     }
 
     /// Get default database path
+    /// Get the default database path, trying multiple locations.
+    /// Priority:
+    /// 1. cursor-docs-dev (development)
+    /// 2. cursor-docs (production)
     pub fn default_db_path() -> PathBuf {
-        dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("cursor-docs")
-            .join("cursor_docs.db")
+        let base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
+
+        // Try dev path first (for development workflow)
+        let dev_path = base.join("cursor-docs-dev").join("cursor_docs.db");
+        if dev_path.exists() {
+            return dev_path;
+        }
+
+        // Fall back to production path
+        let prod_path = base.join("cursor-docs").join("cursor_docs.db");
+        if prod_path.exists() {
+            return prod_path;
+        }
+
+        // Default to dev path (will be created when cursor-docs runs)
+        dev_path
     }
 }
 

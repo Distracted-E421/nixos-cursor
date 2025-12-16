@@ -54,6 +54,30 @@ defmodule CursorDocs.Storage.Vector.SQLiteVss do
   @default_db_path "~/.local/share/cursor-docs/vectors.db"
 
   # ============================================================================
+  # GenServer API
+  # ============================================================================
+
+  @doc """
+  Starts the sqlite-vss vector storage GenServer.
+  """
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
+  @doc """
+  Returns a child specification for supervision.
+  """
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 5000
+    }
+  end
+
+  # ============================================================================
   # Behaviour Implementation
   # ============================================================================
 
