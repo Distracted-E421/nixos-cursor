@@ -1,3 +1,43 @@
+## 2025-12-16 22:15:00 - [FEATURE]
+
+**Description**: Real-time progress tracking and UI consistency improvements
+
+**Files**:
+- services/cursor-docs/lib/cursor_docs/progress.ex (new)
+- services/cursor-docs/lib/cursor_docs/cli.ex
+- cursor-studio-egui/src/docs/ui.rs
+- cursor-studio-egui/src/main.rs
+
+**Changes**:
+
+1. **Structured Progress Output (cursor-docs)**:
+   - New `CursorDocs.Progress` module for JSON progress events
+   - Format: `PROGRESS:{"type":"...", "data":{...}}`
+   - Event types: `started`, `page`, `complete`, `error`, `security`
+   - CLI now emits progress during indexing
+
+2. **Real-time Progress Parsing (GUI)**:
+   - Switched from `cmd.output()` to `cmd.spawn()` + stdout piping
+   - Live parsing of `PROGRESS:` JSON lines via `BufReader`
+   - Backward compatible with old "Chunks: N" format
+
+3. **Delete Functionality**:
+   - Delete button with confirmation dialog
+   - Direct SQL delete fallback via `DocsClient::delete_source()`
+   - `pending_delete` state for confirmation workflow
+
+4. **UI Consistency Framework**:
+   - Added spacing constants: `PANEL_PADDING`, `SECTION_SPACING`, etc.
+   - Panel layout helpers: `panel_header()`, `stat_card()`, `card_frame()`
+   - Ready for uniform application across all panels
+
+5. **Alias Fixes (homelab)**:
+   - `cursor-studio-dev` now sets LD_LIBRARY_PATH for Wayland
+   - `rebuild-cursor-dev` fixed pipe syntax for nom
+   - Added `cursor-studio-shell` alias for nix-shell approach
+
+---
+
 ## 2025-12-16 21:30:00 - [GUI]
 
 **Description**: Major Index panel improvements for cursor-studio-egui
