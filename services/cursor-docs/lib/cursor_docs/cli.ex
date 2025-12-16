@@ -8,6 +8,7 @@ defmodule CursorDocs.CLI do
   - Listing sources
   - Checking status
   - Security alerts and quarantine
+  - Chat export
 
   ## Usage
 
@@ -17,9 +18,13 @@ defmodule CursorDocs.CLI do
       mix cursor_docs.status
       mix cursor_docs.alerts
       mix cursor_docs.quarantine
+      mix cursor_docs.chat list
+      mix cursor_docs.chat export <id> --format markdown
+      mix cursor_docs.chat export-all --format jsonl
   """
 
   alias CursorDocs.Security.{Alerts, Quarantine}
+  alias CursorDocs.Chat.{Reader, Exporter, Formatter}
 
   @doc """
   Add documentation from CLI.
@@ -532,6 +537,337 @@ defmodule CursorDocs.CLI do
         {:error, reason} ->
           IO.puts("❌ Review failed: #{inspect(reason)}")
       end
+    end
+  end
+
+  # ============================================================================
+  # Chat Export Commands
+  # ============================================================================
+
+  @doc """
+  Chat export CLI.
+
+  ## Commands
+
+      mix cursor_docs.chat list                    # List all chats
+      mix cursor_docs.chat stats                   # Show chat statistics
+      mix cursor_docs.chat search "query"          # Search chats
+      mix cursor_docs.chat show <id>               # Show single chat
+      mix cursor_docs.chat export <id>             # Export single chat
+      mix cursor_docs.chat export-all              # Export all chats
+      mix cursor_docs.chat formats                 # List export formats
+      mix cursor_docs.chat presets                 # List markdown presets
+
+  ## Export Options
+
+      --format FORMAT     Export format (markdown, json, jsonl, html, txt)
+      --preset PRESET     Markdown preset (obsidian, github, notion, minimal)
+      --output DIR        Output directory
+      --merged            Export as single merged file
+
+  ## Examples
+
+      mix cursor_docs.chat export abc123 --format markdown --preset obsidian
+      mix cursor_docs.chat export-all --format jsonl --output ~/training-data
+      mix cursor_docs.chat export-all --format markdown --merged
+  """
+  def chat(args) do
+    {opts, cmd_args, _} = OptionParser.parse(args,
+      strict: [
+        format: :string,
+        preset: :string,
+        output: :string,
+        merged: :boolean,
+        limit: :integer,
+        theme: :string
+      ]
+    )
+
+    case cmd_args do
+      ["list" | _] -> chat_list(opts)
+      ["stats" | _] -> chat_stats()
+      ["search", query | _] -> chat_search(query, opts)
+      ["show", id | _] -> chat_show(id)
+      ["export", id | _] -> chat_export(id, opts)
+      ["export-all" | _] -> chat_export_all(opts)
+      ["formats" | _] -> chat_formats()
+      ["presets" | _] -> chat_presets()
+      _ -> chat_help()
+    end
+  end
+
+  defp chat_help do
+    IO.puts("""
+    💬 Cursor Chat Export
+
+    Commands:
+      list                    List all chats
+      stats                   Show chat statistics
+      search "query"          Search chats by content
+      show <id>               Display a single chat
+      export <id>             Export a single chat
+      export-all              Export all chats
+      formats                 List supported export formats
+      presets                 List markdown formatting presets
+
+    Export Options:
+      --format FORMAT         markdown, json, jsonl, html, txt (default: markdown)
+      --preset PRESET         obsidian, github, notion, minimal (default: minimal)
+      --output DIR            Output directory
+      --merged                Export all as single merged file
+      --limit N               Limit number of chats
+      --theme THEME           HTML theme: light, dark (default: light)
+
+    Examples:
+      mix cursor_docs.chat list
+      mix cursor_docs.chat export abc123 --format markdown --preset obsidian
+      mix cursor_docs.chat export-all --format jsonl --output ~/training
+      mix cursor_docs.chat export-all --merged --preset github
+    """)
+  end
+
+  defp chat_list(opts) do
+    IO.puts("💬 Cursor Chats\n")
+
+    case Reader.list_conversations(limit: opts[:limit]) do
+      {:ok, []} ->
+        IO.puts("No chats found.")
+        IO.puts("")
+        IO.puts("Make sure Cursor is installed and has chat history.")
+
+      {:ok, conversations} ->
+        IO.puts("Found #{length(conversations)} conversations:\n")
+
+        conversations
+        |> Enum.take(opts[:limit] || 50)
+        |> Enum.each(fn conv ->
+          id_short = String.slice(conv.id, 0, 8)
+          title = truncate_string(conv.title, 60)
+          IO.puts("  [#{id_short}] #{title}")
+          IO.puts("           #{conv.message_count} msgs | #{conv.source}")
+        end)
+
+        IO.puts("")
+        IO.puts("Use: mix cursor_docs.chat show <id> to view a conversation")
+        IO.puts("Use: mix cursor_docs.chat export <id> to export")
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to list chats: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_stats do
+    IO.puts("📊 Chat Statistics\n")
+
+    case Reader.stats() do
+      {:ok, stats} ->
+        IO.puts("  📁 Databases: #{stats.databases}")
+        IO.puts("  💬 Conversations: #{stats.conversations}")
+        IO.puts("  📝 Messages: #{stats.messages}")
+        IO.puts("")
+        IO.puts("By Source:")
+        Enum.each(stats.by_source, fn {source, count} ->
+          IO.puts("  • #{source}: #{count}")
+        end)
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get stats: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_search(query, opts) do
+    IO.puts("🔍 Searching for: \"#{query}\"\n")
+
+    case Reader.search_conversations(query, limit: opts[:limit] || 20) do
+      {:ok, []} ->
+        IO.puts("No matching conversations found.")
+
+      {:ok, conversations} ->
+        IO.puts("Found #{length(conversations)} matching conversations:\n")
+
+        Enum.each(conversations, fn conv ->
+          id_short = String.slice(conv.id, 0, 8)
+          title = truncate_string(conv.title, 60)
+          IO.puts("  [#{id_short}] #{title}")
+          IO.puts("           #{conv.message_count} msgs | #{conv.source}")
+        end)
+
+      {:error, reason} ->
+        IO.puts("❌ Search failed: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_show(id) do
+    # Allow partial ID matching
+    with {:ok, conversations} <- Reader.list_conversations(),
+         conv when not is_nil(conv) <- Enum.find(conversations, fn c ->
+           String.starts_with?(c.id, id)
+         end) do
+
+      IO.puts("💬 #{conv.title}\n")
+      IO.puts("ID: #{conv.id}")
+      IO.puts("Source: #{conv.source}")
+      IO.puts("Messages: #{conv.message_count}")
+      IO.puts("")
+      IO.puts(String.duplicate("─", 60))
+      IO.puts("")
+
+      Enum.each(conv.messages, fn msg ->
+        role = if msg.role == :user, do: "👤 User", else: "🤖 Assistant"
+        IO.puts("#{role}")
+        IO.puts("")
+
+        msg.content
+        |> String.split("\n")
+        |> Enum.each(fn line ->
+          IO.puts("  #{line}")
+        end)
+
+        IO.puts("")
+        IO.puts(String.duplicate("─", 60))
+        IO.puts("")
+      end)
+
+    else
+      nil ->
+        IO.puts("❌ Conversation not found: #{id}")
+        IO.puts("Use: mix cursor_docs.chat list to see available IDs")
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get conversation: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_export(id, opts) do
+    format = parse_format(opts[:format])
+    export_opts = build_export_opts(opts)
+
+    with {:ok, conversations} <- Reader.list_conversations(),
+         conv when not is_nil(conv) <- Enum.find(conversations, fn c ->
+           String.starts_with?(c.id, id)
+         end),
+         {:ok, path} <- Exporter.export_to_file(conv, format, nil, export_opts) do
+
+      IO.puts("✅ Exported to: #{path}")
+
+    else
+      nil ->
+        IO.puts("❌ Conversation not found: #{id}")
+
+      {:error, reason} ->
+        IO.puts("❌ Export failed: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_export_all(opts) do
+    format = parse_format(opts[:format])
+    export_opts = build_export_opts(opts)
+    merged = opts[:merged] || false
+
+    IO.puts("📤 Exporting all chats as #{format}...")
+
+    result =
+      if merged do
+        with {:ok, content} <- Exporter.export_merged(format, export_opts) do
+          output_dir = Map.get(export_opts, :output_dir, "~/.local/share/cursor-docs/exports")
+                       |> Path.expand()
+          File.mkdir_p!(output_dir)
+
+          ext = format_extension(format)
+          filename = "cursor_chats_merged_#{Date.utc_today()}#{ext}"
+          path = Path.join(output_dir, filename)
+
+          File.write!(path, content)
+          {:ok, [path]}
+        end
+      else
+        Exporter.export_all(format, export_opts)
+      end
+
+    case result do
+      {:ok, paths} ->
+        IO.puts("✅ Exported #{length(paths)} files")
+        IO.puts("")
+        paths |> Enum.take(10) |> Enum.each(&IO.puts("   #{&1}"))
+        if length(paths) > 10 do
+          IO.puts("   ... and #{length(paths) - 10} more")
+        end
+
+      {:error, reason} ->
+        IO.puts("❌ Export failed: #{inspect(reason)}")
+    end
+  end
+
+  defp chat_formats do
+    IO.puts("📄 Supported Export Formats\n")
+
+    Exporter.formats()
+    |> Enum.each(fn fmt ->
+      IO.puts("  #{fmt.id} (#{fmt.extension})")
+      IO.puts("    #{fmt.description}")
+      IO.puts("    Options: #{Enum.join(Enum.map(fmt.options, &to_string/1), ", ")}")
+      IO.puts("")
+    end)
+  end
+
+  defp chat_presets do
+    IO.puts("🎨 Markdown Formatting Presets\n")
+
+    Formatter.presets()
+    |> Enum.each(fn name ->
+      info = Formatter.preset_info(name)
+      IO.puts("  #{name}")
+      IO.puts("    #{info.description}")
+      IO.puts("")
+    end)
+
+    IO.puts("Usage: mix cursor_docs.chat export <id> --preset obsidian")
+  end
+
+  # Chat export helpers
+
+  defp parse_format(nil), do: :markdown
+  defp parse_format("markdown"), do: :markdown
+  defp parse_format("md"), do: :markdown
+  defp parse_format("json"), do: :json
+  defp parse_format("jsonl"), do: :jsonl
+  defp parse_format("html"), do: :html
+  defp parse_format("txt"), do: :txt
+  defp parse_format("text"), do: :txt
+  defp parse_format(_), do: :markdown
+
+  defp format_extension(:markdown), do: ".md"
+  defp format_extension(:json), do: ".json"
+  defp format_extension(:jsonl), do: ".jsonl"
+  defp format_extension(:html), do: ".html"
+  defp format_extension(:txt), do: ".txt"
+  defp format_extension(_), do: ".txt"
+
+  defp build_export_opts(opts) do
+    base =
+      if opts[:preset] do
+        Formatter.preset(String.to_atom(opts[:preset]))
+      else
+        %{}
+      end
+
+    base
+    |> Map.put(:output_dir, opts[:output] || "~/.local/share/cursor-docs/exports")
+    |> Map.put(:theme, parse_theme(opts[:theme]))
+    |> Map.put(:pretty, true)
+    |> Map.put(:include_metadata, true)
+  end
+
+  defp parse_theme(nil), do: :light
+  defp parse_theme("dark"), do: :dark
+  defp parse_theme("light"), do: :light
+  defp parse_theme(_), do: :light
+
+  defp truncate_string(str, max) do
+    if String.length(str) > max do
+      String.slice(str, 0, max - 3) <> "..."
+    else
+      str
     end
   end
 end

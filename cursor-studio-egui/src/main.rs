@@ -1,9 +1,10 @@
-//! Cursor Studio - Version Manager + Chat Library
+//! Cursor Studio - Version Manager + Chat Library + Documentation Index
 //! Built with egui for native Wayland support
 
 mod approval;
 mod chat;
 mod database;
+mod docs;
 mod security;
 mod sync;
 mod theme;
@@ -288,6 +289,7 @@ enum SidebarMode {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RightSidebarMode {
     ChatLibrary,
+    Index,  // Documentation indexer
     Security,
     Sync,
 }
@@ -440,6 +442,9 @@ struct CursorStudio {
 
     // Approval system
     approval_manager: ApprovalManager,
+
+    // Documentation Index panel (cursor-docs integration)
+    docs_panel: docs::DocsPanel,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -654,6 +659,9 @@ impl CursorStudio {
 
             // Approval system
             approval_manager: ApprovalManager::new(ApprovalMode::Gui),
+
+            // Documentation Index panel
+            docs_panel: docs::DocsPanel::new(),
         }
     }
 
@@ -2033,11 +2041,34 @@ impl eframe::App for CursorStudio {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
+                        // Index (Docs) button
+                        let index_selected = self.right_mode == RightSidebarMode::Index;
+                        let index_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("📖").size(16.0).color(
+                                    if index_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Index (Documentation)");
+                        if index_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Index;
+                        }
+                        if index_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
                         // Underline indicator for selected mode
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
                             let mode_label = match self.right_mode {
                                 RightSidebarMode::ChatLibrary => "CHATS",
+                                RightSidebarMode::Index => "INDEX",
                                 RightSidebarMode::Security => "SECURITY",
                                 RightSidebarMode::Sync => "SYNC",
                             };
@@ -2056,6 +2087,7 @@ impl eframe::App for CursorStudio {
                     // Show content based on mode
                     match self.right_mode {
                         RightSidebarMode::ChatLibrary => self.show_chat_library(ui, theme),
+                        RightSidebarMode::Index => self.show_index_panel(ui, theme),
                         RightSidebarMode::Security => self.show_security_panel(ui, theme),
                         RightSidebarMode::Sync => self.show_sync_panel(ui, theme),
                     }
@@ -4806,6 +4838,30 @@ impl CursorStudio {
                 }
             });
         });
+    }
+
+    /// Show the Index (Documentation) panel
+    /// Integrates with cursor-docs backend for doc indexing and search
+    fn show_index_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        // Create a theme adapter for the docs panel
+        struct ThemeAdapter(Theme);
+        impl docs::ui::DocsTheme for ThemeAdapter {
+            fn bg(&self) -> Color32 { self.0.sidebar_bg }
+            fn fg(&self) -> Color32 { self.0.fg }
+            fn fg_dim(&self) -> Color32 { self.0.fg_dim }
+            fn accent(&self) -> Color32 { self.0.accent }
+            fn error(&self) -> Color32 { self.0.error }
+            fn success(&self) -> Color32 { self.0.success }
+            fn card_bg(&self) -> Color32 { self.0.code_bg }
+            fn button_bg(&self) -> Color32 { self.0.input_bg }
+            fn selection_bg(&self) -> Color32 { self.0.accent.gamma_multiply(0.3) }
+        }
+
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                self.docs_panel.show(ui, &ThemeAdapter(theme));
+            });
     }
 
     /// Find the p2p-sync binary in common locations

@@ -1,3 +1,38 @@
+## 2025-12-16 12:30:00 - [FEATURE]
+
+**Description**: Integrated Index (Documentation) panel into cursor-studio-egui + established Cursor Studio vision
+
+**Files**: 
+- cursor-studio-egui/src/docs/ (new - Index module)
+  - mod.rs, client.rs, models.rs, ui.rs
+- cursor-studio-egui/src/main.rs (Index panel integration)
+- docs/CURSOR_STUDIO_ARCHITECTURE.md (new - project vision + sub-app naming)
+- .cursor/rules/languages/nickel-config.mdc (new - Nickel config standards)
+
+**Notes**: 
+
+**Vision Statement:**
+Cursor Studio is the "escape pod" from VS Code/Electron - a native, GPU-accelerated IDE that:
+- Uses Cursor's AI as temporary brain while building independence
+- Native egui UI, no Electron bloat
+- Local compute first (Ollama, ONNX)
+- Declarative config via Nickel
+- Profile system (vim/emacs/vscode keybindings)
+- NixOS-native
+
+**Sub-App Naming:**
+| Module | Name | Description |
+|--------|------|-------------|
+| Chat | Archive 📚 | Chat history export/import |
+| Docs | Index 🗂️ | Web doc scraping/search |
+| Security | Sentinel 🛡️ | Security alerts/quarantine |
+| Sync | Bridge 🔗 | Cursor @docs sync |
+| Transform | Forge 🔥 | Training data prep |
+
+**New Language:** Nickel added to preferred config languages (typed, declarative, better than YAML)
+
+---
+
 ## 2025-12-16 06:00:00 - [CONFIG]
 
 **Description**: Created Nix flake for cursor-docs v0.3.0-pre with dev shells, NixOS module, and Home Manager module
