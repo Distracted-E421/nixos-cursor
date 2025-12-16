@@ -83,6 +83,8 @@ defmodule CursorDocs.MixProject do
       "cursor_docs.sync": &sync_from_cursor/1,
       "cursor_docs.import": &import_cursor/1,
       "cursor_docs.cursor": &cursor_docs_list/1,
+      "cursor_docs.alerts": &alerts/1,
+      "cursor_docs.quarantine": &quarantine/1,
       "cursor_docs.server": &start_server/1,
       "cursor_docs.mcp": &start_mcp/1
     ]
@@ -126,6 +128,16 @@ defmodule CursorDocs.MixProject do
   defp cursor_docs_list(args) do
     Mix.Task.run("app.start", [])
     CursorDocs.CLI.cursor_docs(args)
+  end
+
+  defp alerts(args) do
+    Mix.Task.run("app.start", [])
+    CursorDocs.CLI.alerts(args)
+  end
+
+  defp quarantine(args) do
+    Mix.Task.run("app.start", [])
+    CursorDocs.CLI.quarantine(args)
   end
 
   defp start_server(_args) do

@@ -7,6 +7,7 @@ defmodule CursorDocs.CLI do
   - Searching indexed content
   - Listing sources
   - Checking status
+  - Security alerts and quarantine
 
   ## Usage
 
@@ -14,7 +15,11 @@ defmodule CursorDocs.CLI do
       mix cursor_docs.search "authentication"
       mix cursor_docs.list
       mix cursor_docs.status
+      mix cursor_docs.alerts
+      mix cursor_docs.quarantine
   """
+
+  alias CursorDocs.Security.{Alerts, Quarantine}
 
   @doc """
   Add documentation from CLI.
@@ -363,6 +368,170 @@ defmodule CursorDocs.CLI do
 
       {:error, reason} ->
         IO.puts("❌ Failed to get status: #{inspect(reason)}")
+    end
+  end
+
+  # ============================================================================
+  # Security Commands
+  # ============================================================================
+
+  @doc """
+  Show security alerts.
+  """
+  def alerts(args \\ []) do
+    {opts, _, _} = OptionParser.parse(args,
+      strict: [severity: :string, export: :boolean]
+    )
+
+    if opts[:export] do
+      export_alerts()
+    else
+      show_alerts(opts)
+    end
+  end
+
+  defp show_alerts(opts) do
+    IO.puts("🔒 Security Alerts\n")
+
+    case Alerts.get_stats() do
+      {:ok, stats} ->
+        IO.puts("Summary:")
+        IO.puts("  📊 Total alerts: #{stats.total}")
+        IO.puts("  🏠 Sources affected: #{stats.sources_affected}")
+        IO.puts("  📅 Last 24h: #{stats.recent_24h}")
+        IO.puts("  📅 Last 7d: #{stats.recent_7d}")
+        IO.puts("")
+
+        IO.puts("By Severity:")
+        Enum.each(stats.by_severity, fn {sev, count} ->
+          icon = case sev do
+            "Critical" -> "🚨"
+            "High" -> "⚠️"
+            "Medium" -> "⚡"
+            _ -> "ℹ️"
+          end
+          IO.puts("  #{icon} #{sev}: #{count}")
+        end)
+        IO.puts("")
+
+        IO.puts("By Type:")
+        Enum.each(stats.by_type, fn {type, count} ->
+          IO.puts("  • #{type}: #{count}")
+        end)
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get alerts: #{inspect(reason)}")
+    end
+
+    IO.puts("")
+
+    # Show recent alerts
+    case Alerts.get_alerts_for_gui(min_severity: 3) do
+      {:ok, alerts} when length(alerts) > 0 ->
+        IO.puts("Recent Alerts (Medium+):")
+        IO.puts("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        alerts
+        |> Enum.take(10)
+        |> Enum.each(fn alert ->
+          IO.puts("#{alert.severity_icon} #{alert.severity_label} | #{alert.type_label}")
+          IO.puts("  URL: #{alert.source_url}")
+          IO.puts("  #{alert.description}")
+          IO.puts("  #{alert.created_ago}")
+          IO.puts("")
+        end)
+
+      {:ok, []} ->
+        IO.puts("✅ No significant alerts!")
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get alerts: #{inspect(reason)}")
+    end
+  end
+
+  defp export_alerts do
+    IO.puts("📤 Exporting alerts for cursor-studio...")
+
+    case Alerts.write_export_file() do
+      {:ok, path} ->
+        IO.puts("✅ Exported to: #{path}")
+
+      {:error, reason} ->
+        IO.puts("❌ Export failed: #{inspect(reason)}")
+    end
+  end
+
+  @doc """
+  Show quarantined items pending review.
+  """
+  def quarantine(args \\ []) do
+    {opts, _, _} = OptionParser.parse(args,
+      strict: [review: :string, action: :string]
+    )
+
+    if opts[:review] do
+      review_item(opts[:review], opts[:action])
+    else
+      show_quarantine()
+    end
+  end
+
+  defp show_quarantine do
+    IO.puts("🔒 Quarantine Zone\n")
+
+    case Quarantine.pending_review() do
+      {:ok, []} ->
+        IO.puts("✅ No items pending review!")
+
+      {:ok, items} ->
+        IO.puts("⚠️  #{length(items)} items pending review:\n")
+
+        Enum.each(items, fn item ->
+          IO.puts("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+          IO.puts("ID: #{item.id}")
+          IO.puts("Source: #{item.source_name}")
+          IO.puts("URL: #{item.source_url}")
+          IO.puts("Tier: #{item.tier}")
+          IO.puts("Alerts: #{length(item.alerts)}")
+          IO.puts("Validated: #{item.validated_at}")
+
+          if item.snapshot do
+            IO.puts("")
+            IO.puts("Preview (safe):")
+            IO.puts("  #{item.snapshot.preview}")
+          end
+
+          IO.puts("")
+        end)
+
+        IO.puts("To review: mix cursor_docs.quarantine --review <id> --action <approve|reject|keep_flagged>")
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get quarantine: #{inspect(reason)}")
+    end
+  end
+
+  defp review_item(item_id, action_str) do
+    action = case action_str do
+      "approve" -> :approve
+      "reject" -> :reject
+      "keep_flagged" -> :keep_flagged
+      _ ->
+        IO.puts("❌ Invalid action. Use: approve, reject, or keep_flagged")
+        nil
+    end
+
+    if action do
+      case Quarantine.mark_reviewed(item_id, "cli_user", action) do
+        {:ok, item} ->
+          IO.puts("✅ Item #{item_id} marked as #{item.tier}")
+
+        {:error, :not_found} ->
+          IO.puts("❌ Item not found: #{item_id}")
+
+        {:error, reason} ->
+          IO.puts("❌ Review failed: #{inspect(reason)}")
+      end
     end
   end
 end

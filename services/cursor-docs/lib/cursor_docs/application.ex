@@ -17,6 +17,7 @@ defmodule CursorDocs.Application do
   CursorDocs.Supervisor
   ├── CursorDocs.Telemetry
   ├── CursorDocs.Storage.SQLite
+  ├── CursorDocs.Security.Quarantine  <-- Data plane isolation
   ├── CursorDocs.CursorIntegration    <-- Syncs from Cursor's @docs
   ├── CursorDocs.Scraper.RateLimiter
   ├── CursorDocs.Scraper.JobQueue
@@ -43,6 +44,9 @@ defmodule CursorDocs.Application do
 
       # Database connection
       {CursorDocs.Storage.SQLite, storage_config()},
+
+      # Security quarantine - ALL data passes through here first
+      CursorDocs.Security.Quarantine,
 
       # Rate limiter (before pool so it's available)
       {CursorDocs.Scraper.RateLimiter, rate_limit_config()},
