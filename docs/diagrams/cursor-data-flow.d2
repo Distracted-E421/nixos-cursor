@@ -1,0 +1,262 @@
+# Cursor Data Pipeline Control Architecture
+# Generated for v0.3.0/v0.4.0 planning
+
+direction: right
+
+title: Cursor Data Pipeline Control Architecture {
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+# === CURSOR IDE ===
+cursor: "Cursor IDE" {
+  style: {
+    fill: "#1a1a2e"
+    stroke: "#00d4ff"
+    font-color: "#ffffff"
+  }
+
+  agent: "AI Agent" {
+    shape: hexagon
+    style: {
+      fill: "#0f3460"
+      stroke: "#00ff88"
+    }
+  }
+
+  composer: "Composer\n(Conversations)" {
+    shape: document
+  }
+
+  mcp_client: "MCP Client" {
+    shape: parallelogram
+  }
+
+  context_assembler: "Context\nAssembler" {
+    shape: step
+  }
+}
+
+# === CURSOR DATABASES ===
+cursor_db: "Cursor Databases" {
+  style: {
+    fill: "#16213e"
+    stroke: "#e94560"
+  }
+
+  global_db: "state.vscdb\n(Global)" {
+    shape: cylinder
+    style: {
+      fill: "#0f3460"
+    }
+
+    bubbles: "bubbleId:*\n25,197 msgs" {
+      shape: document
+    }
+    checkpoints: "checkpointId:*\n5,954" {
+      shape: document
+    }
+    diffs: "codeBlockDiff:*\n2,825" {
+      shape: document
+    }
+  }
+
+  workspace_dbs: "Workspace DBs\n(per project)" {
+    shape: cylinder
+    style: {
+      fill: "#0f3460"
+    }
+
+    composer_data: "composerData\n67 convos" {
+      shape: document
+    }
+    context: "context\n17 fields" {
+      shape: document
+    }
+  }
+}
+
+# === CURSOR-STUDIO SYNC LAYER ===
+sync_layer: "cursor-studio Sync Layer" {
+  style: {
+    fill: "#1a1a2e"
+    stroke: "#00ff88"
+    stroke-width: 2
+  }
+
+  file_watcher: "File Watcher" {
+    shape: circle
+  }
+
+  sync_daemon: "Sync Daemon\n(Python POC)" {
+    shape: hexagon
+    style: {
+      fill: "#0f3460"
+    }
+  }
+
+  sync_engine: "Sync Engine\n(Rust planned)" {
+    shape: hexagon
+    style: {
+      fill: "#16213e"
+      stroke-dash: 3
+    }
+  }
+}
+
+# === EXTERNAL STORAGE ===
+external_storage: "External Storage" {
+  style: {
+    fill: "#16213e"
+    stroke: "#ffd700"
+  }
+
+  sqlite_sync: "SQLite\nconversations.db" {
+    shape: cylinder
+    style: {
+      fill: "#0f3460"
+    }
+  }
+
+  surrealdb: "SurrealDB\n(P2P sync)" {
+    shape: cylinder
+    style: {
+      fill: "#16213e"
+      stroke-dash: 3
+    }
+  }
+
+  json_export: "JSON Export\n(git-able)" {
+    shape: document
+  }
+}
+
+# === MCP SERVERS ===
+mcp_servers: "MCP Servers" {
+  style: {
+    fill: "#1a1a2e"
+    stroke: "#ff6b6b"
+  }
+
+  filesystem: "Filesystem" {
+    shape: parallelogram
+  }
+  memory: "Memory" {
+    shape: parallelogram
+  }
+  github: "GitHub" {
+    shape: parallelogram
+  }
+  nixos: "NixOS" {
+    shape: parallelogram
+  }
+  playwright: "Playwright" {
+    shape: parallelogram
+  }
+
+  custom_docs: "cursor-docs\n(NEW)" {
+    shape: parallelogram
+    style: {
+      fill: "#0f3460"
+      stroke: "#00ff88"
+      stroke-width: 2
+    }
+  }
+
+  context_inject: "context-inject\n(PLANNED)" {
+    shape: parallelogram
+    style: {
+      stroke-dash: 3
+    }
+  }
+}
+
+# === CURSOR-STUDIO GUI ===
+studio_gui: "cursor-studio GUI" {
+  style: {
+    fill: "#0f3460"
+    stroke: "#00d4ff"
+  }
+
+  conv_browser: "Conversation\nBrowser" {
+    shape: rectangle
+  }
+
+  context_monitor: "Context\nMonitor" {
+    shape: rectangle
+  }
+
+  docs_manager: "Docs\nManager" {
+    shape: rectangle
+  }
+}
+
+# === CONNECTIONS ===
+
+# Cursor internal
+cursor.agent -> cursor.composer: generates
+cursor.context_assembler -> cursor.agent: context
+cursor.mcp_client -> cursor.agent: tool results
+
+# Database writes
+cursor.composer -> cursor_db.global_db.bubbles: writes
+cursor.agent -> cursor_db.global_db.diffs: writes
+
+# Workspace data
+cursor.composer -> cursor_db.workspace_dbs.composer_data: metadata
+cursor.context_assembler -> cursor_db.workspace_dbs.context: context state
+
+# Sync layer reads
+cursor_db.global_db -> sync_layer.file_watcher: watches
+sync_layer.file_watcher -> sync_layer.sync_daemon: triggers
+sync_layer.sync_daemon -> external_storage.sqlite_sync: syncs
+sync_layer.sync_engine -> external_storage.surrealdb: P2P sync {
+  style: {
+    stroke-dash: 3
+  }
+}
+sync_layer.sync_daemon -> external_storage.json_export: exports
+
+# MCP connections
+cursor.mcp_client -> mcp_servers.filesystem: tools
+cursor.mcp_client -> mcp_servers.memory: tools
+cursor.mcp_client -> mcp_servers.github: tools
+cursor.mcp_client -> mcp_servers.custom_docs: search_docs {
+  style: {
+    stroke: "#00ff88"
+    stroke-width: 2
+  }
+}
+cursor.mcp_client -> mcp_servers.context_inject: inject_context {
+  style: {
+    stroke-dash: 3
+  }
+}
+
+# GUI connections
+external_storage.sqlite_sync -> studio_gui.conv_browser: reads
+cursor_db -> studio_gui.context_monitor: monitors
+mcp_servers.custom_docs -> studio_gui.docs_manager: manages
+
+# === LEGEND ===
+legend: "Legend" {
+  near: bottom-center
+  style: {
+    fill: "#0d0d0d"
+    font-size: 12
+  }
+
+  solid: "Solid = Implemented" {
+    shape: text
+  }
+  dashed: "Dashed = Planned" {
+    shape: text
+  }
+  green: "Green border = New in v0.3.0" {
+    shape: text
+  }
+}

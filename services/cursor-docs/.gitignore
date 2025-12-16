@@ -1,0 +1,43 @@
+# Elixir/Mix artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+*.ez
+*.beam
+
+# Phoenix specific
+/priv/static/assets/
+
+# Database
+/priv/surreal/
+*.db
+*.db-journal
+
+# Generated on crash
+erl_crash.dump
+
+# IDE
+.elixir_ls/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+/tmp/
+
+# Dialyzer
+/priv/plts/*.plt
+/priv/plts/*.plt.hash
+
+# Environment
+.env
+.env.local
+

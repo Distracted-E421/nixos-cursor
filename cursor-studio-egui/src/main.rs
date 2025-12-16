@@ -1,10 +1,12 @@
-//! Cursor Studio - Version Manager + Chat Library
+//! Cursor Studio - Version Manager + Chat Library + Documentation Index
 //! Built with egui for native Wayland support
 
 mod approval;
 mod chat;
 mod database;
+mod docs;
 mod security;
+mod sync;
 mod theme;
 mod versions;
 
@@ -286,15 +288,50 @@ enum SidebarMode {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RightSidebarMode {
-    ChatLibrary,
-    Security,
-    Sync,
+    Archive,  // Chat history export/import 📚
+    Index,    // Documentation indexer 📖
+    Sentinel, // Security monitoring 🛡️
+    Bridge,   // Cursor sync 🔗
+    Forge,    // Data transform/training 🔥
 }
 
 #[derive(Clone)]
 enum Tab {
     Dashboard,
     Conversation(String),
+}
+
+/// Export format options for chat data
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+enum ExportFormat {
+    #[default]
+    Markdown,
+    MarkdownObsidian,
+    Json,
+    JsonLines,
+    OpenAIJsonl,
+    AlpacaJson,
+}
+
+impl ExportFormat {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Markdown => "Markdown",
+            Self::MarkdownObsidian => "Markdown (Obsidian)",
+            Self::Json => "JSON",
+            Self::JsonLines => "JSON Lines",
+            Self::OpenAIJsonl => "OpenAI JSONL (training)",
+            Self::AlpacaJson => "Alpaca JSON (training)",
+        }
+    }
+
+    fn file_extension(&self) -> &'static str {
+        match self {
+            Self::Markdown | Self::MarkdownObsidian => "md",
+            Self::Json | Self::AlpacaJson => "json",
+            Self::JsonLines | Self::OpenAIJsonl => "jsonl",
+        }
+    }
 }
 
 /// Actions to perform on bookmarks (collected during UI rendering, executed after)
@@ -359,6 +396,11 @@ struct CursorStudio {
     import_warning_shown: bool,
     last_import_error: Option<String>,
 
+    // Export dialog state
+    show_export_dialog: bool,
+    export_format: ExportFormat,
+    export_output_dir: String,
+
     // Bookmark state
     current_bookmarks: Vec<Bookmark>,
     show_bookmark_panel: bool,
@@ -417,6 +459,9 @@ struct CursorStudio {
     p2p_daemon_process: Option<std::process::Child>,
     p2p_daemon_port: u16,
 
+    // Elixir sync daemon panel
+    sync_daemon_panel: sync::SyncStatusPanel,
+
     // Version download state
     available_versions: Vec<AvailableVersion>,
     download_state: DownloadState,
@@ -436,6 +481,9 @@ struct CursorStudio {
 
     // Approval system
     approval_manager: ApprovalManager,
+
+    // Documentation Index panel (cursor-docs integration)
+    docs_panel: docs::DocsPanel,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -549,7 +597,7 @@ impl CursorStudio {
             left_sidebar_width: 280.0,
             right_sidebar_width: 300.0,
             left_mode: SidebarMode::Manager,
-            right_mode: RightSidebarMode::ChatLibrary,
+            right_mode: RightSidebarMode::Archive,
             tabs: vec![Tab::Dashboard],
             active_tab: 0,
             versions,
@@ -573,6 +621,14 @@ impl CursorStudio {
             import_progress: None,
             import_warning_shown: false,
             last_import_error: None,
+            // Export dialog state
+            show_export_dialog: false,
+            export_format: ExportFormat::default(),
+            export_output_dir: dirs::document_dir()
+                .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
+                .join("cursor-exports")
+                .to_string_lossy()
+                .to_string(),
             // Bookmark state
             current_bookmarks: vec![],
             show_bookmark_panel: false,
@@ -628,6 +684,9 @@ impl CursorStudio {
             p2p_daemon_process: None,
             p2p_daemon_port: 4001,
 
+            // Elixir sync daemon panel
+            sync_daemon_panel: sync::SyncStatusPanel::new(),
+
             // Version download state
             available_versions: get_available_versions(),
             download_state: DownloadState::Idle,
@@ -647,6 +706,9 @@ impl CursorStudio {
 
             // Approval system
             approval_manager: ApprovalManager::new(ApprovalMode::Gui),
+
+            // Documentation Index panel
+            docs_panel: docs::DocsPanel::new(),
         }
     }
 
@@ -1960,12 +2022,12 @@ impl eframe::App for CursorStudio {
                     ui.horizontal(|ui| {
                         ui.add_space(8.0);
 
-                        // Chat Library button
-                        let chat_selected = self.right_mode == RightSidebarMode::ChatLibrary;
-                        let chat_btn = ui
+                        // Archive button (Chat History)
+                        let archive_selected = self.right_mode == RightSidebarMode::Archive;
+                        let archive_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("💬").size(16.0).color(
-                                    if chat_selected {
+                                egui::Button::new(RichText::new("📚").size(16.0).color(
+                                    if archive_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -1974,20 +2036,20 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Chat Library");
-                        if chat_btn.clicked() {
-                            self.right_mode = RightSidebarMode::ChatLibrary;
+                            .on_hover_text("Archive (Chat History)");
+                        if archive_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Archive;
                         }
-                        if chat_btn.hovered() {
+                        if archive_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
-                        // Security button
-                        let sec_selected = self.right_mode == RightSidebarMode::Security;
-                        let sec_btn = ui
+                        // Sentinel button (Security)
+                        let sentinel_selected = self.right_mode == RightSidebarMode::Sentinel;
+                        let sentinel_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("🔒").size(16.0).color(
-                                    if sec_selected {
+                                egui::Button::new(RichText::new("🛡️").size(16.0).color(
+                                    if sentinel_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -1996,20 +2058,20 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Security");
-                        if sec_btn.clicked() {
-                            self.right_mode = RightSidebarMode::Security;
+                            .on_hover_text("Sentinel (Security)");
+                        if sentinel_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Sentinel;
                         }
-                        if sec_btn.hovered() {
+                        if sentinel_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
-                        // Sync button
-                        let sync_selected = self.right_mode == RightSidebarMode::Sync;
-                        let sync_btn = ui
+                        // Bridge button (Sync)
+                        let bridge_selected = self.right_mode == RightSidebarMode::Bridge;
+                        let bridge_btn = ui
                             .add(
-                                egui::Button::new(RichText::new("🔄").size(16.0).color(
-                                    if sync_selected {
+                                egui::Button::new(RichText::new("🔗").size(16.0).color(
+                                    if bridge_selected {
                                         theme.accent
                                     } else {
                                         theme.fg_dim
@@ -2018,11 +2080,55 @@ impl eframe::App for CursorStudio {
                                 .frame(false)
                                 .min_size(Vec2::new(32.0, 28.0)),
                             )
-                            .on_hover_text("Sync");
-                        if sync_btn.clicked() {
-                            self.right_mode = RightSidebarMode::Sync;
+                            .on_hover_text("Bridge (Sync)");
+                        if bridge_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Bridge;
                         }
-                        if sync_btn.hovered() {
+                        if bridge_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
+                        // Index (Docs) button
+                        let index_selected = self.right_mode == RightSidebarMode::Index;
+                        let index_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("📖").size(16.0).color(
+                                    if index_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Index (Documentation)");
+                        if index_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Index;
+                        }
+                        if index_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
+                        // Forge (Data Transform) button
+                        let forge_selected = self.right_mode == RightSidebarMode::Forge;
+                        let forge_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("🔥").size(16.0).color(
+                                    if forge_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Forge (Data Transform)");
+                        if forge_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Forge;
+                        }
+                        if forge_btn.hovered() {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
@@ -2030,9 +2136,11 @@ impl eframe::App for CursorStudio {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
                             let mode_label = match self.right_mode {
-                                RightSidebarMode::ChatLibrary => "CHATS",
-                                RightSidebarMode::Security => "SECURITY",
-                                RightSidebarMode::Sync => "SYNC",
+                                RightSidebarMode::Archive => "ARCHIVE",
+                                RightSidebarMode::Index => "INDEX",
+                                RightSidebarMode::Sentinel => "SENTINEL",
+                                RightSidebarMode::Bridge => "BRIDGE",
+                                RightSidebarMode::Forge => "FORGE",
                             };
                             ui.label(
                                 RichText::new(mode_label)
@@ -2048,9 +2156,11 @@ impl eframe::App for CursorStudio {
 
                     // Show content based on mode
                     match self.right_mode {
-                        RightSidebarMode::ChatLibrary => self.show_chat_library(ui, theme),
-                        RightSidebarMode::Security => self.show_security_panel(ui, theme),
-                        RightSidebarMode::Sync => self.show_sync_panel(ui, theme),
+                        RightSidebarMode::Archive => self.show_archive_panel(ui, theme),
+                        RightSidebarMode::Index => self.show_index_panel(ui, theme),
+                        RightSidebarMode::Sentinel => self.show_sentinel_panel(ui, theme),
+                        RightSidebarMode::Bridge => self.show_bridge_panel(ui, theme),
+                        RightSidebarMode::Forge => self.show_forge_panel(ui, theme),
                     }
                 });
         }
@@ -3675,7 +3785,7 @@ impl CursorStudio {
         .on_hover_text(tooltip);
     }
 
-    fn show_chat_library(&mut self, ui: &mut egui::Ui, theme: Theme) {
+    fn show_archive_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         ui.vertical(|ui| {
             ui.add_space(12.0);
             ui.horizontal(|ui| {
@@ -3832,13 +3942,82 @@ impl CursorStudio {
                 }
 
                 if styled_button(ui, "⬆ Export", Vec2::new(80.0, 28.0))
-                    .on_hover_text("Export chats to markdown")
+                    .on_hover_text("Export chats to markdown or training data")
                     .clicked()
                 {
-                    self.set_status("Export feature coming soon");
+                    self.show_export_dialog = !self.show_export_dialog;
                 }
             });
             ui.add_space(8.0);
+
+            // Export dialog
+            if self.show_export_dialog {
+                ui.add_space(8.0);
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new("📤 Export Settings")
+                                .size(12.0)
+                                .color(theme.fg)
+                                .strong(),
+                        );
+                        ui.add_space(8.0);
+
+                        // Format selection
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Format:").size(11.0).color(theme.fg_dim));
+                            egui::ComboBox::from_id_salt("export_format")
+                                .selected_text(self.export_format.label())
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::Markdown, "Markdown");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::MarkdownObsidian, "Markdown (Obsidian)");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::Json, "JSON");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::JsonLines, "JSON Lines");
+                                    ui.separator();
+                                    ui.label(RichText::new("Training Data").size(10.0).color(theme.fg_dim));
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::OpenAIJsonl, "OpenAI JSONL");
+                                    ui.selectable_value(&mut self.export_format, ExportFormat::AlpacaJson, "Alpaca JSON");
+                                });
+                        });
+
+                        ui.add_space(4.0);
+
+                        // Output directory
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Output:").size(11.0).color(theme.fg_dim));
+                            ui.add(egui::TextEdit::singleline(&mut self.export_output_dir)
+                                .desired_width(180.0));
+                        });
+
+                        ui.add_space(8.0);
+
+                        ui.horizontal(|ui| {
+                            if styled_button_accent(ui, "Export All", Vec2::new(90.0, 26.0), theme).clicked() {
+                                let cmd = format!(
+                                    "cd ~/nixos-cursor/services/cursor-docs && mix cursor_docs.chat --export-all --format {} --output-dir {}",
+                                    self.export_format.file_extension(),
+                                    self.export_output_dir
+                                );
+                                self.set_status(&format!("Run: {}", cmd));
+                                self.show_export_dialog = false;
+                            }
+                            if styled_button(ui, "Cancel", Vec2::new(70.0, 26.0)).clicked() {
+                                self.show_export_dialog = false;
+                            }
+                        });
+
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new("Tip: Use cursor-docs CLI for batch exports")
+                                .size(9.0)
+                                .color(theme.fg_dim)
+                                .italics(),
+                        );
+                    });
+            }
         });
     }
 
@@ -3849,7 +4028,7 @@ impl CursorStudio {
     /// - [ ] Add Socket.dev links for package research
     /// - [ ] Implement audit log export functionality
     /// - [ ] Add scan history with timestamps
-    fn show_security_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+    fn show_sentinel_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
@@ -4490,28 +4669,46 @@ impl CursorStudio {
             });
     }
 
-    fn show_sync_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
-        ui.vertical(|ui| {
+    fn show_bridge_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
             ui.add_space(12.0);
 
-            // Coming Soon Banner
+            // ======================================
+            // ELIXIR SYNC DAEMON (Primary)
+            // ======================================
             egui::Frame::none()
-                .fill(theme.accent.linear_multiply(0.2))
+                .fill(theme.code_bg)
+                .rounding(Rounding::same(8.0))
+                .inner_margin(egui::Margin::same(12.0))
+                .show(ui, |ui| {
+                    // Render the Elixir sync daemon panel
+                    self.sync_daemon_panel.ui(ui);
+                });
+            
+            ui.add_space(16.0);
+            ui.separator();
+            ui.add_space(16.0);
+
+            // ======================================
+            // LEGACY: Coming Soon Banner
+            // ======================================
+            egui::Frame::none()
+                .fill(theme.accent.linear_multiply(0.15))
                 .rounding(Rounding::same(8.0))
                 .inner_margin(egui::Margin::same(12.0))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("🚀").size(16.0));
+                        ui.label(RichText::new("🔮").size(16.0));
                         ui.add_space(8.0);
                         ui.vertical(|ui| {
                             ui.label(
-                                RichText::new("Coming Soon")
+                                RichText::new("Future: P2P & Server Sync")
                                     .color(theme.accent)
                                     .strong()
                                     .size(14.0),
                             );
                             ui.label(
-                                RichText::new("P2P & Server sync in development")
+                                RichText::new("Multi-device sync planned for v0.4.0")
                                     .color(theme.fg_dim)
                                     .size(11.0),
                             );
@@ -4523,7 +4720,7 @@ impl CursorStudio {
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
                 ui.label(
-                    RichText::new("SYNC STATUS")
+                    RichText::new("DEVICE INFO")
                         .size(11.0)
                         .color(theme.fg_dim)
                         .strong(),
@@ -4781,6 +4978,177 @@ impl CursorStudio {
                 }
             });
         });
+    }
+
+    /// Show the Index (Documentation) panel
+    /// Integrates with cursor-docs backend for doc indexing and search
+    fn show_index_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        // Create a theme adapter for the docs panel
+        struct ThemeAdapter(Theme);
+        impl docs::ui::DocsTheme for ThemeAdapter {
+            fn bg(&self) -> Color32 { self.0.sidebar_bg }
+            fn fg(&self) -> Color32 { self.0.fg }
+            fn fg_dim(&self) -> Color32 { self.0.fg_dim }
+            fn accent(&self) -> Color32 { self.0.accent }
+            fn error(&self) -> Color32 { self.0.error }
+            fn success(&self) -> Color32 { self.0.success }
+            fn card_bg(&self) -> Color32 { self.0.code_bg }
+            fn button_bg(&self) -> Color32 { self.0.input_bg }
+            fn selection_bg(&self) -> Color32 { self.0.accent.gamma_multiply(0.3) }
+        }
+
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                self.docs_panel.show(ui, &ThemeAdapter(theme));
+            });
+    }
+
+    /// Forge panel - Data transformation and training data preparation
+    fn show_forge_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| {
+                ui.add_space(12.0);
+
+                // Header
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("🔥 FORGE")
+                            .size(14.0)
+                            .color(theme.accent)
+                            .strong(),
+                    );
+                });
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("Data transformation & training preparation")
+                            .size(10.0)
+                            .color(theme.fg_dim),
+                    );
+                });
+
+                ui.add_space(16.0);
+
+                // Coming Soon Banner
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(16.0))
+                    .show(ui, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                RichText::new("🚧 Coming Soon")
+                                    .size(16.0)
+                                    .color(theme.warning)
+                                    .strong(),
+                            );
+                            ui.add_space(12.0);
+                            ui.label(
+                                RichText::new("The Forge will enable:")
+                                    .size(11.0)
+                                    .color(theme.fg),
+                            );
+                            ui.add_space(8.0);
+                        });
+
+                        let features = [
+                            "📊 Combine chats + docs into training datasets",
+                            "🔄 Transform to OpenAI/Alpaca/ShareGPT formats",
+                            "🧹 Quality filtering and deduplication",
+                            "✂️ Train/validation/test splits",
+                            "🔒 PII redaction and anonymization",
+                            "📈 Dataset statistics and visualization",
+                        ];
+
+                        for feature in features {
+                            ui.horizontal(|ui| {
+                                ui.add_space(24.0);
+                                ui.label(RichText::new(feature).size(10.0).color(theme.fg_dim));
+                            });
+                            ui.add_space(4.0);
+                        }
+                    });
+
+                ui.add_space(16.0);
+
+                // Quick Actions (placeholder)
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new("QUICK ACTIONS")
+                            .size(10.0)
+                            .color(theme.fg_dim)
+                            .strong(),
+                    );
+                });
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    if styled_button(ui, "Export All Chats", Vec2::new(130.0, 28.0))
+                        .on_hover_text("Export all chats to training format")
+                        .clicked()
+                    {
+                        self.right_mode = RightSidebarMode::Archive;
+                        self.show_export_dialog = true;
+                    }
+                });
+
+                ui.add_space(8.0);
+
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    if styled_button(ui, "Index All Docs", Vec2::new(130.0, 28.0))
+                        .on_hover_text("View indexed documentation")
+                        .clicked()
+                    {
+                        self.right_mode = RightSidebarMode::Index;
+                    }
+                });
+
+                ui.add_space(16.0);
+
+                // CLI Reference
+                egui::Frame::none()
+                    .fill(theme.code_bg)
+                    .rounding(Rounding::same(8.0))
+                    .inner_margin(egui::Margin::same(12.0))
+                    .show(ui, |ui| {
+                        ui.label(
+                            RichText::new("CLI Reference")
+                                .size(11.0)
+                                .color(theme.fg)
+                                .strong(),
+                        );
+                        ui.add_space(8.0);
+
+                        let commands = [
+                            ("Export chats:", "mix cursor_docs.chat --export-all"),
+                            ("Index docs:", "mix cursor_docs.add https://docs.rs/..."),
+                            ("Search:", "mix cursor_docs.search \"query\""),
+                        ];
+
+                        for (label, cmd) in commands {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new(label).size(9.0).color(theme.fg_dim));
+                            });
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                ui.label(
+                                    RichText::new(cmd)
+                                        .size(9.0)
+                                        .color(theme.accent)
+                                        .monospace(),
+                                );
+                            });
+                            ui.add_space(4.0);
+                        }
+                    });
+            });
     }
 
     /// Find the p2p-sync binary in common locations

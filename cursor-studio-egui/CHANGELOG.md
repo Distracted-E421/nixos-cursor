@@ -5,6 +5,62 @@ All notable changes to Cursor Studio will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🎨 Native D2 Diagram Viewer
+
+#### Interactive Diagram Rendering
+- **Native egui rendering** - No external renderer needed, diagrams render directly in the app
+- **Pan and zoom** - Mouse wheel for zoom, right-click drag for pan
+- **Node selection** - Click to select, drag to reposition nodes
+- **Minimap** - Overview of the entire diagram with viewport indicator
+- **Toolbar** - Quick access to reload, fit-to-view, and grid toggle
+
+#### D2 Language Support
+- **D2 parser** - Parses D2 source files directly
+- **Shape support** - Rectangle, cylinder, hexagon, diamond, circle, document, person, cloud, queue, and more
+- **Edge rendering** - Arrows, labels, dashed lines
+- **Containers** - Nested node groupings with parent-child relationships
+- **Inline styles** - Support for `fill`, `stroke`, `stroke-width`, `opacity`, etc.
+
+#### VS Code Theme Integration
+- **Theme-aware colors** - Diagrams automatically use VS Code theme colors
+- **DiagramTheme** - Maps VS Code theme to diagram-specific colors:
+  - Node fills use sidebar colors
+  - Strokes use accent colors
+  - Database shapes use syntax_type (teal)
+  - Document shapes use syntax_string (orange)
+  - Agent/hexagon shapes use syntax_function (yellow)
+- **Synthwave '2077 compatible** - Works with cyberpunk themes
+
+#### Real-time Features (Planned)
+- **Data flow animation** - Animated dots along edges to show data movement
+- **Status indicators** - Node status badges (active, error, warning)
+- **Live updates** - Real-time graph updates from external data sources
+
+#### Example Usage
+```rust
+use cursor_studio::diagram::D2Viewer;
+use cursor_studio::theme::Theme;
+
+let mut viewer = D2Viewer::new();
+viewer.load_file("diagram.d2")?;
+viewer.set_theme(&Theme::dark());
+
+// In your egui frame:
+viewer.ui(ui);
+```
+
+#### New Files
+- `src/diagram/mod.rs` - Module exports
+- `src/diagram/graph.rs` - D2Graph, D2Node, D2Edge, D2Shape data structures
+- `src/diagram/parser.rs` - D2 file parser
+- `src/diagram/renderer.rs` - Interactive egui renderer
+- `src/diagram/theme_mapper.rs` - VS Code theme to diagram color mapping
+- `examples/d2_viewer_demo.rs` - Runnable demo application
+
+---
+
 ## [0.3.0] - 2025-12-01
 
 ### 🌐 Multi-Platform Version Registry

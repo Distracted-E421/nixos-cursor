@@ -1,0 +1,37 @@
+# Build artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+
+# Release artifacts
+/cursor_sync-*.tar.gz
+/_releases/
+
+# Test artifacts
+/test/tmp/
+
+# Generated on crash by the VM
+erl_crash.dump
+
+# Generated on mix archive.install
+*.ez
+
+# PLT files
+/*.plt
+/*.plt.hash
+
+# Editor/IDE
+.elixir_ls/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Named pipes (created at runtime)
+*.pipe

@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.2.1] - 2025-12-15
+
+### Added
+
+- **@Docs Indexing Troubleshooting Guide** (docs/troubleshooting/DOCS_INDEXING_ISSUE.md):
+  - Comprehensive documentation explaining that @docs indexing failures are a **Cursor server-side bug**
+  - Not related to NixOS, cursor-studio, or local configuration
+  - Affects all platforms (Windows, macOS, Linux) and all Cursor versions from 0.43.x+
+  - Includes workarounds and links to 50+ forum reports
+  - References official Cursor team acknowledgment of the issue
+
+- **cursor-docs Service** (services/cursor-docs/):
+  - New Elixir/OTP-based local documentation indexing service
+  - Alternative to Cursor's unreliable server-side @docs system
+  - **Key features:**
+    - Playwright-based scraping (full JavaScript rendering)
+    - SurrealDB storage with full-text search
+    - MCP protocol integration for Cursor
+    - Fault-tolerant OTP supervision tree
+    - Rate limiting and retry logic
+  - **Target quality:** 80% of Cursor's best-case quality at 100% coverage
+  - **MCP Tools:**
+    - `cursor_docs_add` - Add documentation URL
+    - `cursor_docs_search` - Search indexed docs
+    - `cursor_docs_list` - List all sources
+    - `cursor_docs_status` - Check scraping status
+    - `cursor_docs_remove` - Remove documentation
+
+### Documentation
+
+- New `docs/troubleshooting/` directory for common issues
+- Clear explanation that docs indexing is NOT a nixos-cursor bug
+- Links to Cursor forum threads and official team responses
+
+---
+
+## [0.2.0] - 2025-12-05
+
+### Added
+
+- **Data Pipeline Control Research** (docs/internal/DATA_PIPELINE_CONTROL_ROADMAP.md):
+  - Comprehensive documentation of Cursor's internal database structure
+  - Discovered 25,105+ messages stored as JSON blobs in `cursorDiskKV` table
+  - Mapped key patterns: `bubbleId`, `checkpointId`, `codeBlockDiff`, `composerData`
+  - Identified `docsReferences`, `webReferences`, `toolResults` fields in message structure
+  - Speculative roadmap for v0.3.0/v0.4.0 data pipeline control features
+
+- **Conversation Sync POC** (scripts/python/cursor_sync_poc.py):
+  - Working proof-of-concept for syncing Cursor conversations to external SQLite
+  - Syncs messages, conversations, and tool calls from all workspace databases
+  - Commands: `sync`, `watch` (continuous), `stats`, `export`
+  - Tested successfully: 25,179 messages, 67 conversations synced
+
+### Research Findings
+
+- Cursor stores conversations in `~/.config/Cursor/User/globalStorage/state.vscdb`
+- Workspace-specific data in `~/.config/Cursor/User/workspaceStorage/{hash}/state.vscdb`
+- Messages are JSON blobs with rich metadata including thinking blocks, tool results
+- Docs system appears server-side (no local cache found) - MCP-based alternative planned
+
 ## [0.2.0] - 2025-12-05
 
 > 🎉 **First stable release of Cursor Studio** - A complete rewrite from Python/Tkinter to Rust/egui
@@ -260,6 +322,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Secrets management documentation
   - Example configurations (basic, with-sops, with-agenix, with-mcp)
 
+[0.2.1]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Distracted-E421/nixos-cursor/releases/tag/v0.1.0

@@ -544,3 +544,4 @@ mod tests {
         assert!(!stripped.contains("/*"));
     }
 }
+
