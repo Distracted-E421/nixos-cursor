@@ -23,6 +23,23 @@ use std::path::PathBuf;
 use std::process::Command;
 use theme::Theme;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// UI SPACING CONSTANTS - Use these for consistent panel layouts
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Standard horizontal padding from panel edge
+const PANEL_PADDING: f32 = 4.0;
+/// Standard spacing between sections
+const SECTION_SPACING: f32 = 12.0;
+/// Standard spacing between elements within a section
+const ELEMENT_SPACING: f32 = 8.0;
+/// Small spacing for tight layouts
+const TIGHT_SPACING: f32 = 4.0;
+/// Card inner margin
+const CARD_MARGIN: f32 = 8.0;
+/// Card rounding
+const CARD_ROUNDING: f32 = 6.0;
+
 /// External config from Home Manager or other sources
 /// Located at ~/.config/cursor-studio/config.json
 #[derive(Debug, Default, serde::Deserialize)]
@@ -1924,6 +1941,89 @@ fn toggle_switch(ui: &mut egui::Ui, on: &mut bool, theme: Theme) -> egui::Respon
     }
 
     response
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PANEL LAYOUT HELPERS - Consistent UI across all panels
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Render a panel section header (e.g., "SOURCES", "SECURITY")
+fn panel_header(ui: &mut egui::Ui, label: &str, theme: Theme) {
+    ui.horizontal(|ui| {
+        ui.add_space(PANEL_PADDING);
+        ui.label(
+            RichText::new(label)
+                .size(10.0)
+                .color(theme.fg_dim)
+                .strong(),
+        );
+    });
+}
+
+/// Render a panel section header with icon
+fn panel_header_with_icon(ui: &mut egui::Ui, icon: &str, label: &str, theme: Theme) {
+    ui.horizontal(|ui| {
+        ui.add_space(PANEL_PADDING);
+        ui.label(
+            RichText::new(format!("{} {}", icon, label))
+                .size(11.0)
+                .color(theme.accent)
+                .strong(),
+        );
+    });
+}
+
+/// Render a stat card with icon, value, and label
+fn stat_card(ui: &mut egui::Ui, icon: &str, value: &str, label: &str, theme: Theme, width: f32) {
+    egui::Frame::none()
+        .fill(theme.code_bg)
+        .rounding(Rounding::same(CARD_ROUNDING))
+        .inner_margin(egui::Margin::symmetric(CARD_MARGIN, CARD_MARGIN - 2.0))
+        .show(ui, |ui| {
+            ui.set_width(width);
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(icon).size(16.0));
+                ui.add_space(TIGHT_SPACING);
+                ui.vertical(|ui| {
+                    ui.label(
+                        RichText::new(value)
+                            .size(14.0)
+                            .color(theme.fg)
+                            .strong(),
+                    );
+                    ui.label(
+                        RichText::new(label)
+                            .size(9.0)
+                            .color(theme.fg_dim),
+                    );
+                });
+            });
+        });
+}
+
+/// Create a card frame with standard styling
+fn card_frame(theme: Theme) -> egui::Frame {
+    egui::Frame::none()
+        .fill(theme.code_bg)
+        .rounding(Rounding::same(CARD_ROUNDING))
+        .inner_margin(egui::Margin::same(CARD_MARGIN))
+}
+
+/// Create an accent-tinted card frame
+fn accent_card_frame(theme: Theme) -> egui::Frame {
+    egui::Frame::none()
+        .fill(theme.accent.gamma_multiply(0.15))
+        .rounding(Rounding::same(CARD_ROUNDING))
+        .inner_margin(egui::Margin::same(CARD_MARGIN))
+}
+
+/// Create a warning card frame
+fn warning_card_frame(theme: Theme) -> egui::Frame {
+    egui::Frame::none()
+        .fill(theme.warning.gamma_multiply(0.15))
+        .rounding(Rounding::same(CARD_ROUNDING))
+        .inner_margin(egui::Margin::same(CARD_MARGIN))
+        .stroke(Stroke::new(1.0, theme.warning.gamma_multiply(0.3)))
 }
 
 impl eframe::App for CursorStudio {

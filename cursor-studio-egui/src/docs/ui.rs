@@ -5,6 +5,7 @@
 use super::client::DocsClient;
 use super::models::*;
 use eframe::egui::{self, Color32, RichText, Rounding, Vec2};
+use std::io::Read;
 use std::process::Command;
 use std::sync::mpsc;
 
@@ -244,7 +245,7 @@ impl DocsPanel {
         };
         self.indexing_jobs.push(job);
 
-        // Spawn in background
+        // Spawn in background with live output parsing
         let (tx, rx) = mpsc::channel();
         self.indexing_receiver = Some(rx);
 
@@ -252,28 +253,105 @@ impl DocsPanel {
         std::thread::spawn(move || {
             let _ = tx.send(IndexingUpdate::Started { url: url_clone.clone() });
 
-            match cmd.output() {
-                Ok(output) => {
-                    if output.status.success() {
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        // Parse chunks from output if available
-                        let chunks = stdout
-                            .lines()
-                            .find(|l| l.contains("Chunks:"))
-                            .and_then(|l| l.split(':').last())
-                            .and_then(|s| s.trim().parse().ok())
-                            .unwrap_or(0);
-
-                        let _ = tx.send(IndexingUpdate::Complete {
-                            url: url_clone,
-                            chunks,
-                        });
-                    } else {
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        let _ = tx.send(IndexingUpdate::Error {
-                            url: url_clone,
-                            error: stderr.to_string(),
-                        });
+            // Use spawn + stdout piping for live progress
+            use std::process::Stdio;
+            use std::io::{BufRead, BufReader};
+            
+            cmd.stdout(Stdio::piped());
+            cmd.stderr(Stdio::piped());
+            
+            match cmd.spawn() {
+                Ok(mut child) => {
+                    let stdout = child.stdout.take();
+                    let stderr = child.stderr.take();
+                    
+                    let tx_stdout = tx.clone();
+                    let url_stdout = url_clone.clone();
+                    
+                    // Parse stdout for progress and results
+                    if let Some(stdout) = stdout {
+                        let reader = BufReader::new(stdout);
+                        for line in reader.lines().filter_map(|l| l.ok()) {
+                            // Parse structured progress: PROGRESS:{"type":"...", ...}
+                            if let Some(json_str) = line.strip_prefix("PROGRESS:") {
+                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_str) {
+                                    match json.get("type").and_then(|t| t.as_str()) {
+                                        Some("page") => {
+                                            if let (Some(current), Some(total)) = (
+                                                json.pointer("/data/current").and_then(|v| v.as_u64()),
+                                                json.pointer("/data/total").and_then(|v| v.as_u64()),
+                                            ) {
+                                                let status = json.pointer("/data/status")
+                                                    .and_then(|s| s.as_str())
+                                                    .unwrap_or("Indexing...")
+                                                    .to_string();
+                                                let _ = tx_stdout.send(IndexingUpdate::Progress {
+                                                    url: url_stdout.clone(),
+                                                    page: current as usize,
+                                                    status,
+                                                });
+                                            }
+                                        }
+                                        Some("complete") => {
+                                            let chunks = json.pointer("/data/chunks")
+                                                .and_then(|c| c.as_u64())
+                                                .unwrap_or(0) as usize;
+                                            let _ = tx_stdout.send(IndexingUpdate::Complete {
+                                                url: url_stdout.clone(),
+                                                chunks,
+                                            });
+                                        }
+                                        Some("error") => {
+                                            let reason = json.pointer("/data/reason")
+                                                .and_then(|r| r.as_str())
+                                                .unwrap_or("Unknown error")
+                                                .to_string();
+                                            let _ = tx_stdout.send(IndexingUpdate::Error {
+                                                url: url_stdout.clone(),
+                                                error: reason,
+                                            });
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            // Also parse old format: "Chunks: N"
+                            else if line.contains("Chunks:") {
+                                if let Some(chunks) = line.split(':').last().and_then(|s| s.trim().parse().ok()) {
+                                    let _ = tx_stdout.send(IndexingUpdate::Complete {
+                                        url: url_stdout.clone(),
+                                        chunks,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Wait for process to complete
+                    match child.wait() {
+                        Ok(status) => {
+                            if !status.success() {
+                                // Read stderr for error
+                                let error = if let Some(stderr) = stderr {
+                                    let mut err_reader = BufReader::new(stderr);
+                                    let mut err_str = String::new();
+                                    let _ = err_reader.read_to_string(&mut err_str);
+                                    err_str
+                                } else {
+                                    format!("Process exited with: {}", status)
+                                };
+                                let _ = tx.send(IndexingUpdate::Error {
+                                    url: url_clone,
+                                    error,
+                                });
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send(IndexingUpdate::Error {
+                                url: url_clone,
+                                error: e.to_string(),
+                            });
+                        }
                     }
                 }
                 Err(e) => {
