@@ -63,6 +63,8 @@ pub struct DocsPanel {
     pending_events: Vec<DocsPanelEvent>,
     /// Channel for receiving indexing updates
     indexing_receiver: Option<mpsc::Receiver<IndexingUpdate>>,
+    /// Pending delete confirmation (source_id, source_name)
+    pending_delete: Option<(String, String)>,
 }
 
 /// Update from background indexing thread
@@ -103,6 +105,7 @@ impl DocsPanel {
             indexing_jobs: Vec::new(),
             pending_events: Vec::new(),
             indexing_receiver: None,
+            pending_delete: None,
         };
 
         panel.refresh();
@@ -288,6 +291,70 @@ impl DocsPanel {
         self.show_add_form = false;
     }
 
+    /// Request deletion of a source (shows confirmation)
+    fn request_delete(&mut self, source_id: String, source_name: String) {
+        self.pending_delete = Some((source_id, source_name));
+    }
+
+    /// Actually delete a source via cursor-docs CLI
+    fn delete_source(&mut self, source_id: &str) {
+        let source_id = source_id.to_string();
+        
+        // Build delete command
+        let mut cmd = Command::new("mix");
+        cmd.arg("cursor_docs.delete")
+            .arg(&source_id);
+
+        // Set working directory to cursor-docs service
+        let cursor_docs_path = dirs::home_dir()
+            .map(|h| h.join("nixos-cursor/services/cursor-docs"))
+            .unwrap_or_default();
+
+        if cursor_docs_path.exists() {
+            cmd.current_dir(&cursor_docs_path);
+        }
+
+        // Execute synchronously (delete is fast)
+        match cmd.output() {
+            Ok(output) => {
+                if output.status.success() {
+                    self.success_message = Some("Source deleted successfully".to_string());
+                    self.selected_source = None;
+                    self.refresh();
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    // If mix task doesn't exist, try direct SQL delete
+                    if stderr.contains("could not find task") {
+                        self.delete_source_direct(&source_id);
+                    } else {
+                        self.error_message = Some(format!("Delete failed: {}", stderr));
+                    }
+                }
+            }
+            Err(e) => {
+                // Try direct delete if mix fails
+                self.delete_source_direct(&source_id);
+            }
+        }
+        
+        self.pending_delete = None;
+    }
+
+    /// Delete source directly via SQL (fallback)
+    fn delete_source_direct(&mut self, source_id: &str) {
+        // Use rusqlite to delete directly
+        match self.client.delete_source(source_id) {
+            Ok(_) => {
+                self.success_message = Some("Source deleted successfully".to_string());
+                self.selected_source = None;
+                self.refresh();
+            }
+            Err(e) => {
+                self.error_message = Some(format!("Delete failed: {}", e));
+            }
+        }
+    }
+
     /// Main UI rendering
     pub fn show(&mut self, ui: &mut egui::Ui, theme: &dyn DocsTheme) {
         // Poll for indexing updates
@@ -341,6 +408,60 @@ impl DocsPanel {
                 ui.add_space(8.0);
 
                 self.show_sources_list(ui, theme);
+
+                // Delete confirmation dialog
+                if let Some((ref source_id, ref source_name)) = self.pending_delete.clone() {
+                    ui.add_space(12.0);
+                    egui::Frame::none()
+                        .fill(theme.card_bg())
+                        .rounding(Rounding::same(6.0))
+                        .inner_margin(egui::Margin::same(12.0))
+                        .stroke(egui::Stroke::new(2.0, theme.error()))
+                        .show(ui, |ui| {
+                            ui.label(
+                                RichText::new("⚠️ Confirm Delete")
+                                    .size(12.0)
+                                    .color(theme.error())
+                                    .strong(),
+                            );
+                            ui.add_space(4.0);
+                            ui.label(
+                                RichText::new(format!("Delete \"{}\" and all its indexed content?", source_name))
+                                    .size(11.0)
+                                    .color(theme.fg()),
+                            );
+                            ui.add_space(8.0);
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add_sized(
+                                        Vec2::new(80.0, 26.0),
+                                        egui::Button::new(
+                                            RichText::new("🗑️ Delete")
+                                                .size(11.0)
+                                                .color(Color32::WHITE),
+                                        )
+                                        .fill(theme.error())
+                                        .rounding(Rounding::same(4.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    self.delete_source(&source_id.clone());
+                                }
+
+                                if ui
+                                    .add_sized(
+                                        Vec2::new(80.0, 26.0),
+                                        egui::Button::new(RichText::new("Cancel").size(11.0))
+                                            .fill(theme.button_bg())
+                                            .rounding(Rounding::same(4.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    self.pending_delete = None;
+                                }
+                            });
+                        });
+                }
 
                 // Messages at bottom
                 if let Some(ref msg) = self.error_message {
@@ -843,7 +964,7 @@ impl DocsPanel {
                                 .on_hover_text("Remove this source")
                                 .clicked()
                             {
-                                self.error_message = Some("Delete not yet implemented".to_string());
+                                self.request_delete(source.id.clone(), source.display_name().to_string());
                             }
                         });
                     }
