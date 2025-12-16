@@ -299,6 +299,7 @@ enum RightSidebarMode {
 enum Tab {
     Dashboard,
     Conversation(String),
+    IndexedDoc(String), // Source ID for cursor-docs indexed documentation
 }
 
 /// Export format options for chat data
@@ -4985,7 +4986,7 @@ impl CursorStudio {
     fn show_index_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         // Create a theme adapter for the docs panel
         struct ThemeAdapter(Theme);
-        impl docs::ui::DocsTheme for ThemeAdapter {
+        impl docs::DocsTheme for ThemeAdapter {
             fn bg(&self) -> Color32 { self.0.sidebar_bg }
             fn fg(&self) -> Color32 { self.0.fg }
             fn fg_dim(&self) -> Color32 { self.0.fg_dim }
@@ -4997,11 +4998,40 @@ impl CursorStudio {
             fn selection_bg(&self) -> Color32 { self.0.accent.gamma_multiply(0.3) }
         }
 
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                self.docs_panel.show(ui, &ThemeAdapter(theme));
-            });
+        // Show the panel (no ScrollArea - panel handles its own scrolling)
+        self.docs_panel.show(ui, &ThemeAdapter(theme));
+
+        // Handle events from the docs panel
+        for event in self.docs_panel.take_events() {
+            match event {
+                docs::DocsPanelEvent::OpenSource { source_id, source_name } => {
+                    // Open source in a new tab
+                    self.open_indexed_source(&source_id, &source_name);
+                }
+                docs::DocsPanelEvent::StatusMessage(msg) => {
+                    self.set_status(&msg);
+                }
+            }
+        }
+    }
+
+    /// Open an indexed source in the editor area as a tab
+    fn open_indexed_source(&mut self, source_id: &str, source_name: &str) {
+        // Check if already open
+        for (i, tab) in self.tabs.iter().enumerate() {
+            if let Tab::IndexedDoc(id) = tab {
+                if id == source_id {
+                    self.active_tab = i;
+                    self.set_status(&format!("📖 Switched to: {}", source_name));
+                    return;
+                }
+            }
+        }
+        
+        // Open new tab
+        self.tabs.push(Tab::IndexedDoc(source_id.to_string()));
+        self.active_tab = self.tabs.len() - 1;
+        self.set_status(&format!("📖 Opened: {}", source_name));
     }
 
     /// Forge panel - Data transformation and training data preparation
@@ -5347,6 +5377,14 @@ impl CursorStudio {
                             .unwrap_or_else(|| "Chat".to_string());
                         format!("💬 {}", title_text)
                     }
+                    Tab::IndexedDoc(source_id) => {
+                        // Get source name from docs panel
+                        self.docs_panel.client.get_source(source_id)
+                            .ok()
+                            .flatten()
+                            .map(|s| format!("📖 {}", s.display_name().chars().take(15).collect::<String>()))
+                            .unwrap_or_else(|| "📖 Docs".to_string())
+                    }
                 };
 
                 // Use a selectable button for better click handling
@@ -5441,6 +5479,182 @@ impl CursorStudio {
                     let id = id.clone();
                     self.show_conversation_tab(ui, theme, &id);
                 }
+                Tab::IndexedDoc(source_id) => {
+                    let source_id = source_id.clone();
+                    self.show_indexed_doc_tab(ui, theme, &source_id);
+                }
+            }
+        }
+    }
+
+    /// Show indexed documentation source in a tab
+    fn show_indexed_doc_tab(&mut self, ui: &mut egui::Ui, theme: Theme, source_id: &str) {
+        // Get source details from docs_panel
+        let source = self.docs_panel.client.get_source(source_id);
+        
+        match source {
+            Ok(Some(source)) => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.add_space(16.0);
+                        
+                        // Header
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+                            ui.label(
+                                RichText::new(format!("📖 {}", source.display_name()))
+                                    .size(18.0)
+                                    .color(theme.fg)
+                                    .strong(),
+                            );
+                        });
+                        
+                        ui.add_space(8.0);
+                        
+                        // Source info
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+                            ui.label(
+                                RichText::new(&source.url)
+                                    .size(11.0)
+                                    .color(theme.fg_dim),
+                            );
+                        });
+                        
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+                            ui.label(
+                                RichText::new(format!(
+                                    "{} {} • {} chunks",
+                                    source.status.icon(),
+                                    source.status.label(),
+                                    source.chunks_count
+                                ))
+                                .size(11.0)
+                                .color(theme.fg_dim),
+                            );
+                        });
+                        
+                        if let Some(ref last) = source.last_indexed {
+                            ui.horizontal(|ui| {
+                                ui.add_space(16.0);
+                                ui.label(
+                                    RichText::new(format!("Last indexed: {}", last))
+                                        .size(10.0)
+                                        .color(theme.fg_dim),
+                                );
+                            });
+                        }
+                        
+                        ui.add_space(16.0);
+                        ui.add(egui::Separator::default());
+                        ui.add_space(12.0);
+                        
+                        // Chunks section
+                        ui.horizontal(|ui| {
+                            ui.add_space(16.0);
+                            ui.label(
+                                RichText::new("INDEXED CONTENT")
+                                    .size(11.0)
+                                    .color(theme.fg_dim)
+                                    .strong(),
+                            );
+                        });
+                        ui.add_space(8.0);
+                        
+                        // Load and display chunks
+                        match self.docs_panel.client.get_chunks(source_id, 100) {
+                            Ok(chunks) => {
+                                if chunks.is_empty() {
+                                    ui.horizontal(|ui| {
+                                        ui.add_space(16.0);
+                                        ui.label(
+                                            RichText::new("No content indexed yet")
+                                                .size(11.0)
+                                                .color(theme.fg_dim),
+                                        );
+                                    });
+                                } else {
+                                    for (i, chunk) in chunks.iter().enumerate() {
+                                        egui::Frame::none()
+                                            .fill(theme.code_bg)
+                                            .rounding(Rounding::same(4.0))
+                                            .inner_margin(egui::Margin::same(12.0))
+                                            .outer_margin(egui::Margin::symmetric(16.0, 4.0))
+                                            .show(ui, |ui| {
+                                                ui.horizontal(|ui| {
+                                                    ui.label(
+                                                        RichText::new(format!("#{}", i + 1))
+                                                            .size(10.0)
+                                                            .color(theme.fg_dim),
+                                                    );
+                                                    ui.label(
+                                                        RichText::new(&chunk.title)
+                                                            .size(11.0)
+                                                            .color(theme.fg)
+                                                            .strong(),
+                                                    );
+                                                });
+                                                ui.add_space(4.0);
+                                                
+                                                // Show preview of content (first 300 chars)
+                                                let preview = if chunk.content.len() > 300 {
+                                                    format!("{}...", &chunk.content[..300])
+                                                } else {
+                                                    chunk.content.clone()
+                                                };
+                                                ui.label(
+                                                    RichText::new(preview)
+                                                        .size(10.0)
+                                                        .color(theme.fg_dim),
+                                                );
+                                            });
+                                    }
+                                    
+                                    if chunks.len() >= 100 {
+                                        ui.horizontal(|ui| {
+                                            ui.add_space(16.0);
+                                            ui.label(
+                                                RichText::new("Showing first 100 chunks...")
+                                                    .size(10.0)
+                                                    .color(theme.fg_dim)
+                                                    .italics(),
+                                            );
+                                        });
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                ui.horizontal(|ui| {
+                                    ui.add_space(16.0);
+                                    ui.label(
+                                        RichText::new(format!("Failed to load chunks: {}", e))
+                                            .size(11.0)
+                                            .color(theme.error),
+                                    );
+                                });
+                            }
+                        }
+                    });
+            }
+            Ok(None) => {
+                ui.centered_and_justified(|ui| {
+                    ui.label(
+                        RichText::new("Source not found")
+                            .size(14.0)
+                            .color(theme.fg_dim),
+                    );
+                });
+            }
+            Err(e) => {
+                ui.centered_and_justified(|ui| {
+                    ui.label(
+                        RichText::new(format!("Error loading source: {}", e))
+                            .size(14.0)
+                            .color(theme.error),
+                    );
+                });
             }
         }
     }
@@ -6438,6 +6652,10 @@ impl CursorStudio {
                     // Clear search when switching conversations
                     self.conv_search_query.clear();
                     self.conv_search_results.clear();
+                }
+                Tab::IndexedDoc(_) => {
+                    // Refresh docs panel when switching to a doc tab
+                    self.docs_panel.refresh();
                 }
             }
         }

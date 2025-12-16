@@ -1,3 +1,49 @@
+## 2025-12-16 21:30:00 - [GUI]
+
+**Description**: Major Index panel improvements for cursor-studio-egui
+
+**Files**:
+- cursor-studio-egui/src/docs/ui.rs (complete rewrite)
+- cursor-studio-egui/src/docs/mod.rs
+- cursor-studio-egui/src/main.rs
+- cursor-studio-egui/src/docs/client.rs
+
+**Changes**:
+
+1. **UI Alignment Fixes**:
+   - Grid-based layouts for consistent component alignment
+   - Fixed-width stat cards for uniform sizing
+   - Consistent spacing with standard margins (4.0, 8.0, 12.0)
+   - Better visual hierarchy
+
+2. **Functional URL Adding**:
+   - Added actual subprocess call to `mix cursor_docs.add`
+   - Background thread for async indexing
+   - Default 1000 page limit (was 100)
+   - Progress channel for live updates
+
+3. **Tab Integration**:
+   - New Tab::IndexedDoc variant for opening sources
+   - Added DocsPanelEvent system for panel->main communication
+   - View button opens source in editor area
+   - Tab displays source chunks with content preview
+
+4. **Live Indexing Progress**:
+   - Added IndexingJob tracking
+   - Progress bar showing page/max_pages
+   - Fast refresh (2s) during indexing, slow (30s) otherwise
+   - Status messages for started/complete/error states
+
+5. **Source Details View**:
+   - Click source to select, click View to open tab
+   - Tab shows source metadata (URL, status, chunks count)
+   - First 100 chunks displayed with content preview
+   - Refresh and Delete action buttons
+
+**Notes**: Requires cursor-docs service at ~/nixos-cursor/services/cursor-docs for URL adding
+
+---
+
 ## 2025-12-16 20:50:00 - [FIX]
 
 **Description**: Fixed vector storage modules and tested cursor-docs integration
