@@ -6,6 +6,7 @@ mod approval;
 mod chat;
 mod database;
 mod docs;
+mod modes;
 mod security;
 mod sync;
 mod theme;
