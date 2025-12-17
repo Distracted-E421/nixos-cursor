@@ -1,3 +1,35 @@
+## 2025-12-16 23:30:00 - [FIX]
+
+**Description**: Fixed cursor-studio-dev alias for Wayland/OpenGL context creation
+
+**Files**:
+- nixos/modules/shell/homelab-aliases.nix
+- cursor-studio-egui/src/main.rs
+
+**Changes**:
+
+1. **OpenGL/EGL Library Fix**:
+   - Added libGL, mesa, egl-wayland to LD_LIBRARY_PATH
+   - Fixed `NoGlutinConfigs` error during startup
+   - Updated from deprecated `mesa.drivers` to `mesa`
+
+2. **New Aliases**:
+   - `cursor-studio-dev` - Full LD_LIBRARY_PATH approach
+   - `cursor-studio-wrapped` - Simpler nix-shell wrapper
+
+3. **UI Consistency Applied**:
+   - Sentinel panel: reorganized with card_frame helpers
+   - Bridge panel: unified spacing constants
+   - Forge panel: used warning_card_frame for Coming Soon
+
+**Testing**:
+```bash
+# After rebuilding NixOS:
+cursor-studio-dev  # Now works with full Wayland/GL support
+```
+
+---
+
 ## 2025-12-16 22:15:00 - [FEATURE]
 
 **Description**: Real-time progress tracking and UI consistency improvements
