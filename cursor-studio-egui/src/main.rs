@@ -1,6 +1,7 @@
 //! Cursor Studio - Version Manager + Chat Library + Documentation Index
 //! Built with egui for native Wayland support
 
+mod ai_workspace;
 mod approval;
 mod chat;
 mod database;
