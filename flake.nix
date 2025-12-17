@@ -53,7 +53,29 @@
 
       # All version names (shared across platforms)
       allVersions = [
-        # 2.1.x Latest Era (11 versions)
+        # 2.2.x Latest Era (11 versions)
+        "cursor-2_2_27"
+        "cursor-2_2_23"
+        "cursor-2_2_20"
+        "cursor-2_2_17"
+        "cursor-2_2_14"
+        "cursor-2_2_12"
+        "cursor-2_2_9"
+        "cursor-2_2_8"
+        "cursor-2_2_7"
+        "cursor-2_2_6"
+        "cursor-2_2_3"
+        # 2.1.x Post-Custom-Modes Era (21 versions)
+        "cursor-2_1_50"
+        "cursor-2_1_49"
+        "cursor-2_1_48"
+        "cursor-2_1_47"
+        "cursor-2_1_46"
+        "cursor-2_1_44"
+        "cursor-2_1_42"
+        "cursor-2_1_41"
+        "cursor-2_1_39"
+        "cursor-2_1_36"
         "cursor-2_1_34"
         "cursor-2_1_32"
         "cursor-2_1_26"
@@ -65,7 +87,7 @@
         "cursor-2_1_15"
         "cursor-2_1_7"
         "cursor-2_1_6"
-        # 2.0.x Custom Modes Era (17 versions)
+        # 2.0.x Custom Modes Era - LAST VERSION WITH CUSTOM MODES (17 versions)
         "cursor-2_0_77"
         "cursor-2_0_75"
         "cursor-2_0_74"
@@ -103,8 +125,7 @@
         "cursor-1_7_16"
         "cursor-1_7_12"
         "cursor-1_7_11"
-        # 1.6.x Legacy (1 version)
-        "cursor-1_6_45"
+        # 1.6.x DROPPED - No longer supported by Cursor
       ];
 
       # Convert package name to binary name (cursor-2_1_34 -> cursor-2.1.34)
@@ -140,9 +161,34 @@
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
 
-          # Version-specific packages for running multiple instances (48 total)
-          # Latest Era - 2.1.x (11 versions)
+          # Version-specific packages for running multiple instances (69 total)
+          # Latest Era - 2.2.x (11 versions)
           inherit (cursorVersions)
+            cursor-2_2_27
+            cursor-2_2_23
+            cursor-2_2_20
+            cursor-2_2_17
+            cursor-2_2_14
+            cursor-2_2_12
+            cursor-2_2_9
+            cursor-2_2_8
+            cursor-2_2_7
+            cursor-2_2_6
+            cursor-2_2_3
+            ;
+
+          # Post-Custom-Modes Era - 2.1.x (21 versions)
+          inherit (cursorVersions)
+            cursor-2_1_50
+            cursor-2_1_49
+            cursor-2_1_48
+            cursor-2_1_47
+            cursor-2_1_46
+            cursor-2_1_44
+            cursor-2_1_42
+            cursor-2_1_41
+            cursor-2_1_39
+            cursor-2_1_36
             cursor-2_1_34
             cursor-2_1_32
             cursor-2_1_26
@@ -200,8 +246,7 @@
             cursor-1_7_11
             ;
 
-          # Legacy Era - 1.6.x (1 version)
-          inherit (cursorVersions) cursor-1_6_45;
+          # 1.6.x DROPPED - No longer supported by Cursor
         }
         # Linux-specific extras
         // lib.optionalAttrs isLinux {
@@ -299,7 +344,30 @@
           cursor-studio = mkApp pkgs.cursor-studio "cursor-studio";
           cursor-studio-cli = mkApp pkgs.cursor-studio-cli "cursor-studio-cli";
 
-          # 2.1.x Latest Era (11 versions)
+          # 2.2.x Latest Era (11 versions)
+          cursor-2_2_27 = mkApp pkgs.cursor-2_2_27 "cursor-2.2.27";
+          cursor-2_2_23 = mkApp pkgs.cursor-2_2_23 "cursor-2.2.23";
+          cursor-2_2_20 = mkApp pkgs.cursor-2_2_20 "cursor-2.2.20";
+          cursor-2_2_17 = mkApp pkgs.cursor-2_2_17 "cursor-2.2.17";
+          cursor-2_2_14 = mkApp pkgs.cursor-2_2_14 "cursor-2.2.14";
+          cursor-2_2_12 = mkApp pkgs.cursor-2_2_12 "cursor-2.2.12";
+          cursor-2_2_9 = mkApp pkgs.cursor-2_2_9 "cursor-2.2.9";
+          cursor-2_2_8 = mkApp pkgs.cursor-2_2_8 "cursor-2.2.8";
+          cursor-2_2_7 = mkApp pkgs.cursor-2_2_7 "cursor-2.2.7";
+          cursor-2_2_6 = mkApp pkgs.cursor-2_2_6 "cursor-2.2.6";
+          cursor-2_2_3 = mkApp pkgs.cursor-2_2_3 "cursor-2.2.3";
+
+          # 2.1.x Post-Custom-Modes Era (21 versions)
+          cursor-2_1_50 = mkApp pkgs.cursor-2_1_50 "cursor-2.1.50";
+          cursor-2_1_49 = mkApp pkgs.cursor-2_1_49 "cursor-2.1.49";
+          cursor-2_1_48 = mkApp pkgs.cursor-2_1_48 "cursor-2.1.48";
+          cursor-2_1_47 = mkApp pkgs.cursor-2_1_47 "cursor-2.1.47";
+          cursor-2_1_46 = mkApp pkgs.cursor-2_1_46 "cursor-2.1.46";
+          cursor-2_1_44 = mkApp pkgs.cursor-2_1_44 "cursor-2.1.44";
+          cursor-2_1_42 = mkApp pkgs.cursor-2_1_42 "cursor-2.1.42";
+          cursor-2_1_41 = mkApp pkgs.cursor-2_1_41 "cursor-2.1.41";
+          cursor-2_1_39 = mkApp pkgs.cursor-2_1_39 "cursor-2.1.39";
+          cursor-2_1_36 = mkApp pkgs.cursor-2_1_36 "cursor-2.1.36";
           cursor-2_1_34 = mkApp pkgs.cursor-2_1_34 "cursor-2.1.34";
           cursor-2_1_32 = mkApp pkgs.cursor-2_1_32 "cursor-2.1.32";
           cursor-2_1_26 = mkApp pkgs.cursor-2_1_26 "cursor-2.1.26";
@@ -312,7 +380,7 @@
           cursor-2_1_7 = mkApp pkgs.cursor-2_1_7 "cursor-2.1.7";
           cursor-2_1_6 = mkApp pkgs.cursor-2_1_6 "cursor-2.1.6";
 
-          # 2.0.x Custom Modes Era (17 versions)
+          # 2.0.x Custom Modes Era - LAST WITH CUSTOM MODES (17 versions)
           cursor-2_0_77 = mkApp pkgs.cursor-2_0_77 "cursor-2.0.77";
           cursor-2_0_75 = mkApp pkgs.cursor-2_0_75 "cursor-2.0.75";
           cursor-2_0_74 = mkApp pkgs.cursor-2_0_74 "cursor-2.0.74";
@@ -352,8 +420,7 @@
           cursor-1_7_12 = mkApp pkgs.cursor-1_7_12 "cursor-1.7.12";
           cursor-1_7_11 = mkApp pkgs.cursor-1_7_11 "cursor-1.7.11";
 
-          # 1.6.x Legacy Era (1 version)
-          cursor-1_6_45 = mkApp pkgs.cursor-1_6_45 "cursor-1.6.45";
+          # 1.6.x DROPPED - No longer supported
         }
       );
 
