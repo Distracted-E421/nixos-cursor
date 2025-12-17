@@ -55,13 +55,13 @@ defmodule CursorDocs.CLI do
           {{:exists, source}, true} ->
             IO.puts("🔄 Re-indexing: #{url}")
             IO.puts("   (This may take a moment...)\n")
-            
+
             # Emit progress: started
             Progress.started(url, source[:name], max_pages)
             start_time = System.monotonic_time(:millisecond)
-            
+
             result = do_refresh(source[:id])
-            
+
             duration = System.monotonic_time(:millisecond) - start_time
             emit_completion_progress(result, url, source[:name], duration)
 
@@ -78,16 +78,16 @@ defmodule CursorDocs.CLI do
             # Emit progress: started
             Progress.started(url, name, max_pages)
             start_time = System.monotonic_time(:millisecond)
-            
+
             result = CursorDocs.add(url, add_opts)
-            
+
             duration = System.monotonic_time(:millisecond) - start_time
-            
+
             case result do
               {:ok, source} ->
                 # Emit progress: complete
                 Progress.complete(url, source[:name], source[:id], source[:chunks_count] || 0, duration)
-                
+
                 IO.puts("✅ Indexed successfully!")
                 IO.puts("   Name: #{source[:name]}")
                 IO.puts("   ID: #{source[:id]}")
@@ -103,15 +103,15 @@ defmodule CursorDocs.CLI do
         end
     end
   end
-  
+
   defp emit_completion_progress({:ok, source}, url, _name, duration) do
     Progress.complete(url, source[:name], source[:id], source[:chunks_count] || 0, duration)
   end
-  
+
   defp emit_completion_progress({:error, reason}, url, _name, _duration) do
     Progress.error(url, reason)
   end
-  
+
   defp derive_name_from_url(url) do
     url
     |> URI.parse()
