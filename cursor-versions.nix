@@ -556,7 +556,7 @@ in
   
   cursor-2_2_27 = mkCursorVersion {
     version = "2.2.27";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-zK0uSKNJ2N6C5nBz0QqLgWbUXXQ/A9oavVK62DKsGpc=";
     srcUrl = "https://downloads.cursor.com/production/92d81a68151ca9bec11fda0a58d29fef7cbccf65/linux/x64/Cursor-2.2.27-x86_64.AppImage";
     binaryName = "cursor-2.2.27";
     dataStrategy = "isolated";
@@ -564,7 +564,7 @@ in
 
   cursor-2_2_23 = mkCursorVersion {
     version = "2.2.23";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-brApIRhvllH1lZU9wD87uSt7Q2ogDbEBrkF4EGB54Rk=";
     srcUrl = "https://downloads.cursor.com/production/b3c95a7981bb3057526f1f865e8c307a9911ce00/linux/x64/Cursor-2.2.23-x86_64.AppImage";
     binaryName = "cursor-2.2.23";
     dataStrategy = "isolated";
@@ -572,7 +572,7 @@ in
 
   cursor-2_2_20 = mkCursorVersion {
     version = "2.2.20";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-dY42LaaP7CRbqY2tuulJOENa+QUGSL09m07PvxsZCr0=";
     srcUrl = "https://downloads.cursor.com/production/b3573281c4775bfc6bba466bf6563d3d498d1074/linux/x64/Cursor-2.2.20-x86_64.AppImage";
     binaryName = "cursor-2.2.20";
     dataStrategy = "isolated";
@@ -580,7 +580,7 @@ in
 
   cursor-2_2_17 = mkCursorVersion {
     version = "2.2.17";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-8TTNIGlatkHE8O87h8VGevjaiyWDR8qq8PA7l64Bijs=";
     srcUrl = "https://downloads.cursor.com/production/cf858ca030e9c9a99ea444ec6efcbcfc40bfda75/linux/x64/Cursor-2.2.17-x86_64.AppImage";
     binaryName = "cursor-2.2.17";
     dataStrategy = "isolated";
@@ -588,7 +588,7 @@ in
 
   cursor-2_2_14 = mkCursorVersion {
     version = "2.2.14";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-L4kzRm08rWbb05VNX5RHyPaL3Ij6UCzQDoLaahIGYbI=";
     srcUrl = "https://downloads.cursor.com/production/1685afce45886aa5579025ac7e077fc3d4369c52/linux/x64/Cursor-2.2.14-x86_64.AppImage";
     binaryName = "cursor-2.2.14";
     dataStrategy = "isolated";
@@ -596,7 +596,7 @@ in
 
   cursor-2_2_12 = mkCursorVersion {
     version = "2.2.12";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-wc68sRJXWstwwCHq2NO4xhKjRlIg19rI3mIYHGcR4PE=";
     srcUrl = "https://downloads.cursor.com/production/4395cbb45916e730692e72c853b893578fbb0112/linux/x64/Cursor-2.2.12-x86_64.AppImage";
     binaryName = "cursor-2.2.12";
     dataStrategy = "isolated";
@@ -604,7 +604,7 @@ in
 
   cursor-2_2_9 = mkCursorVersion {
     version = "2.2.9";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-++9Mnok7wVlFd3PGucBKms8t9PuAPpYuZ2ynZd+peCU=";
     srcUrl = "https://downloads.cursor.com/production/a86689c93e9fb11addfbefd29a6ec7c0a59175e7/linux/x64/Cursor-2.2.9-x86_64.AppImage";
     binaryName = "cursor-2.2.9";
     dataStrategy = "isolated";
@@ -612,7 +612,7 @@ in
 
   cursor-2_2_8 = mkCursorVersion {
     version = "2.2.8";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-4zMSGjv4Sedp1KNpLnaKX0EeLsz8RVNsa531HUmoRxQ=";
     srcUrl = "https://downloads.cursor.com/production/acdb5a1ab634f13d3d9381161dcb9603f184e677/linux/x64/Cursor-2.2.8-x86_64.AppImage";
     binaryName = "cursor-2.2.8";
     dataStrategy = "isolated";
@@ -620,7 +620,7 @@ in
 
   cursor-2_2_7 = mkCursorVersion {
     version = "2.2.7";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-Sv26X8Wk5agTVXbWCWiaJKpcNZrlqDwczbi4Fdq0suU=";
     srcUrl = "https://downloads.cursor.com/production/c7365150b3b3d35fd5f6504a5686fb9ea5eea3b3/linux/x64/Cursor-2.2.7-x86_64.AppImage";
     binaryName = "cursor-2.2.7";
     dataStrategy = "isolated";
@@ -628,7 +628,7 @@ in
 
   cursor-2_2_6 = mkCursorVersion {
     version = "2.2.6";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-A8fNzxm/itf7yqhlO/GLKzcO5rgGslKnM0aSuJ+mXeQ=";
     srcUrl = "https://downloads.cursor.com/production/bb70f115f7056b569146f670bfeb812a30eaf061/linux/x64/Cursor-2.2.6-x86_64.AppImage";
     binaryName = "cursor-2.2.6";
     dataStrategy = "isolated";
@@ -636,7 +636,7 @@ in
 
   cursor-2_2_3 = mkCursorVersion {
     version = "2.2.3";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-n64UK0cQBDMtSyrk+rS7N1/CJCUBS05x25pytFTwdr4=";
     srcUrl = "https://downloads.cursor.com/production/c25eb90df95d64f6d280779237c1ca39f9f3eef6/linux/x64/Cursor-2.2.3-x86_64.AppImage";
     binaryName = "cursor-2.2.3";
     dataStrategy = "isolated";
@@ -646,7 +646,7 @@ in
   
   cursor-2_1_50 = mkCursorVersion {
     version = "2.1.50";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-gitfWzovz0OxwoLXIMQ4PqMk+S8KzZlqcp0hmwVR2nE=";
     srcUrl = "https://downloads.cursor.com/production/56f0a83df8e9eb48585fcc4858a9440db4cc7771/linux/x64/Cursor-2.1.50-x86_64.AppImage";
     binaryName = "cursor-2.1.50";
     dataStrategy = "isolated";
@@ -654,7 +654,7 @@ in
 
   cursor-2_1_49 = mkCursorVersion {
     version = "2.1.49";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-o64V7fjbsqSR/S/7uviIKumCljjetwsYo3R3jzXz3cY=";
     srcUrl = "https://downloads.cursor.com/production/21a2ed198584d56a91c0b996d1a09c93f8538440/linux/x64/Cursor-2.1.49-x86_64.AppImage";
     binaryName = "cursor-2.1.49";
     dataStrategy = "isolated";
@@ -662,7 +662,7 @@ in
 
   cursor-2_1_48 = mkCursorVersion {
     version = "2.1.48";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-Uq61ZZZzlRyDqPaNnJbteFQ4KC9usD5DdUSTGgvo2wI=";
     srcUrl = "https://downloads.cursor.com/production/ce371ffbf5e240ca47f4b5f3f20efed084991120/linux/x64/Cursor-2.1.48-x86_64.AppImage";
     binaryName = "cursor-2.1.48";
     dataStrategy = "isolated";
@@ -670,7 +670,7 @@ in
 
   cursor-2_1_47 = mkCursorVersion {
     version = "2.1.47";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-/juvatx3xrTdL+EMEECHereGhIa4vmFj0gPQQBA00to=";
     srcUrl = "https://downloads.cursor.com/production/2d3ce3499c15efd55b6b8538ea255eb7ba4266b2/linux/x64/Cursor-2.1.47-x86_64.AppImage";
     binaryName = "cursor-2.1.47";
     dataStrategy = "isolated";
@@ -678,7 +678,7 @@ in
 
   cursor-2_1_46 = mkCursorVersion {
     version = "2.1.46";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-4YCBHefGYDQmh7qbLipCmHkyzHBq95b4NtiOS2Sc22o=";
     srcUrl = "https://downloads.cursor.com/production/ab326d0767c02fb9847b342c43ea58275c4b1685/linux/x64/Cursor-2.1.46-x86_64.AppImage";
     binaryName = "cursor-2.1.46";
     dataStrategy = "isolated";
@@ -686,7 +686,7 @@ in
 
   cursor-2_1_44 = mkCursorVersion {
     version = "2.1.44";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-JUNkdQX/z5TryDK8aeC1QFADdGLpWbeemqArmnMeXQo=";
     srcUrl = "https://downloads.cursor.com/production/f6a8593b2b7c61c2063c79d5a8fcd248c9db458a/linux/x64/Cursor-2.1.44-x86_64.AppImage";
     binaryName = "cursor-2.1.44";
     dataStrategy = "isolated";
@@ -694,7 +694,7 @@ in
 
   cursor-2_1_42 = mkCursorVersion {
     version = "2.1.42";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-UqHi9QlQSaOJZWW6bmElDrK5GaEGT3kU5LsXg2LUeHg=";
     srcUrl = "https://downloads.cursor.com/production/2e353c5f5b30150ff7b874dee5a87660693d9de6/linux/x64/Cursor-2.1.42-x86_64.AppImage";
     binaryName = "cursor-2.1.42";
     dataStrategy = "isolated";
@@ -702,7 +702,7 @@ in
 
   cursor-2_1_41 = mkCursorVersion {
     version = "2.1.41";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-bVixbzTzMhfK/EP8mRBx2ZAEBKreEx6nMwTp1UFkJ1M=";
     srcUrl = "https://downloads.cursor.com/production/1321aa9140784391e83a406174345e818fe156f9/linux/x64/Cursor-2.1.41-x86_64.AppImage";
     binaryName = "cursor-2.1.41";
     dataStrategy = "isolated";
@@ -710,7 +710,7 @@ in
 
   cursor-2_1_39 = mkCursorVersion {
     version = "2.1.39";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-SsKhW8q/AzOn1HqykhwaVHyTVm+OqTUiFtda7XDiAho=";
     srcUrl = "https://downloads.cursor.com/production/60d42bed27e5775c43ec0428d8c653c49e58e26a/linux/x64/Cursor-2.1.39-x86_64.AppImage";
     binaryName = "cursor-2.1.39";
     dataStrategy = "isolated";
@@ -718,7 +718,7 @@ in
 
   cursor-2_1_36 = mkCursorVersion {
     version = "2.1.36";
-    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="; # TODO: compute
+    hash = "sha256-aaprRB2BAaUCHj7m5aGacCBHisjN2pVZ+Ca3u1ifxBA=";
     srcUrl = "https://downloads.cursor.com/production/9cd7c8b6cebcbccc1242df211dee45a4b6fe15e4/linux/x64/Cursor-2.1.36-x86_64.AppImage";
     binaryName = "cursor-2.1.36";
     dataStrategy = "isolated";

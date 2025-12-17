@@ -54,9 +54,10 @@ pub struct ToolAccess {
 }
 
 /// How to interpret tool lists
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum AccessMode {
     /// All tools allowed
+    #[default]
     AllAllowed,
     /// Only listed tools allowed
     Allowlist,
