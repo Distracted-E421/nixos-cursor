@@ -142,6 +142,86 @@ defmodule CursorDocs.Storage.SQLite do
     GenServer.call(__MODULE__, {:get_chunk, chunk_id})
   end
 
+  # ============================================================================
+  # Security Alert API
+  # ============================================================================
+
+  @doc """
+  Store a security alert.
+  """
+  @spec store_alert(map()) :: {:ok, map()} | {:error, term()}
+  def store_alert(attrs) do
+    GenServer.call(__MODULE__, {:store_alert, attrs})
+  end
+
+  @doc """
+  Get alerts for a source.
+  """
+  @spec get_alerts_for_source(String.t()) :: {:ok, list(map())}
+  def get_alerts_for_source(source_id) do
+    GenServer.call(__MODULE__, {:get_alerts_for_source, source_id})
+  end
+
+  @doc """
+  List all unresolved alerts.
+  """
+  @spec list_unresolved_alerts(keyword()) :: {:ok, list(map())}
+  def list_unresolved_alerts(opts \\ []) do
+    GenServer.call(__MODULE__, {:list_unresolved_alerts, opts})
+  end
+
+  @doc """
+  Mark alert as resolved.
+  """
+  @spec resolve_alert(String.t(), String.t()) :: :ok | {:error, term()}
+  def resolve_alert(alert_id, resolution_note) do
+    GenServer.call(__MODULE__, {:resolve_alert, alert_id, resolution_note})
+  end
+
+  @doc """
+  Get alert statistics.
+  """
+  @spec alert_stats() :: {:ok, map()}
+  def alert_stats do
+    GenServer.call(__MODULE__, :alert_stats)
+  end
+
+  # ============================================================================
+  # Quarantine API
+  # ============================================================================
+
+  @doc """
+  Store a quarantine item.
+  """
+  @spec store_quarantine_item(map()) :: {:ok, map()} | {:error, term()}
+  def store_quarantine_item(attrs) do
+    GenServer.call(__MODULE__, {:store_quarantine_item, attrs})
+  end
+
+  @doc """
+  Get pending review items.
+  """
+  @spec pending_quarantine_items() :: {:ok, list(map())}
+  def pending_quarantine_items do
+    GenServer.call(__MODULE__, :pending_quarantine_items)
+  end
+
+  @doc """
+  Mark quarantine item as reviewed.
+  """
+  @spec review_quarantine_item(String.t(), String.t(), atom()) :: {:ok, map()} | {:error, term()}
+  def review_quarantine_item(item_id, reviewer, action) do
+    GenServer.call(__MODULE__, {:review_quarantine_item, item_id, reviewer, action})
+  end
+
+  @doc """
+  Get quarantine item by ID.
+  """
+  @spec get_quarantine_item(String.t()) :: {:ok, map()} | {:error, :not_found}
+  def get_quarantine_item(item_id) do
+    GenServer.call(__MODULE__, {:get_quarantine_item, item_id})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -542,6 +622,250 @@ defmodule CursorDocs.Storage.SQLite do
     end
   end
 
+  # ============================================================================
+  # Security Alert Handlers
+  # ============================================================================
+
+  @impl true
+  def handle_call({:store_alert, attrs}, _from, state) do
+    id = generate_id()
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    sql = """
+    INSERT INTO security_alerts 
+    (id, source_id, source_url, alert_type, severity, description, pattern_matched, detected_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    params = [
+      id,
+      attrs[:source_id],
+      attrs[:source_url],
+      to_string(attrs[:type]),
+      to_string(attrs[:severity]),
+      attrs[:description],
+      attrs[:pattern_matched],
+      now
+    ]
+
+    case execute_with_params(state.conn, sql, params) do
+      :ok ->
+        alert = Map.merge(attrs, %{id: id, detected_at: now})
+        {:reply, {:ok, alert}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_alerts_for_source, source_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, source_url, alert_type, severity, description, 
+           pattern_matched, detected_at, resolved_at, resolution_note
+    FROM security_alerts 
+    WHERE source_id = ?
+    ORDER BY detected_at DESC
+    """
+
+    case fetch_all(state.conn, sql, [source_id]) do
+      {:ok, rows} ->
+        alerts = Enum.map(rows, &row_to_alert/1)
+        {:reply, {:ok, alerts}, state}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:list_unresolved_alerts, opts}, _from, state) do
+    _min_severity = Keyword.get(opts, :min_severity, "low")
+    limit = Keyword.get(opts, :limit, 100)
+
+    sql = """
+    SELECT id, source_id, source_url, alert_type, severity, description,
+           pattern_matched, detected_at, resolved_at, resolution_note
+    FROM security_alerts
+    WHERE resolved_at IS NULL
+    ORDER BY 
+      CASE severity 
+        WHEN 'critical' THEN 1 
+        WHEN 'high' THEN 2 
+        WHEN 'medium' THEN 3 
+        ELSE 4 
+      END,
+      detected_at DESC
+    LIMIT ?
+    """
+
+    case fetch_all(state.conn, sql, [limit]) do
+      {:ok, rows} ->
+        alerts = Enum.map(rows, &row_to_alert/1)
+        {:reply, {:ok, alerts}, state}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:resolve_alert, alert_id, resolution_note}, _from, state) do
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    sql = "UPDATE security_alerts SET resolved_at = ?, resolution_note = ? WHERE id = ?"
+
+    case execute_with_params(state.conn, sql, [now, resolution_note, alert_id]) do
+      :ok -> {:reply, :ok, state}
+      error -> {:reply, error, state}
+    end
+  end
+
+  @impl true
+  def handle_call(:alert_stats, _from, state) do
+    stats_sql = """
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN resolved_at IS NULL THEN 1 ELSE 0 END) as unresolved,
+      SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical,
+      SUM(CASE WHEN severity = 'high' THEN 1 ELSE 0 END) as high,
+      SUM(CASE WHEN severity = 'medium' THEN 1 ELSE 0 END) as medium,
+      SUM(CASE WHEN severity = 'low' THEN 1 ELSE 0 END) as low,
+      COUNT(DISTINCT source_id) as sources_affected
+    FROM security_alerts
+    """
+
+    case fetch_one(state.conn, stats_sql, []) do
+      {:ok, [total, unresolved, critical, high, medium, low, sources]} ->
+        stats = %{
+          total: total || 0,
+          unresolved: unresolved || 0,
+          by_severity: %{
+            critical: critical || 0,
+            high: high || 0,
+            medium: medium || 0,
+            low: low || 0
+          },
+          sources_affected: sources || 0
+        }
+
+        {:reply, {:ok, stats}, state}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  # ============================================================================
+  # Quarantine Handlers
+  # ============================================================================
+
+  @impl true
+  def handle_call({:store_quarantine_item, attrs}, _from, state) do
+    id = attrs[:id] || generate_id()
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    sql = """
+    INSERT OR REPLACE INTO quarantine_items 
+    (id, source_id, source_url, source_name, tier, raw_hash, snapshot_preview, snapshot_stats, validated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    params = [
+      id,
+      attrs[:source_id],
+      attrs[:source_url],
+      attrs[:source_name],
+      to_string(attrs[:tier]),
+      attrs[:raw_hash],
+      attrs[:snapshot_preview],
+      Jason.encode!(attrs[:snapshot_stats] || %{}),
+      now
+    ]
+
+    case execute_with_params(state.conn, sql, params) do
+      :ok ->
+        item = Map.merge(attrs, %{id: id, validated_at: now})
+        {:reply, {:ok, item}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call(:pending_quarantine_items, _from, state) do
+    sql = """
+    SELECT id, source_id, source_url, source_name, tier, raw_hash, 
+           snapshot_preview, snapshot_stats, validated_at, reviewed_by, reviewed_at, review_action
+    FROM quarantine_items
+    WHERE reviewed_at IS NULL AND tier IN ('flagged', 'quarantined')
+    ORDER BY validated_at DESC
+    """
+
+    case fetch_all(state.conn, sql, []) do
+      {:ok, rows} ->
+        items = Enum.map(rows, &row_to_quarantine_item/1)
+        {:reply, {:ok, items}, state}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:review_quarantine_item, item_id, reviewer, action}, _from, state) do
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    # Determine new tier based on action
+    new_tier =
+      case action do
+        :approve -> "clean"
+        :reject -> "blocked"
+        :keep_flagged -> "flagged"
+        _ -> "quarantined"
+      end
+
+    sql = """
+    UPDATE quarantine_items 
+    SET reviewed_by = ?, reviewed_at = ?, review_action = ?, tier = ?
+    WHERE id = ?
+    """
+
+    case execute_with_params(state.conn, sql, [reviewer, now, to_string(action), new_tier, item_id]) do
+      :ok ->
+        case handle_call({:get_quarantine_item, item_id}, nil, state) do
+          {:reply, {:ok, item}, _} -> {:reply, {:ok, item}, state}
+          _ -> {:reply, {:ok, %{id: item_id, tier: new_tier}}, state}
+        end
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_quarantine_item, item_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, source_url, source_name, tier, raw_hash,
+           snapshot_preview, snapshot_stats, validated_at, reviewed_by, reviewed_at, review_action
+    FROM quarantine_items
+    WHERE id = ?
+    """
+
+    case fetch_one(state.conn, sql, [item_id]) do
+      {:ok, row} when is_list(row) ->
+        item = row_to_quarantine_item(row)
+        {:reply, {:ok, item}, state}
+
+      {:ok, nil} ->
+        {:reply, {:error, :not_found}, state}
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
   @impl true
   def terminate(_reason, state) do
     if state[:conn] do
@@ -678,7 +1002,47 @@ defmodule CursorDocs.Storage.SQLite do
         FOREIGN KEY (source_id) REFERENCES doc_sources(id)
       )
       """,
-      "CREATE INDEX IF NOT EXISTS idx_jobs_source_status ON scrape_jobs(source_id, status)"
+      "CREATE INDEX IF NOT EXISTS idx_jobs_source_status ON scrape_jobs(source_id, status)",
+
+      # Security alerts - persistent storage (was ETS)
+      """
+      CREATE TABLE IF NOT EXISTS security_alerts (
+        id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        source_url TEXT NOT NULL,
+        alert_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        description TEXT,
+        pattern_matched TEXT,
+        detected_at TEXT NOT NULL,
+        resolved_at TEXT,
+        resolution_note TEXT,
+        FOREIGN KEY (source_id) REFERENCES doc_sources(id)
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS idx_alerts_source ON security_alerts(source_id)",
+      "CREATE INDEX IF NOT EXISTS idx_alerts_severity ON security_alerts(severity)",
+      "CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON security_alerts(resolved_at)",
+
+      # Quarantine items - content pending review
+      """
+      CREATE TABLE IF NOT EXISTS quarantine_items (
+        id TEXT PRIMARY KEY,
+        source_id TEXT,
+        source_url TEXT NOT NULL,
+        source_name TEXT,
+        tier TEXT NOT NULL,
+        raw_hash TEXT NOT NULL,
+        snapshot_preview TEXT,
+        snapshot_stats TEXT,
+        validated_at TEXT NOT NULL,
+        reviewed_by TEXT,
+        reviewed_at TEXT,
+        review_action TEXT
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS idx_quarantine_tier ON quarantine_items(tier)",
+      "CREATE INDEX IF NOT EXISTS idx_quarantine_reviewed ON quarantine_items(reviewed_at)"
     ]
 
     Enum.each(statements, fn sql ->
@@ -731,5 +1095,42 @@ defmodule CursorDocs.Storage.SQLite do
 
   defp generate_id do
     :crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false)
+  end
+
+  defp row_to_alert([id, source_id, source_url, alert_type, severity, description,
+                     pattern_matched, detected_at, resolved_at, resolution_note]) do
+    %{
+      id: id,
+      source_id: source_id,
+      source_url: source_url,
+      type: String.to_atom(alert_type),
+      severity: String.to_atom(severity),
+      description: description,
+      pattern_matched: pattern_matched,
+      detected_at: detected_at,
+      resolved_at: resolved_at,
+      resolution_note: resolution_note
+    }
+  end
+
+  defp row_to_quarantine_item([id, source_id, source_url, source_name, tier, raw_hash,
+                               snapshot_preview, snapshot_stats, validated_at,
+                               reviewed_by, reviewed_at, review_action]) do
+    %{
+      id: id,
+      source_id: source_id,
+      source_url: source_url,
+      source_name: source_name,
+      tier: String.to_atom(tier),
+      raw_hash: raw_hash,
+      snapshot: %{
+        preview: snapshot_preview,
+        stats: Jason.decode!(snapshot_stats || "{}")
+      },
+      validated_at: validated_at,
+      reviewed_by: reviewed_by,
+      reviewed_at: reviewed_at,
+      review_action: if(review_action, do: String.to_atom(review_action), else: nil)
+    }
   end
 end

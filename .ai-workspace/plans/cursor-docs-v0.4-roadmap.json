@@ -1,0 +1,206 @@
+{
+  "plan_id": "cursor-docs-v0.4-roadmap",
+  "created": "2025-12-17T16:30:00Z",
+  "goal": "cursor-docs 0.4: Multi-page crawling, persistent security, integration alternatives",
+  "priority_order": [
+    "javadoc_crawler",
+    "security_persistence",
+    "integration_alternatives",
+    "custom_modes_foundation"
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Multi-Page Crawler (Javadoc/Frameset Support)",
+      "status": "not_started",
+      "tasks": [
+        {
+          "id": "javadoc-1",
+          "task": "Create CrawlerStrategy behaviour for different doc types",
+          "status": "not_started",
+          "details": "Single-page, Frameset, Sitemap, Link-following"
+        },
+        {
+          "id": "javadoc-2",
+          "task": "Implement FramesetCrawler for Javadoc-style docs",
+          "status": "not_started",
+          "details": "Parse <frameset>, follow frame src, aggregate content"
+        },
+        {
+          "id": "javadoc-3",
+          "task": "Add SitemapCrawler for XML sitemap discovery",
+          "status": "not_started",
+          "details": "Parse sitemap.xml, respect crawl limits"
+        },
+        {
+          "id": "javadoc-4",
+          "task": "Implement LinkFollower for recursive crawling",
+          "status": "not_started",
+          "details": "Same-domain links, depth limit, seen-url tracking"
+        },
+        {
+          "id": "javadoc-5",
+          "task": "Test with Ghidra API docs",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Security Alert Persistence",
+      "status": "not_started",
+      "tasks": [
+        {
+          "id": "security-1",
+          "task": "Create security_alerts SQLite table",
+          "status": "not_started",
+          "details": "id, source_id, alert_type, severity, detected_at, resolved_at, resolution_note"
+        },
+        {
+          "id": "security-2",
+          "task": "Create quarantine_items SQLite table",
+          "status": "not_started",
+          "details": "id, source_url, tier, snapshot, raw_hash, reviewed_by, reviewed_at"
+        },
+        {
+          "id": "security-3",
+          "task": "Migrate Quarantine module from ETS to SQLite",
+          "status": "not_started"
+        },
+        {
+          "id": "security-4",
+          "task": "Add alert resolution tracking",
+          "status": "not_started",
+          "details": "When source re-indexed, mark alerts resolved or persisting"
+        },
+        {
+          "id": "security-5",
+          "task": "Export alerts API for cursor-studio GUI",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Integration Alternatives (Beyond MCP)",
+      "status": "not_started",
+      "notes": "MCP has ~2-4K token overhead per message. Need lighter approach.",
+      "tasks": [
+        {
+          "id": "integration-1",
+          "task": "Design file-based injection protocol",
+          "status": "not_started",
+          "details": "~/.cursor-docs/injection.md read by AI via @file reference"
+        },
+        {
+          "id": "integration-2",
+          "task": "Create lightweight context file generator",
+          "status": "not_started",
+          "details": "50-100 tokens: search results, relevant chunks, security status"
+        },
+        {
+          "id": "integration-3",
+          "task": "Implement watch mode for live updates",
+          "status": "not_started",
+          "details": "Regenerate injection file when docs change"
+        },
+        {
+          "id": "integration-4",
+          "task": "Research Cursor extension API possibilities",
+          "status": "not_started"
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Custom Modes Foundation",
+      "status": "not_started",
+      "notes": "Per cursor-modes-research.md - building our own since Cursor removed theirs",
+      "tasks": [
+        {
+          "id": "modes-1",
+          "task": "Design ModeConfig struct in Elixir",
+          "status": "not_started",
+          "details": "name, allowed_tools, blocked_tools, model, system_prompt, context_injection"
+        },
+        {
+          "id": "modes-2",
+          "task": "Create Nickel schema for mode definitions",
+          "status": "not_started",
+          "details": "modes.ncl with type contracts"
+        },
+        {
+          "id": "modes-3",
+          "task": "Implement tool locking logic",
+          "status": "not_started",
+          "details": "Filter MCP tool list based on mode"
+        },
+        {
+          "id": "modes-4",
+          "task": "Build system prompt composer",
+          "status": "not_started",
+          "details": "Layer 0-3 context injection per environment-awareness-research.md"
+        }
+      ]
+    }
+  ],
+  "integration_alternatives_analysis": {
+    "mcp_problems": [
+      "2-4K tokens of tool schemas every message",
+      "Token waste causes context collapse faster",
+      "All tools present even when not needed",
+      "No dynamic context injection"
+    ],
+    "alternatives": {
+      "file_based_injection": {
+        "description": "Generate ~/.cursor-docs/context.md that user references via @file",
+        "pros": [
+          "Zero runtime overhead",
+          "User controls when to include",
+          "Simple"
+        ],
+        "cons": [
+          "Manual @file reference",
+          "Not real-time"
+        ],
+        "token_cost": "50-100 per search result"
+      },
+      "lightweight_mcp": {
+        "description": "MCP server with minimal tool set - just search and status",
+        "pros": [
+          "Native integration",
+          "Automatic"
+        ],
+        "cons": [
+          "Still has schema overhead",
+          "~500 tokens minimum"
+        ],
+        "token_cost": "500-800 base + 50-100 per result"
+      },
+      "cursor_extension": {
+        "description": "Build VS Code extension that injects into Cursor",
+        "pros": [
+          "Deep integration",
+          "Could modify system prompt"
+        ],
+        "cons": [
+          "Complex to build",
+          "Cursor updates may break it"
+        ],
+        "token_cost": "Depends on implementation"
+      },
+      "hybrid": {
+        "description": "Lightweight MCP + file injection for context",
+        "pros": [
+          "Best of both",
+          "Flexible"
+        ],
+        "cons": [
+          "Two systems to maintain"
+        ],
+        "token_cost": "300 base + file content"
+      }
+    },
+    "recommendation": "Start with file-based injection (simplest), add lightweight MCP later"
+  }
+}

@@ -1,3 +1,47 @@
+## 2025-12-17 10:45:00 - [FEATURE]
+
+**Description**: Multi-page crawler strategies + security persistence for cursor-docs
+
+**Files**:
+- services/cursor-docs/lib/cursor_docs/scraper/crawler_strategy.ex (new)
+- services/cursor-docs/lib/cursor_docs/scraper/strategies/*.ex (new - 4 strategies)
+- services/cursor-docs/lib/cursor_docs/storage/sqlite.ex (security tables + APIs)
+- services/cursor-docs/lib/cursor_docs/scraper.ex (strategy integration)
+- .ai-workspace/plans/cursor-docs-v0.4-roadmap.json (new)
+
+**Changes**:
+
+1. **Multi-Page Crawling Strategies**:
+   - `SinglePage` - Default single-page scraping
+   - `Frameset` - Javadoc classic (<frameset>) support
+   - `Sitemap` - XML sitemap.xml discovery
+   - `LinkFollow` - BFS link crawling (depth-limited)
+   - Auto-detection based on page content
+
+2. **Security Alert Persistence**:
+   - New `security_alerts` SQLite table
+   - New `quarantine_items` SQLite table
+   - Full CRUD API for alerts (store, resolve, stats)
+   - Quarantine review workflow (approve/reject/keep_flagged)
+
+3. **Scraper Updates**:
+   - Strategy auto-detection on add/refresh
+   - Multi-page batch processing
+   - Simplified content page scraping for discovered URLs
+
+**Testing**:
+```bash
+# Ghidra found 590 initial links (but crawling is slow)
+mix cursor_docs.add "https://ghidra.re/ghidra_docs/api/" --name "Ghidra-API" --max-pages 20
+
+# Verify security tables
+sqlite3 ~/.local/share/cursor-docs-dev/cursor_docs.db ".tables"
+```
+
+**Notes**: Large API docs like Ghidra (590+ pages) need parallelism or async processing.
+
+---
+
 ## 2025-12-17 10:20:00 - [FEATURE]
 
 **Description**: Successfully indexed Cursor's failed docs locally via cursor-docs service

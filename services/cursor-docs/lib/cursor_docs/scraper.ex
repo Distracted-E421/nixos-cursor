@@ -29,11 +29,13 @@ defmodule CursorDocs.Scraper do
   """
 
   alias CursorDocs.{Storage, Scraper.Extractor, Scraper.RateLimiter}
+  alias CursorDocs.Scraper.CrawlerStrategy
   alias CursorDocs.Security.Quarantine
 
   require Logger
 
   @default_max_pages 100
+  @default_strategy :auto  # :auto, :single_page, :frameset, :sitemap, :link_follow
   @chunk_size 1500
   @chunk_overlap 200
 
@@ -48,6 +50,7 @@ defmodule CursorDocs.Scraper do
     * `:name` - Display name for the documentation
     * `:max_pages` - Maximum pages to scrape (default: 100)
     * `:follow_links` - Whether to follow discovered links (default: false for now)
+    * `:strategy` - Crawling strategy (:auto, :single_page, :frameset, :sitemap, :link_follow)
 
   """
   @spec add(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
@@ -55,6 +58,7 @@ defmodule CursorDocs.Scraper do
     name = Keyword.get(opts, :name, derive_name(url))
     max_pages = Keyword.get(opts, :max_pages, @default_max_pages)
     follow_links = Keyword.get(opts, :follow_links, false)
+    strategy = Keyword.get(opts, :strategy, @default_strategy)
 
     # Create source record
     source_attrs = %{
@@ -62,7 +66,8 @@ defmodule CursorDocs.Scraper do
       name: name,
       config: %{
         max_pages: max_pages,
-        follow_links: follow_links
+        follow_links: follow_links,
+        strategy: strategy
       }
     }
 
@@ -73,28 +78,35 @@ defmodule CursorDocs.Scraper do
         # Update status to indexing
         Storage.update_source(source[:id], %{status: "indexing"})
 
-        # Scrape the initial URL synchronously
-        case scrape_url(source[:id], url, name) do
-          {:ok, result} ->
-            # Update source with results
-            Storage.update_source(source[:id], %{
-              status: "indexed",
-              security_tier: result[:security_tier] || "clean",
-              pages_count: 1,
-              chunks_count: result.chunks_count,
-              last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
-            })
+        # Fetch initial page to detect strategy
+        case fetch_html(url) do
+          {:ok, html} ->
+            # Auto-detect or use specified strategy
+            detected_strategy =
+              if strategy == :auto do
+                CrawlerStrategy.detect_strategy(url, html)
+              else
+                strategy
+              end
 
-            # Optionally follow links in background
-            if follow_links and length(result.links) > 0 do
-              spawn(fn -> follow_links_async(source[:id], result.links, max_pages - 1) end)
+            Logger.info("Using #{detected_strategy} strategy for #{url}")
+
+            # Discover all URLs using the strategy
+            strategy_module = CrawlerStrategy.strategy_module(detected_strategy)
+
+            case strategy_module.discover_urls(url, html, max_pages: max_pages) do
+              {:ok, urls_to_scrape} ->
+                # Scrape all discovered URLs
+                scrape_multi_page(source, urls_to_scrape, name, detected_strategy)
+
+              {:error, reason} ->
+                Storage.update_source(source[:id], %{status: "failed"})
+                {:error, {:strategy_failed, reason}}
             end
-
-            {:ok, Map.merge(source, %{chunks_count: result.chunks_count, status: "indexed"})}
 
           {:error, reason} ->
             Storage.update_source(source[:id], %{status: "failed"})
-            Logger.error("Failed to scrape #{url}: #{inspect(reason)}")
+            Logger.error("Failed to fetch #{url}: #{inspect(reason)}")
             {:error, reason}
         end
 
@@ -102,6 +114,93 @@ defmodule CursorDocs.Scraper do
         Logger.error("Failed to create source: #{inspect(reason)}")
         error
     end
+  end
+
+  defp scrape_multi_page(source, urls, name, strategy) do
+    total_urls = length(urls)
+    Logger.info("Scraping #{total_urls} URLs with #{strategy} strategy")
+
+    # Clear existing chunks before scraping
+    Storage.clear_chunks(source[:id])
+
+    # For frameset/sitemap strategies with many URLs, process in batches
+    # For single page, just process directly
+    results =
+      if strategy in [:frameset, :sitemap, :link_follow] and total_urls > 1 do
+        # Multi-page: process each discovered URL, allowing some failures
+        urls
+        |> Enum.with_index(1)
+        |> Enum.map(fn {url, index} ->
+          Logger.debug("Processing URL #{index}/#{total_urls}: #{url}")
+          RateLimiter.acquire()
+          scrape_content_page(source[:id], url, name)
+        end)
+      else
+        # Single page: normal processing
+        urls
+        |> Enum.map(fn url ->
+          scrape_url(source[:id], url, name)
+        end)
+      end
+
+    # Count successes
+    successful = Enum.filter(results, fn {status, _} -> status == :ok end)
+    total_chunks = Enum.reduce(successful, 0, fn {:ok, r}, acc -> acc + (r[:chunks_count] || 0) end)
+
+    if length(successful) > 0 do
+      # Update source with combined results
+      Storage.update_source(source[:id], %{
+        status: "indexed",
+        pages_count: length(successful),
+        chunks_count: total_chunks,
+        last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
+      })
+
+      {:ok, Map.merge(source, %{
+        chunks_count: total_chunks,
+        pages_count: length(successful),
+        status: "indexed"
+      })}
+    else
+      Storage.update_source(source[:id], %{status: "failed"})
+      {:error, :all_pages_failed}
+    end
+  end
+
+  # Simplified content page scraping for multi-page strategies
+  # Less strict quality validation since we've already discovered these via strategy
+  defp scrape_content_page(source_id, url, title) do
+    case fetch_html(url) do
+      {:ok, html} ->
+        # Use extractor directly, bypassing some quarantine strictness for discovered pages
+        case Extractor.extract_from_html(html, url) do
+          {:ok, extracted} when byte_size(extracted.content) > 100 ->
+            chunks = chunk_content(extracted.content, extracted.title || title, source_id, url)
+
+            case Storage.store_chunks(chunks) do
+              {:ok, count} ->
+                Logger.debug("Stored #{count} chunks from #{url}")
+                {:ok, %{chunks_count: count}}
+
+              {:error, reason} ->
+                {:error, reason}
+            end
+
+          {:ok, _} ->
+            # Very short content - skip this page
+            {:ok, %{chunks_count: 0}}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  rescue
+    e ->
+      Logger.warning("Error scraping #{url}: #{inspect(e)}")
+      {:error, e}
   end
 
   @doc """
@@ -113,17 +212,32 @@ defmodule CursorDocs.Scraper do
       {:ok, source} ->
         Storage.update_source(source_id, %{status: "indexing"})
 
-        case scrape_url(source_id, source[:url], source[:name]) do
-          {:ok, result} ->
-            Storage.update_source(source_id, %{
-              status: "indexed",
-              security_tier: result[:security_tier] || "clean",
-              pages_count: 1,
-              chunks_count: result.chunks_count,
-              last_indexed: DateTime.utc_now() |> DateTime.to_iso8601()
-            })
+        # Re-fetch and re-detect strategy
+        case fetch_html(source[:url]) do
+          {:ok, html} ->
+            config = source[:config] || %{}
+            max_pages = config[:max_pages] || @default_max_pages
+            strategy = config[:strategy] || :auto
 
-            {:ok, source}
+            detected_strategy =
+              if strategy == :auto do
+                CrawlerStrategy.detect_strategy(source[:url], html)
+              else
+                strategy
+              end
+
+            Logger.info("Refresh using #{detected_strategy} strategy for #{source[:url]}")
+
+            strategy_module = CrawlerStrategy.strategy_module(detected_strategy)
+
+            case strategy_module.discover_urls(source[:url], html, max_pages: max_pages) do
+              {:ok, urls_to_scrape} ->
+                scrape_multi_page(source, urls_to_scrape, source[:name], detected_strategy)
+
+              {:error, reason} ->
+                Storage.update_source(source_id, %{status: "failed"})
+                {:error, {:strategy_failed, reason}}
+            end
 
           {:error, reason} ->
             Storage.update_source(source_id, %{status: "failed"})
@@ -229,26 +343,6 @@ defmodule CursorDocs.Scraper do
     end
   end
 
-  defp follow_links_async(source_id, links, remaining) when remaining > 0 and links != [] do
-    # Get base domain to stay on same site
-    [first_link | rest] = links
-
-    case scrape_url(source_id, first_link, nil) do
-      {:ok, result} ->
-        Storage.update_source(source_id, %{
-          pages_count: {:increment, 1},
-          chunks_count: {:increment, result.chunks_count}
-        })
-
-        follow_links_async(source_id, rest, remaining - 1)
-
-      {:error, _reason} ->
-        # Skip failed links, continue with rest
-        follow_links_async(source_id, rest, remaining)
-    end
-  end
-
-  defp follow_links_async(_source_id, _links, _remaining), do: :ok
 
   defp chunk_content(content, title, source_id, url) do
     content

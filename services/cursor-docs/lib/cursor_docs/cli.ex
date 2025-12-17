@@ -163,9 +163,11 @@ defmodule CursorDocs.CLI do
         IO.puts("✅ Re-indexed successfully!")
         IO.puts("   Name: #{source[:name]}")
         IO.puts("   ID: #{source[:id]}")
+        {:ok, source}
 
       {:error, reason} ->
         IO.puts("❌ Refresh failed: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 
