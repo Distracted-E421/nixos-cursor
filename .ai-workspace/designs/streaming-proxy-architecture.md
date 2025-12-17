@@ -2,6 +2,31 @@
 
 > **Goal**: Intercept AI responses mid-stream to inject context, detect needs, and enhance capabilities across all projects.
 
+## 🔬 Testing Status (Dec 17, 2025)
+
+### Proxy Interception Results
+
+| Endpoint | Interception | Status |
+|----------|--------------|--------|
+| `metrics.cursor.sh` | ✅ Works | Sentry telemetry |
+| `api3.cursor.sh` | ✅ Works | Analytics |
+| `marketplace.cursorapi.com` | ✅ Works | Extensions |
+| `api2.cursor.sh/auth/*` | ✅ Works | Auth/profile |
+| `api2.cursor.sh/updates/*` | ✅ Works | Update checks |
+| `api2.cursor.sh` (streaming) | ❌ Cert-pinned | AI chat - TLS handshake fails |
+| `app.posthog.com` | ❌ Cert-pinned | Analytics |
+
+### Next Steps
+
+1. **System-wide CA Trust**: Add mitmproxy CA to NixOS PKI trust store
+2. **Test if system CA bypasses app-level pinning**
+3. **If still blocked**: Investigate Electron app modification or Frida
+
+### Key Finding
+
+Cursor uses **selective cert pinning** - non-critical endpoints work fine,
+but the AI streaming endpoints have additional protection.
+
 ## Overview
 
 ```
