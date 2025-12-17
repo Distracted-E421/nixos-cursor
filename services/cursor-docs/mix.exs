@@ -152,8 +152,40 @@ defmodule CursorDocs.MixProject do
     CursorDocs.CLI.chat(args)
   end
 
-  defp start_server(_args) do
+  defp start_server(args) do
     Mix.Task.run("app.start", [])
+
+    # Parse port from args
+    port = case args do
+      [port_str | _] -> String.to_integer(port_str)
+      _ -> 4242
+    end
+
+    # Start HTTP server
+    {:ok, _pid} = CursorDocs.HTTP.Server.start_link(port: port)
+
+    IO.puts("""
+
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  CursorDocs HTTP Server                                       ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  Listening on: http://127.0.0.1:#{port}                       ║
+    ║                                                               ║
+    ║  Endpoints:                                                   ║
+    ║    GET  /api/health          - Health check                   ║
+    ║    GET  /api/status          - Server status                  ║
+    ║    GET  /api/search?q=...    - Search docs                    ║
+    ║    GET  /api/context?q=...   - Get AI context                 ║
+    ║    GET  /api/sources         - List sources                   ║
+    ║    POST /api/sources         - Add source                     ║
+    ║    GET  /api/jobs            - List background jobs           ║
+    ║    POST /api/jobs            - Start crawl job                ║
+    ║                                                               ║
+    ║  Press Ctrl+C to stop                                         ║
+    ╚══════════════════════════════════════════════════════════════╝
+
+    """)
+
     # Keep running
     Process.sleep(:infinity)
   end

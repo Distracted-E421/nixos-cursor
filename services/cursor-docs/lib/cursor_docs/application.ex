@@ -83,7 +83,10 @@ defmodule CursorDocs.Application do
       # {CursorDocs.Scraper.Pool, pool_config()},
 
       # Cursor integration - syncs @docs URLs automatically
-      CursorDocs.CursorIntegration
+      CursorDocs.CursorIntegration,
+
+      # HTTP API server (optional - started by cursor_docs.server or daemon mode)
+      # Will be started separately when running as daemon
     ]
 
     # Optionally start vector storage and embedding generator
