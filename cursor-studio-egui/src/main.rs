@@ -312,6 +312,7 @@ enum RightSidebarMode {
     Sentinel, // Security monitoring 🛡️
     Bridge,   // Cursor sync 🔗
     Forge,    // Data transform/training 🔥
+    Modes,    // Custom modes management 🎭
 }
 
 #[derive(Clone)]
@@ -504,6 +505,9 @@ struct CursorStudio {
 
     // Documentation Index panel (cursor-docs integration)
     docs_panel: docs::DocsPanel,
+    
+    // Custom Modes panel (replaces Cursor 2.1+ removed custom modes)
+    modes_panel: modes::ModesPanel,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -729,6 +733,11 @@ impl CursorStudio {
 
             // Documentation Index panel
             docs_panel: docs::DocsPanel::new(),
+            
+            // Custom Modes panel
+            modes_panel: modes::ModesPanel::new(
+                std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+            ),
         }
     }
 
@@ -2235,6 +2244,28 @@ impl eframe::App for CursorStudio {
                             ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                         }
 
+                        // Modes (Custom Modes) button
+                        let modes_selected = self.right_mode == RightSidebarMode::Modes;
+                        let modes_btn = ui
+                            .add(
+                                egui::Button::new(RichText::new("🎭").size(16.0).color(
+                                    if modes_selected {
+                                        theme.accent
+                                    } else {
+                                        theme.fg_dim
+                                    },
+                                ))
+                                .frame(false)
+                                .min_size(Vec2::new(32.0, 28.0)),
+                            )
+                            .on_hover_text("Modes (Custom Modes)");
+                        if modes_btn.clicked() {
+                            self.right_mode = RightSidebarMode::Modes;
+                        }
+                        if modes_btn.hovered() {
+                            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                        }
+
                         // Underline indicator for selected mode
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.add_space(8.0);
@@ -2244,6 +2275,7 @@ impl eframe::App for CursorStudio {
                                 RightSidebarMode::Sentinel => "SENTINEL",
                                 RightSidebarMode::Bridge => "BRIDGE",
                                 RightSidebarMode::Forge => "FORGE",
+                                RightSidebarMode::Modes => "MODES",
                             };
                             ui.label(
                                 RichText::new(mode_label)
@@ -2264,6 +2296,7 @@ impl eframe::App for CursorStudio {
                         RightSidebarMode::Sentinel => self.show_sentinel_panel(ui, theme),
                         RightSidebarMode::Bridge => self.show_bridge_panel(ui, theme),
                         RightSidebarMode::Forge => self.show_forge_panel(ui, theme),
+                        RightSidebarMode::Modes => self.show_modes_panel(ui, theme),
                     }
                 });
         }
@@ -5195,6 +5228,33 @@ impl CursorStudio {
                         }
                     });
             });
+    }
+
+    /// Modes panel - Custom modes management (replaces Cursor's removed custom modes)
+    fn show_modes_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        // Render the modes panel
+        self.modes_panel.show(ui, &theme);
+        
+        // Handle any events from the panel
+        for event in self.modes_panel.take_events() {
+            match event {
+                modes::ModesPanelEvent::ModeActivated(name) => {
+                    self.set_status(&format!("Mode activated: {}", name));
+                }
+                modes::ModesPanelEvent::ModeUpdated(name) => {
+                    self.set_status(&format!("Mode saved: {}", name));
+                }
+                modes::ModesPanelEvent::ModeDeleted(name) => {
+                    self.set_status(&format!("Mode deleted: {}", name));
+                }
+                modes::ModesPanelEvent::ModeInjected { mode, target } => {
+                    self.set_status(&format!("Mode '{}' injected ({:?})", mode, target));
+                }
+                modes::ModesPanelEvent::VanillaSwap { from_mode } => {
+                    self.set_status(&format!("Swapped from '{}' to vanilla", from_mode));
+                }
+            }
+        }
     }
 
     /// Find the p2p-sync binary in common locations

@@ -4,18 +4,22 @@
 //! - Controls system prompts
 //! - Locks/unlocks tools per mode
 //! - Selects models per mode
-//! - Works with any Cursor version
+//! - Works with any Cursor version (especially 2.1.x+ which removed built-in custom modes)
 //!
 //! Implementation Strategy:
 //! - Store modes in ~/.config/cursor-studio/modes/
 //! - Generate .cursorrules files from mode definitions
 //! - Provide UI for mode switching in Cursor Studio
+//! - Support unlimited custom mode profiles
+//! - Allow quick swap to vanilla Cursor without losing config
 
-mod config;
-mod injection;
+pub mod config;
+pub mod injection;
+pub mod ui;
 
-pub use config::{CustomMode, ModeConfig, ToolAccess, ModelConfig};
+pub use config::{CustomMode, ModeConfig, ToolAccess, ModelConfig, ContextConfig};
 pub use injection::{ModeInjector, InjectionTarget};
+pub use ui::{ModesPanel, ModesPanelEvent};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
