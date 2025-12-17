@@ -48,6 +48,9 @@ pub struct DocSource {
     pub chunks_count: usize,
     pub last_indexed: Option<String>,
     pub created_at: String,
+    /// Error message if status is Failed
+    #[serde(default)]
+    pub error_message: Option<String>,
     #[serde(default)]
     pub security_tier: Option<String>,
     #[serde(default)]

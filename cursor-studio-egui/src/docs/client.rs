@@ -101,6 +101,7 @@ impl DocsClient {
                     chunks_count: row.get::<_, i64>(4)? as usize,
                     last_indexed: row.get(5)?,
                     created_at: row.get(6)?,
+                    error_message: None, // TODO: fetch from error_log table if available
                     security_tier: None,
                     alerts_count: 0,
                 })
@@ -147,6 +148,7 @@ impl DocsClient {
                     chunks_count: row.get::<_, i64>(4)? as usize,
                     last_indexed: row.get(5)?,
                     created_at: row.get(6)?,
+                    error_message: None, // TODO: fetch from error_log table if available
                     security_tier: None,
                     alerts_count: 0,
                 })

@@ -940,16 +940,29 @@ impl DocsPanel {
                     
                     // Header row with grid for alignment
                     ui.horizontal(|ui| {
-                        // Status icon - fixed width
-                        ui.add_sized(
+                        // Status icon - with tooltip for failed sources
+                        let status_tooltip = match source.status {
+                            super::models::SourceStatus::Failed => {
+                                source.error_message.clone()
+                                    .unwrap_or_else(|| "Indexing failed (check CLI for details)".to_string())
+                            }
+                            super::models::SourceStatus::Indexed => {
+                                format!("Successfully indexed {} chunks", source.chunks_count)
+                            }
+                            super::models::SourceStatus::Indexing => "Currently indexing...".to_string(),
+                            super::models::SourceStatus::Pending => "Waiting to be indexed".to_string(),
+                        };
+                        
+                        let status_icon = ui.add_sized(
                             Vec2::new(20.0, 20.0),
                             egui::Label::new(RichText::new(source.status.icon()).size(14.0)),
                         );
+                        status_icon.on_hover_text(&status_tooltip);
 
                         // Name - flexible width
                         let name = source.display_name();
-                        let truncated = if name.len() > 30 {
-                            format!("{}...", &name[..27])
+                        let truncated = if name.len() > 28 {
+                            format!("{}...", &name[..25])
                         } else {
                             name.to_string()
                         };
@@ -961,18 +974,25 @@ impl DocsPanel {
                                 .strong(),
                         );
 
-                        // Right side info
+                        // Right side info - improved chunk count visibility
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            // Chunk count badge
+                            // Chunk count badge - more prominent
+                            let chunk_color = if source.chunks_count > 0 {
+                                theme.accent()
+                            } else {
+                                theme.fg_dim()
+                            };
+                            
                             egui::Frame::none()
-                                .fill(theme.button_bg())
+                                .fill(chunk_color.gamma_multiply(0.2))
                                 .rounding(Rounding::same(10.0))
-                                .inner_margin(egui::Margin::symmetric(6.0, 2.0))
+                                .inner_margin(egui::Margin::symmetric(8.0, 3.0))
                                 .show(ui, |ui| {
                                     ui.label(
-                                        RichText::new(format!("{} chunks", source.chunks_count))
-                                            .size(9.0)
-                                            .color(theme.fg_dim()),
+                                        RichText::new(format!("{}", source.chunks_count))
+                                            .size(11.0)
+                                            .color(chunk_color)
+                                            .strong(),
                                     );
                                 });
                         });
