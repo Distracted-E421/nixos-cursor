@@ -76,6 +76,9 @@ defmodule CursorDocs.Application do
       # Job queue
       CursorDocs.Scraper.JobQueue,
 
+      # Background crawler (non-blocking, parallel)
+      CursorDocs.Scraper.Background,
+
       # Browser pool (optional - only if wallaby available)
       # {CursorDocs.Scraper.Pool, pool_config()},
 

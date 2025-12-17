@@ -1,3 +1,45 @@
+## 2025-12-17 11:30:00 - [FEATURE]
+
+**Description**: Background crawler + project inventory for cursor-docs
+
+**Files**:
+- services/cursor-docs/lib/cursor_docs/scraper/background.ex (new)
+- services/cursor-docs/lib/cursor_docs/cli.ex (bg commands)
+- services/cursor-docs/lib/cursor_docs/application.ex
+- services/cursor-docs/mix.exs
+- PROJECT_INVENTORY.md (new - comprehensive project status)
+
+**Changes**:
+
+1. **Background Crawler**:
+   - Non-blocking crawl jobs via `mix cursor_docs.bg URL`
+   - Up to 3 concurrent jobs
+   - Live progress tracking: `mix cursor_docs.bg watch`
+   - Job management: `mix cursor_docs.bg status`, `jobs`, `cancel`
+   - Task-based async with proper cleanup
+
+2. **Project Inventory**:
+   - Full audit of cursor-studio-egui (Rust) and cursor-docs (Elixir)
+   - Identified duplicates: Cursor DB reading (both), SQLite storage (shared), Security (complementary)
+   - Integration points documented
+   - Future architecture diagram
+
+**Usage**:
+```bash
+# Start background crawl
+mix cursor_docs.bg https://docs.example.com --name "Example"
+
+# Watch progress  
+mix cursor_docs.bg watch
+
+# List all jobs
+mix cursor_docs.bg jobs
+```
+
+**Notes**: Jobs don't persist across `mix` restarts - designed for daemon mode.
+
+---
+
 ## 2025-12-17 10:45:00 - [FEATURE]
 
 **Description**: Multi-page crawler strategies + security persistence for cursor-docs

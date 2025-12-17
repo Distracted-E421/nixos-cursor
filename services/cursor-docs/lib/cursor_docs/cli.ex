@@ -938,4 +938,283 @@ defmodule CursorDocs.CLI do
       str
     end
   end
+
+  # ============================================================================
+  # Background Crawl Commands
+  # ============================================================================
+
+  @doc """
+  Start a background crawl job.
+
+  Usage:
+      mix cursor_docs.bg https://docs.example.com --name "Example Docs"
+      mix cursor_docs.bg status
+      mix cursor_docs.bg jobs
+      mix cursor_docs.bg cancel <job_id>
+      mix cursor_docs.bg watch
+  """
+  def background(args) do
+    alias CursorDocs.Scraper.Background
+
+    {opts, rest, _} = OptionParser.parse(args,
+      strict: [name: :string, max_pages: :integer, watch: :boolean]
+    )
+
+    case rest do
+      ["status"] ->
+        bg_status()
+
+      ["jobs"] ->
+        bg_jobs()
+
+      ["cancel", job_id] ->
+        bg_cancel(job_id)
+
+      ["watch"] ->
+        bg_watch()
+
+      ["watch", job_id] ->
+        bg_watch(job_id)
+
+      [url] when is_binary(url) ->
+        bg_start(url, opts)
+
+      [] ->
+        IO.puts("""
+        📦 Background Crawl Commands
+
+        Start a background crawl (non-blocking):
+          mix cursor_docs.bg https://docs.example.com --name "Example"
+
+        View status:
+          mix cursor_docs.bg status   # Quick overview
+          mix cursor_docs.bg jobs     # All jobs (active + history)
+
+        Watch live progress:
+          mix cursor_docs.bg watch           # All active jobs
+          mix cursor_docs.bg watch <job_id>  # Specific job
+
+        Cancel a job:
+          mix cursor_docs.bg cancel <job_id>
+
+        Options:
+          --name NAME         Source name
+          --max-pages N       Max pages to crawl (default: 100)
+        """)
+
+      _ ->
+        IO.puts("❌ Unknown command. Run 'mix cursor_docs.bg' for help.")
+    end
+  end
+
+  defp bg_start(url, opts) do
+    alias CursorDocs.Scraper.Background
+
+    name = opts[:name] || derive_name_from_url(url)
+    max_pages = opts[:max_pages] || 100
+
+    IO.puts("🚀 Starting background crawl...")
+    IO.puts("   URL: #{url}")
+    IO.puts("   Name: #{name}")
+    IO.puts("   Max pages: #{max_pages}")
+    IO.puts("")
+
+    case Background.start_crawl(url, name: name, max_pages: max_pages) do
+      {:ok, job_id} ->
+        IO.puts("✅ Job started: #{job_id}")
+        IO.puts("")
+        IO.puts("Watch progress: mix cursor_docs.bg watch #{job_id}")
+        IO.puts("Check status:   mix cursor_docs.bg status")
+
+      {:error, :too_many_jobs} ->
+        IO.puts("❌ Too many concurrent jobs. Wait for one to finish or cancel one.")
+        IO.puts("")
+        bg_status()
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to start: #{inspect(reason)}")
+    end
+  end
+
+  defp bg_status do
+    alias CursorDocs.Scraper.Background
+
+    display = Background.progress_display()
+
+    IO.puts("📊 Background Crawler Status")
+    IO.puts(String.duplicate("─", 50))
+    IO.puts("")
+    IO.puts(display)
+    IO.puts("")
+  end
+
+  defp bg_jobs do
+    alias CursorDocs.Scraper.Background
+
+    jobs = Background.list_jobs()
+
+    if Enum.empty?(jobs) do
+      IO.puts("No crawl jobs yet.")
+    else
+      IO.puts("📋 All Crawl Jobs")
+      IO.puts(String.duplicate("─", 80))
+      IO.puts("")
+
+      Enum.each(jobs, fn job ->
+        status_icon = case job.status do
+          :pending -> "⏳"
+          :discovering -> "🔍"
+          :crawling -> "📥"
+          :completed -> "✅"
+          :failed -> "❌"
+          :cancelled -> "🚫"
+        end
+
+        progress = if job.total_pages > 0 do
+          "#{job.processed_pages}/#{job.total_pages} (✓#{job.successful_pages} ✗#{job.failed_pages})"
+        else
+          "..."
+        end
+
+        IO.puts("#{status_icon} #{job.id} | #{job.name}")
+        IO.puts("   Status: #{job.status} | Progress: #{progress}")
+
+        if job.strategy do
+          IO.puts("   Strategy: #{job.strategy}")
+        end
+
+        if job.error do
+          IO.puts("   Error: #{job.error}")
+        end
+
+        IO.puts("")
+      end)
+    end
+  end
+
+  defp bg_cancel(job_id) do
+    alias CursorDocs.Scraper.Background
+
+    case Background.cancel(job_id) do
+      :ok ->
+        IO.puts("✅ Job cancelled: #{job_id}")
+
+      {:error, :not_found} ->
+        IO.puts("❌ Job not found: #{job_id}")
+
+      {:error, :not_running} ->
+        IO.puts("ℹ️  Job is not running (already completed/failed)")
+    end
+  end
+
+  defp bg_watch do
+    alias CursorDocs.Scraper.Background
+
+    IO.puts("👀 Watching all active jobs (Ctrl+C to stop)")
+    IO.puts(String.duplicate("─", 50))
+    IO.puts("")
+
+    # Simple polling loop for CLI
+    watch_loop(fn ->
+      jobs = Background.active_jobs()
+
+      # Clear screen (ANSI)
+      IO.write("\e[2J\e[H")
+
+      IO.puts("👀 Background Crawler - #{DateTime.utc_now() |> DateTime.truncate(:second)}")
+      IO.puts(String.duplicate("─", 60))
+      IO.puts("")
+
+      if Enum.empty?(jobs) do
+        IO.puts("No active jobs. Waiting...")
+      else
+        Enum.each(jobs, fn job ->
+          render_job_progress(job)
+          IO.puts("")
+        end)
+      end
+
+      # Check if any jobs are still active
+      not Enum.empty?(jobs)
+    end)
+
+    IO.puts("\n✅ All jobs complete!")
+  end
+
+  defp bg_watch(job_id) do
+    alias CursorDocs.Scraper.Background
+
+    IO.puts("👀 Watching job: #{job_id} (Ctrl+C to stop)")
+    IO.puts("")
+
+    watch_loop(fn ->
+      case Background.status(job_id) do
+        {:ok, job} ->
+          # Clear screen
+          IO.write("\e[2J\e[H")
+
+          IO.puts("👀 Job: #{job.name} (#{job_id})")
+          IO.puts(String.duplicate("─", 60))
+          IO.puts("")
+
+          render_job_progress(job)
+
+          IO.puts("")
+          IO.puts("Recent activity:")
+          job.progress_log
+          |> Enum.take(-10)
+          |> Enum.each(fn log -> IO.puts("  #{log}") end)
+
+          # Continue watching if still running
+          job.status in [:pending, :discovering, :crawling]
+
+        {:error, :not_found} ->
+          IO.puts("❌ Job not found")
+          false
+      end
+    end)
+  end
+
+  defp watch_loop(render_fn) do
+    if render_fn.() do
+      Process.sleep(1000)  # Poll every second
+      watch_loop(render_fn)
+    end
+  end
+
+  defp render_job_progress(job) do
+    status_icon = case job.status do
+      :pending -> "⏳"
+      :discovering -> "🔍"
+      :crawling -> "📥"
+      :completed -> "✅"
+      :failed -> "❌"
+      :cancelled -> "🚫"
+    end
+
+    IO.puts("#{status_icon} #{job.name}")
+
+    if job.total_pages > 0 do
+      pct = round(job.processed_pages / job.total_pages * 100)
+      bar = progress_bar(pct, 40)
+      IO.puts("   #{bar} #{pct}%")
+      IO.puts("   Pages: #{job.processed_pages}/#{job.total_pages} (✓#{job.successful_pages} ✗#{job.failed_pages})")
+    else
+      IO.puts("   #{status_icon} #{job.status}...")
+    end
+
+    if job.current_url do
+      IO.puts("   Current: #{truncate_string(job.current_url, 55)}")
+    end
+
+    if job.error do
+      IO.puts("   ❌ Error: #{job.error}")
+    end
+  end
+
+  defp progress_bar(percent, width) do
+    filled = round(percent / 100 * width)
+    empty = width - filled
+    "[#{String.duplicate("█", filled)}#{String.duplicate("░", empty)}]"
+  end
 end
