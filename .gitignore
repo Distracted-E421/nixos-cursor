@@ -44,5 +44,8 @@ Cargo.lock
 !cursor-studio-egui/Cargo.lock
 
 cursor-studio/
-screenshots/*.png
-screenshots/latest.png
+
+# Screenshots - PRIVACY: May contain personal info, video calls, etc.
+# Auto-cleaned after AI review - never commit these
+screenshots/
+!screenshots/.gitkeep
