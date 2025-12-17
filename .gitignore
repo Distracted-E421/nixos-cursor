@@ -49,3 +49,8 @@ cursor-studio/
 # Auto-cleaned after AI review - never commit these
 screenshots/
 !screenshots/.gitkeep
+
+# AI Workspace - Contains AI thinking/drafts, not permanent code
+# Scratchpad is gitignored, but structure files are committed
+.ai-workspace/scratchpad/*.md
+.ai-workspace/memory.db
