@@ -1,3 +1,42 @@
+## 2025-12-17 10:20:00 - [FEATURE]
+
+**Description**: Successfully indexed Cursor's failed docs locally via cursor-docs service
+
+**Files**:
+- services/cursor-docs/lib/cursor_docs/cli.ex (derive_name_from_url fix)
+- services/cursor-docs/lib/cursor_docs/storage/sqlite.ex (handle_call grouping fix)
+
+**Changes**:
+
+1. **Imported Failed Cursor Docs**:
+   - ✅ nixidy: 213 chunks (raw.githubusercontent.com)
+   - ✅ nixos-cursor: 208 chunks (raw.githubusercontent.com)
+   - ✅ Zed-GPUI: 206 chunks (raw.githubusercontent.com)
+   - ❌ Ghidra-API: Javadoc frameset (needs multi-page crawler)
+
+2. **CLI Bug Fixes**:
+   - Fixed `derive_name_from_url/1` to handle nil hosts from URI.parse
+   - Now gracefully extracts name from path when host is nil
+   - Correct usage: `mix cursor_docs.add URL --name NAME`
+
+3. **Compiler Warning Fix**:
+   - Reorganized handle_call/3 clauses to be grouped together
+   - Moved `get_source_url/2` private helper after terminate/2
+   - Clean compile with `--warnings-as-errors`
+
+**Total Indexed**: 6 sources, 1336 chunks
+
+**Testing**:
+```bash
+mix cursor_docs.add "https://raw.githubusercontent.com/.../README.md" --name "project"
+mix cursor_docs.search "NixOS cursor module"
+mix cursor_docs.status
+```
+
+**Notes**: GitHub blob URLs trigger login wall detection. Use raw.githubusercontent.com URLs instead.
+
+---
+
 ## 2025-12-16 23:30:00 - [FIX]
 
 **Description**: Fixed cursor-studio-dev alias for Wayland/OpenGL context creation

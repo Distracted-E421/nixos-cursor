@@ -480,11 +480,65 @@ defmodule CursorDocs.Storage.SQLite do
     end
   end
 
-  # Helper to get source URL for search results
-  defp get_source_url(conn, source_id) do
-    case fetch_one(conn, "SELECT url FROM doc_sources WHERE id = ?", [source_id]) do
-      {:ok, [url]} -> url
-      _ -> nil
+  @impl true
+  def handle_call({:get_chunks_for_source, source_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, url, title, content, position, created_at
+    FROM doc_chunks
+    WHERE source_id = ?
+    ORDER BY position ASC
+    """
+
+    case fetch_all(state.conn, sql, [source_id]) do
+      {:ok, rows} ->
+        chunks =
+          Enum.map(rows, fn [id, src_id, url, title, content, position, created_at] ->
+            %{
+              id: id,
+              source_id: src_id,
+              url: url,
+              title: title,
+              content: content,
+              position: position,
+              created_at: created_at
+            }
+          end)
+
+        {:reply, {:ok, chunks}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:get_chunk, chunk_id}, _from, state) do
+    sql = """
+    SELECT id, source_id, url, title, content, position, created_at
+    FROM doc_chunks
+    WHERE id = ?
+    LIMIT 1
+    """
+
+    case fetch_all(state.conn, sql, [chunk_id]) do
+      {:ok, [[id, src_id, url, title, content, position, created_at]]} ->
+        chunk = %{
+          id: id,
+          source_id: src_id,
+          url: url,
+          title: title,
+          content: content,
+          position: position,
+          created_at: created_at
+        }
+
+        {:reply, {:ok, chunk}, state}
+
+      {:ok, []} ->
+        {:reply, {:error, :not_found}, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
     end
   end
 
@@ -496,6 +550,14 @@ defmodule CursorDocs.Storage.SQLite do
   end
 
   # Private Functions
+
+  # Helper to get source URL for search results
+  defp get_source_url(conn, source_id) do
+    case fetch_one(conn, "SELECT url FROM doc_sources WHERE id = ?", [source_id]) do
+      {:ok, [url]} -> url
+      _ -> nil
+    end
+  end
 
   defp execute_with_params(conn, sql, params) do
     case Sqlite3.prepare(conn, sql) do
@@ -650,66 +712,6 @@ defmodule CursorDocs.Storage.SQLite do
       end)
 
     {sets |> Enum.reverse() |> Enum.join(", "), Enum.reverse(params)}
-  end
-
-  @impl true
-  def handle_call({:get_chunks_for_source, source_id}, _from, state) do
-    sql = """
-    SELECT id, source_id, url, title, content, position, created_at
-    FROM doc_chunks
-    WHERE source_id = ?
-    ORDER BY position ASC
-    """
-
-    case fetch_all(state.conn, sql, [source_id]) do
-      {:ok, rows} ->
-        chunks = Enum.map(rows, fn [id, src_id, url, title, content, position, created_at] ->
-          %{
-            id: id,
-            source_id: src_id,
-            url: url,
-            title: title,
-            content: content,
-            position: position,
-            created_at: created_at
-          }
-        end)
-
-        {:reply, {:ok, chunks}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl true
-  def handle_call({:get_chunk, chunk_id}, _from, state) do
-    sql = """
-    SELECT id, source_id, url, title, content, position, created_at
-    FROM doc_chunks
-    WHERE id = ?
-    LIMIT 1
-    """
-
-    case fetch_all(state.conn, sql, [chunk_id]) do
-      {:ok, [[id, src_id, url, title, content, position, created_at]]} ->
-        chunk = %{
-          id: id,
-          source_id: src_id,
-          url: url,
-          title: title,
-          content: content,
-          position: position,
-          created_at: created_at
-        }
-        {:reply, {:ok, chunk}, state}
-
-      {:ok, []} ->
-        {:reply, {:error, :not_found}, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
   end
 
   defp escape_fts_query(query) do

@@ -113,13 +113,37 @@ defmodule CursorDocs.CLI do
   end
 
   defp derive_name_from_url(url) do
-    url
-    |> URI.parse()
-    |> Map.get(:host, "docs")
-    |> String.replace_prefix("www.", "")
-    |> String.split(".")
-    |> List.first()
-    |> String.capitalize()
+    host =
+      url
+      |> URI.parse()
+      |> Map.get(:host)
+
+    name =
+      case host do
+        nil ->
+          # No host - try to extract name from path (e.g., github.com/user/repo)
+          case URI.parse(url).path do
+            nil -> "docs"
+            "/" -> "docs"
+            path ->
+              path
+              |> String.split("/")
+              |> Enum.reject(&(&1 == ""))
+              |> List.last()
+              |> case do
+                nil -> "docs"
+                segment -> segment |> String.replace(~r/\.\w+$/, "")
+              end
+          end
+
+        h ->
+          h
+          |> String.replace_prefix("www.", "")
+          |> String.split(".")
+          |> List.first()
+      end
+
+    String.capitalize(name)
   end
 
   defp check_existing_url(url) do
