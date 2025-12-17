@@ -44,3 +44,5 @@ Cargo.lock
 !cursor-studio-egui/Cargo.lock
 
 cursor-studio/
+screenshots/*.png
+screenshots/latest.png
