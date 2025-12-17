@@ -1,0 +1,68 @@
+{
+  "machines": {
+    "Obsidian": {
+      "hostname": "Obsidian",
+      "os": "NixOS 25.11",
+      "ssh": null,
+      "aliases": {
+        "cursor-studio-dev": "LD_LIBRARY_PATH=$(nix-build '<nixpkgs>' -A wayland --no-out-link)/lib:... ~/nixos-cursor/cursor-studio-egui/target/release/cursor-studio",
+        "build-cursor-studio": "cd ~/nixos-cursor/cursor-studio-egui && cargo build --release",
+        "rebuild-cursor-dev": "cd ~/homelab/nixos && sudo nixos-rebuild switch --impure --flake .#Obsidian --override-input nixos-cursor path:/home/e421/nixos-cursor 2>&1 | nom",
+        "ui-screenshot": "~/nixos-cursor/scripts/ui-feedback.sh"
+      },
+      "notes": [
+        "Primary development machine",
+        "Dual GPU: Arc A770 (16GB) + RTX 2080 (8GB)",
+        "Main git operations happen here",
+        "User: e421"
+      ]
+    },
+    "neon-laptop": {
+      "hostname": "neon-laptop",
+      "os": "NixOS 24.05",
+      "ssh": "ssh e421@neon-laptop",
+      "aliases": {
+        "streaming-mode": "~/scripts/streaming-mode.nu",
+        "rebuild": "sudo nixos-rebuild switch --flake ~/homelab/nixos#neon-laptop"
+      },
+      "notes": [
+        "ThinkPad T14 - Mobile development",
+        "Streaming machine",
+        "User: e421"
+      ]
+    },
+    "framework": {
+      "hostname": "framework",
+      "os": "NixOS 24.05",
+      "ssh": "ssh e421@framework",
+      "aliases": {},
+      "notes": [
+        "Framework Laptop 13",
+        "Often offline",
+        "User: e421"
+      ]
+    },
+    "pi-server": {
+      "hostname": "pi-server",
+      "os": "NixOS",
+      "ssh": "ssh e421@pi-server",
+      "aliases": {},
+      "notes": [
+        "Always-on services",
+        "ARM64 infrastructure",
+        "User: e421"
+      ]
+    },
+    "Evie-Desktop": {
+      "hostname": "Evie-Desktop",
+      "os": "Windows/WSL",
+      "ssh": "ssh evie@Evie-Desktop",
+      "aliases": {},
+      "notes": [
+        "⚠️ USER IS 'evie' NOT 'e421'",
+        "Windows with WSL",
+        "Secondary testing environment"
+      ]
+    }
+  }
+}

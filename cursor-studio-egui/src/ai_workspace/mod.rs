@@ -1,6 +1,7 @@
 //! AI Workspace Management
 //! 
 //! Provides persistent workspace for AI assistant:
+//! - Environment awareness (machine, OS, git state)
 //! - Scratchpad for drafting ideas
 //! - Context detection and tracking
 //! - Multi-step plan management
@@ -8,12 +9,18 @@
 //! - Contextual hint generation
 
 mod context;
+mod environment;
 mod hints;
 mod memory;
 mod scratchpad;
 mod plans;
 
 pub use context::{TaskContext, ContextAnalyzer, ContextState};
+pub use environment::{
+    EnvironmentState, EnvironmentWatcher, EnvironmentDelta,
+    AliasRegistry, MachineAliases, GitState, OsInfo,
+    create_default_registry,
+};
 pub use hints::{HintInjector, Hint};
 pub use memory::{LocalMemory, MemoryEntry, MemoryType};
 pub use scratchpad::Scratchpad;
