@@ -1,12 +1,12 @@
 defmodule CursorDocs.Progress do
   @moduledoc """
   Structured progress reporting for CLI consumers.
-  
+
   Emits JSON-formatted progress updates that can be parsed by GUIs.
   Format: {"type": "<event>", "data": {...}}
-  
+
   ## Event Types
-  
+
   - `started` - Indexing started
   - `page` - Page progress update
   - `complete` - Indexing completed
@@ -104,4 +104,3 @@ defmodule CursorDocs.Progress do
   defp format_reason(reason) when is_binary(reason), do: reason
   defp format_reason(reason), do: inspect(reason)
 end
-

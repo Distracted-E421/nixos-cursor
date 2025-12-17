@@ -4133,148 +4133,117 @@ impl CursorStudio {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                ui.add_space(12.0);
+                ui.add_space(SECTION_SPACING);
 
                 // Overview Section
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("SECURITY OVERVIEW")
-                            .size(11.0)
-                            .color(theme.fg_dim)
-                            .strong(),
-                    );
-                });
-                ui.add_space(8.0);
+                panel_header(ui, "SECURITY OVERVIEW", theme);
+                ui.add_space(ELEMENT_SPACING);
 
                 // Security Status Card
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("🛡️").size(20.0));
-                            ui.add_space(8.0);
-                            ui.vertical(|ui| {
-                                ui.label(
-                                    RichText::new("System Status")
-                                        .color(theme.fg)
-                                        .strong()
-                                        .size(13.0),
-                                );
-                                ui.label(
-                                    RichText::new("All security checks passing")
-                                        .color(theme.success)
-                                        .size(11.0),
-                                );
-                            });
-                        });
-                    });
-                ui.add_space(16.0);
-
-                // Data Privacy Section
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("DATA PRIVACY")
-                            .size(11.0)
-                            .color(theme.fg_dim)
-                            .strong(),
-                    );
-                });
-                ui.add_space(8.0);
-
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("📁 Chat Data Location")
-                            .color(theme.fg)
-                            .size(12.0),
-                    );
-                });
-                ui.horizontal(|ui| {
-                    ui.add_space(24.0);
-                    if let Some(config_dir) = dirs::config_dir() {
-                        let path = config_dir.join("cursor-studio");
-                        ui.label(
-                            RichText::new(path.to_string_lossy())
-                                .color(theme.fg_dim)
-                                .size(10.0)
-                                .family(egui::FontFamily::Monospace),
-                        );
-                    }
-                });
-                ui.add_space(8.0);
-
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("🔐 Data Encryption")
-                            .color(theme.fg)
-                            .size(12.0),
-                    );
-                });
-                ui.horizontal(|ui| {
-                    ui.add_space(24.0);
-                    ui.label(
-                        RichText::new("Local storage only (not encrypted)")
-                            .color(theme.warning)
-                            .size(11.0),
-                    );
-                });
-                ui.add_space(16.0);
-
-                // API Keys Section
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("API KEYS & TOKENS")
-                            .size(11.0)
-                            .color(theme.fg_dim)
-                            .strong(),
-                    );
-                });
-                ui.add_space(8.0);
-
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("⚠️").size(14.0));
-                            ui.add_space(4.0);
+                card_frame(theme).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("🛡️").size(18.0));
+                        ui.add_space(ELEMENT_SPACING);
+                        ui.vertical(|ui| {
                             ui.label(
-                                RichText::new("No API keys stored in Cursor Studio")
-                                    .color(theme.fg_dim)
-                                    .size(11.0),
+                                RichText::new("System Status")
+                                    .color(theme.fg)
+                                    .strong()
+                                    .size(12.0),
+                            );
+                            ui.label(
+                                RichText::new("All security checks passing")
+                                    .color(theme.success)
+                                    .size(10.0),
                             );
                         });
-                        ui.add_space(4.0);
+                    });
+                });
+                ui.add_space(SECTION_SPACING);
+
+                // Data Privacy Section
+                panel_header(ui, "DATA PRIVACY", theme);
+                ui.add_space(ELEMENT_SPACING);
+
+                card_frame(theme).show(ui, |ui| {
+                    // Chat Data Location
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("📁").size(12.0));
+                        ui.add_space(TIGHT_SPACING);
                         ui.label(
-                            RichText::new("API keys are managed by Cursor directly")
-                                .color(theme.fg_dim)
-                                .size(10.0)
-                                .italics(),
+                            RichText::new("Chat Data Location")
+                                .color(theme.fg)
+                                .size(11.0),
                         );
                     });
-                ui.add_space(16.0);
+                    ui.add_space(TIGHT_SPACING);
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
+                        if let Some(config_dir) = dirs::config_dir() {
+                            let path = config_dir.join("cursor-studio");
+                            ui.label(
+                                RichText::new(path.to_string_lossy())
+                                    .color(theme.fg_dim)
+                                    .size(9.0)
+                                    .family(egui::FontFamily::Monospace),
+                            );
+                        }
+                    });
+                    
+                    ui.add_space(ELEMENT_SPACING);
+                    
+                    // Data Encryption
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("🔐").size(12.0));
+                        ui.add_space(TIGHT_SPACING);
+                        ui.label(
+                            RichText::new("Data Encryption")
+                                .color(theme.fg)
+                                .size(11.0),
+                        );
+                    });
+                    ui.add_space(TIGHT_SPACING);
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
+                        ui.label(
+                            RichText::new("Local storage only (not encrypted)")
+                                .color(theme.warning)
+                                .size(10.0),
+                        );
+                    });
+                });
+                ui.add_space(SECTION_SPACING);
 
-                // Scan Section
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
+                // API Keys Section
+                panel_header(ui, "API KEYS & TOKENS", theme);
+                ui.add_space(ELEMENT_SPACING);
+
+                card_frame(theme).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("⚠️").size(12.0));
+                        ui.add_space(TIGHT_SPACING);
+                        ui.label(
+                            RichText::new("No API keys stored in Cursor Studio")
+                                .color(theme.fg_dim)
+                                .size(10.0),
+                        );
+                    });
+                    ui.add_space(TIGHT_SPACING);
                     ui.label(
-                        RichText::new("SECURITY SCANS")
-                            .size(11.0)
+                        RichText::new("API keys are managed by Cursor directly")
                             .color(theme.fg_dim)
-                            .strong(),
+                            .size(9.0)
+                            .italics(),
                     );
                 });
-                ui.add_space(8.0);
+                ui.add_space(SECTION_SPACING);
+
+                // Scan Section
+                panel_header(ui, "SECURITY SCANS", theme);
+                ui.add_space(ELEMENT_SPACING);
 
                 ui.horizontal(|ui| {
-                    ui.add_space(16.0);
+                    ui.add_space(PANEL_PADDING);
                     
                     // Show scan in progress indicator or button
                     if let Some((scanned, total)) = self.security_scan_progress {
@@ -4295,11 +4264,11 @@ impl CursorStudio {
                         }
                     }
                 });
-                ui.add_space(4.0);
+                ui.add_space(TIGHT_SPACING);
 
                 ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    if styled_button(ui, "🗑️ Purge Sensitive Data", Vec2::new(160.0, 32.0))
+                    ui.add_space(PANEL_PADDING);
+                    if styled_button(ui, "🗑️ Purge Sensitive Data", Vec2::new(160.0, 28.0))
                         .on_hover_text("Remove detected sensitive data from chat history")
                         .clicked()
                     {
@@ -4311,12 +4280,8 @@ impl CursorStudio {
                 let mut jump_to_msg: Option<(String, String)> = None;
 
                 if let Some(ref results) = self.security_scan_results {
-                    ui.add_space(12.0);
-                    egui::Frame::none()
-                        .fill(theme.code_bg)
-                        .rounding(Rounding::same(8.0))
-                        .inner_margin(egui::Margin::same(12.0))
-                        .show(ui, |ui| {
+                    ui.add_space(SECTION_SPACING);
+                    card_frame(theme).show(ui, |ui| {
                             ui.label(
                                 RichText::new(format!("📊 Scan Results ({})", results.scanned_at))
                                     .color(theme.fg)
@@ -4772,100 +4737,71 @@ impl CursorStudio {
 
     fn show_bridge_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.add_space(12.0);
+            ui.add_space(SECTION_SPACING);
 
             // ======================================
             // ELIXIR SYNC DAEMON (Primary)
             // ======================================
-            egui::Frame::none()
-                .fill(theme.code_bg)
-                .rounding(Rounding::same(8.0))
-                .inner_margin(egui::Margin::same(12.0))
-                .show(ui, |ui| {
-                    // Render the Elixir sync daemon panel
-                    self.sync_daemon_panel.ui(ui);
-                });
+            card_frame(theme).show(ui, |ui| {
+                // Render the Elixir sync daemon panel
+                self.sync_daemon_panel.ui(ui);
+            });
             
-            ui.add_space(16.0);
+            ui.add_space(SECTION_SPACING);
             ui.separator();
-            ui.add_space(16.0);
+            ui.add_space(SECTION_SPACING);
 
             // ======================================
             // LEGACY: Coming Soon Banner
             // ======================================
-            egui::Frame::none()
-                .fill(theme.accent.linear_multiply(0.15))
-                .rounding(Rounding::same(8.0))
-                .inner_margin(egui::Margin::same(12.0))
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("🔮").size(16.0));
-                        ui.add_space(8.0);
-                        ui.vertical(|ui| {
-                            ui.label(
-                                RichText::new("Future: P2P & Server Sync")
-                                    .color(theme.accent)
-                                    .strong()
-                                    .size(14.0),
-                            );
-                            ui.label(
-                                RichText::new("Multi-device sync planned for v0.4.0")
-                                    .color(theme.fg_dim)
-                                    .size(11.0),
-                            );
-                        });
+            accent_card_frame(theme).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("🔮").size(14.0));
+                    ui.add_space(ELEMENT_SPACING);
+                    ui.vertical(|ui| {
+                        ui.label(
+                            RichText::new("Future: P2P & Server Sync")
+                                .color(theme.accent)
+                                .strong()
+                                .size(12.0),
+                        );
+                        ui.label(
+                            RichText::new("Multi-device sync planned for v0.4.0")
+                                .color(theme.fg_dim)
+                                .size(10.0),
+                        );
                     });
                 });
-            ui.add_space(16.0);
-
-            ui.horizontal(|ui| {
-                ui.add_space(16.0);
-                ui.label(
-                    RichText::new("DEVICE INFO")
-                        .size(11.0)
-                        .color(theme.fg_dim)
-                        .strong(),
-                );
             });
-            ui.add_space(8.0);
+            ui.add_space(SECTION_SPACING);
+
+            panel_header(ui, "DEVICE INFO", theme);
+            ui.add_space(ELEMENT_SPACING);
 
             // Device Info Card
-            egui::Frame::none()
-                .fill(theme.code_bg)
-                .rounding(Rounding::same(8.0))
-                .inner_margin(egui::Margin::same(12.0))
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("📱").size(20.0));
-                        ui.add_space(8.0);
-                        ui.vertical(|ui| {
-                            ui.label(
-                                RichText::new("This Device")
-                                    .color(theme.fg)
-                                    .strong()
-                                    .size(13.0),
-                            );
-                            // Get hostname
-                            let hostname = hostname::get()
-                                .map(|h| h.to_string_lossy().to_string())
-                                .unwrap_or_else(|_| "unknown".to_string());
-                            ui.label(RichText::new(&hostname).color(theme.fg_dim).size(11.0));
-                        });
+            card_frame(theme).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("📱").size(16.0));
+                    ui.add_space(ELEMENT_SPACING);
+                    ui.vertical(|ui| {
+                        ui.label(
+                            RichText::new("This Device")
+                                .color(theme.fg)
+                                .strong()
+                                .size(11.0),
+                        );
+                        // Get hostname
+                        let hostname = hostname::get()
+                            .map(|h| h.to_string_lossy().to_string())
+                            .unwrap_or_else(|_| "unknown".to_string());
+                        ui.label(RichText::new(&hostname).color(theme.fg_dim).size(10.0));
                     });
                 });
-            ui.add_space(16.0);
+            });
+            ui.add_space(SECTION_SPACING);
 
             // Server Connection
-            ui.horizontal(|ui| {
-                ui.add_space(16.0);
-                ui.label(
-                    RichText::new("SERVER SYNC")
-                        .size(11.0)
-                        .color(theme.fg_dim)
-                        .strong(),
-                );
-            });
-            ui.add_space(8.0);
+            ui.add_space(ELEMENT_SPACING);
 
             // Server URL input
             ui.horizontal(|ui| {
@@ -5139,35 +5075,24 @@ impl CursorStudio {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                ui.add_space(12.0);
+                ui.add_space(SECTION_SPACING);
 
                 // Header
+                panel_header_with_icon(ui, "🔥", "FORGE", theme);
+                ui.add_space(TIGHT_SPACING);
                 ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("🔥 FORGE")
-                            .size(14.0)
-                            .color(theme.accent)
-                            .strong(),
-                    );
-                });
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
+                    ui.add_space(PANEL_PADDING);
                     ui.label(
                         RichText::new("Data transformation & training preparation")
-                            .size(10.0)
+                            .size(9.0)
                             .color(theme.fg_dim),
                     );
                 });
 
-                ui.add_space(16.0);
+                ui.add_space(SECTION_SPACING);
 
                 // Coming Soon Banner
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::same(16.0))
+                warning_card_frame(theme)
                     .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
                             ui.label(
@@ -5196,30 +5121,22 @@ impl CursorStudio {
 
                         for feature in features {
                             ui.horizontal(|ui| {
-                                ui.add_space(24.0);
-                                ui.label(RichText::new(feature).size(10.0).color(theme.fg_dim));
+                                ui.add_space(16.0);
+                                ui.label(RichText::new(feature).size(9.0).color(theme.fg_dim));
                             });
-                            ui.add_space(4.0);
+                            ui.add_space(TIGHT_SPACING);
                         }
                     });
 
-                ui.add_space(16.0);
+                ui.add_space(SECTION_SPACING);
 
                 // Quick Actions (placeholder)
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(
-                        RichText::new("QUICK ACTIONS")
-                            .size(10.0)
-                            .color(theme.fg_dim)
-                            .strong(),
-                    );
-                });
-                ui.add_space(8.0);
+                panel_header(ui, "QUICK ACTIONS", theme);
+                ui.add_space(ELEMENT_SPACING);
 
                 ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    if styled_button(ui, "Export All Chats", Vec2::new(130.0, 28.0))
+                    ui.add_space(PANEL_PADDING);
+                    if styled_button(ui, "Export All Chats", Vec2::new(120.0, 26.0))
                         .on_hover_text("Export all chats to training format")
                         .clicked()
                     {
@@ -5228,11 +5145,11 @@ impl CursorStudio {
                     }
                 });
 
-                ui.add_space(8.0);
+                ui.add_space(ELEMENT_SPACING);
 
                 ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    if styled_button(ui, "Index All Docs", Vec2::new(130.0, 28.0))
+                    ui.add_space(PANEL_PADDING);
+                    if styled_button(ui, "Index All Docs", Vec2::new(120.0, 26.0))
                         .on_hover_text("View indexed documentation")
                         .clicked()
                     {
@@ -5240,13 +5157,10 @@ impl CursorStudio {
                     }
                 });
 
-                ui.add_space(16.0);
+                ui.add_space(SECTION_SPACING);
 
                 // CLI Reference
-                egui::Frame::none()
-                    .fill(theme.code_bg)
-                    .rounding(Rounding::same(8.0))
-                    .inner_margin(egui::Margin::same(12.0))
+                card_frame(theme)
                     .show(ui, |ui| {
                         ui.label(
                             RichText::new("CLI Reference")
