@@ -1,3 +1,51 @@
+## 2025-12-17 14:25:00 - [TEST]
+
+**Description**: Comprehensive test coverage for cursor-manager and Python MCP servers
+
+**Files**:
+- scripts/rust/cursor-manager/src/config.rs (8 tests added)
+- scripts/rust/cursor-manager/src/version.rs (20 tests added)
+- scripts/rust/cursor-manager/src/instance.rs (9 tests added)
+- scripts/rust/cursor-manager/src/download.rs (8 tests added)
+- scripts/python/tests/ (new directory)
+- scripts/python/tests/conftest.py (shared fixtures)
+- scripts/python/tests/test_context_inject.py (~25 tests)
+- scripts/python/tests/test_docs_mcp.py (~20 tests)
+- scripts/python/tests/test_sync_poc.py (~15 tests)
+- scripts/python/pyproject.toml (pytest config)
+- tools/proxy-test/tests/ (new directory)
+- tools/proxy-test/tests/test_proxy_addon.py (~15 tests)
+- tools/proxy-test/pyproject.toml (pytest config)
+- tests/run-all-tests.nu (updated for pytest integration)
+- docs/TEST_COVERAGE.md (new - comprehensive test docs)
+
+**Changes**:
+
+1. **Rust cursor-manager tests (45 total)**:
+   - Config: serialization, get/set, persistence
+   - Version: format_size, list/install/uninstall, cleanup
+   - Instance: CRUD operations, lifecycle management
+   - Download: URL generation, hash verification, cache usage
+
+2. **Python MCP server tests (~60 total)**:
+   - ContextStore: CRUD, search, expiration, persistence
+   - DocsClient: chunking, FTS search, database ops
+   - SyncPOC: database schema, message storage, foreign keys
+
+3. **Proxy addon tests (~15 total)**:
+   - Domain matching, SSE parsing, error tracking
+   - Certificate pinning detection, streaming detection
+
+4. **Infrastructure updates**:
+   - Updated run-all-tests.nu to run cargo test and pytest
+   - Created pyproject.toml for pytest configuration
+   - Added shared test fixtures in conftest.py
+
+**Notes**: All 45 Rust tests pass. Python tests require pytest installation.
+Run: `cargo test -p cursor-manager` or `pytest scripts/python/tests/ -v`
+
+---
+
 ## 2025-12-17 11:30:00 - [FEATURE]
 
 **Description**: Background crawler + project inventory for cursor-docs
@@ -491,3 +539,81 @@ This captures users from zero-setup to power users building full data pipelines.
 
 ---
 
+
+## 2025-12-17 22:35:00 - [SCRIPT]
+
+**Description**: Built comprehensive Cursor API payload analysis tooling and Rust-based filter
+
+**Files**: 
+- `tools/proxy-test/payload-filter/` (new Rust crate)
+- `tools/proxy-test/analyze_payloads.py`
+- `tools/proxy-test/decode_protobuf.py`
+- `tools/proxy-test/SCHEMA_RECONSTRUCTION.md`
+- `tools/proxy-test/FINDINGS.md`
+
+**Notes**: 
+- Created Rust payload-filter tool that loads 29,864 payloads in 583ms and analyzes in 22ms
+- Discovered only 140 unique payloads out of 29,864 (excellent deduplication)
+- Found PotentiallyGenerateMemory endpoint contains 1.7MB full conversation context
+- Reconstructed Protobuf schemas for all high-priority endpoints
+- 69% of traffic is noise (analytics/telemetry) - can be filtered
+- ChatService/StreamUnifiedChatWithTools not captured due to streaming issues
+
+---
+
+## 2025-12-17 23:35:00 - [SCRIPT]
+
+**Description**: Created Rust transparent proxy skeleton and deep analyzed PotentiallyGenerateMemory
+
+**Files**: 
+- `tools/proxy-test/cursor-proxy/` (new Rust crate)
+- `tools/proxy-test/MEMORY_PAYLOAD_SCHEMA.md`
+- `tools/proxy-test/decode_memory_payload.py`
+- `tools/proxy-test/cp` (symlink to cursor-proxy)
+
+**Notes**: 
+- Rust proxy starts and accepts connections on port 8443
+- CA certificate generation working (~/.cursor-proxy/)
+- PotentiallyGenerateMemory contains 1.65MB of full conversation context
+- Identified 293 unique strings including full file contents, tool calls, terminal output
+- Documented complete message schema with 20+ field types
+- Key discovery: context injection can modify field 3 (files) or synthetic turns
+
+---
+
+## 2025-12-17 23:50:00 - [SCRIPT]
+
+**Description**: Built complete HTTP/2 streaming proxy with h2 crate
+
+**Files**: 
+- `tools/proxy-test/cursor-proxy/src/main.rs` - Full HTTP/2 proxy implementation
+- `tools/proxy-test/cursor-with-proxy.sh` - Helper script for proxy + iptables
+- `tools/proxy-test/rust-captures/` - Capture output directory
+
+**Notes**: 
+- Proxy successfully handles HTTP/2 connections via h2 crate
+- Dynamic certificate generation working (per-domain certs signed by CA)
+- iptables integration for transparent proxying
+- Stream capture to disk implemented
+- TLS handshakes fail because Cursor doesn't trust our CA (expected)
+- Next step: Trust CA via NixOS config or NODE_EXTRA_CA_CERTS
+
+---
+
+## 2025-12-17 21:10:00 - [CONFIG]
+
+**Description**: Enhanced Cursor launcher with combined CA bundle for proxy interception
+
+**Files**: 
+- `~/.local/bin/cursor-with-ca` - Updated wrapper with combined CA bundle
+- `~/.cursor-proxy/combined-ca-bundle.pem` - System CAs + Proxy CA bundle
+- `~/.local/share/applications/cursor.desktop` - Desktop entry (already pointed to wrapper)
+
+**Notes**: 
+- NODE_EXTRA_CA_CERTS now points to combined bundle (system + proxy CAs)
+- Bundle auto-regenerates when system CAs or proxy CA change
+- Also sets SSL_CERT_FILE and REQUESTS_CA_BUNDLE for other tools
+- Desktop entry already configured to use wrapper
+- Cursor launched from desktop/menu will automatically trust proxy CA
+
+---

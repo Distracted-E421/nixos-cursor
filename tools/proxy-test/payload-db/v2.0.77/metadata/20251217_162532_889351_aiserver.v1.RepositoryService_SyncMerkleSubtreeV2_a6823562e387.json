@@ -1,0 +1,42 @@
+{
+  "filename": "20251217_162532_889351_aiserver.v1.RepositoryService_SyncMerkleSubtreeV2_a6823562e387",
+  "timestamp": "2025-12-17T16:25:32.889477",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.RepositoryService",
+  "endpoint": "SyncMerkleSubtreeV2",
+  "full_path": "/aiserver.v1.RepositoryService/SyncMerkleSubtreeV2",
+  "host": "repo42.cursor.sh",
+  "method": "POST",
+  "content_length": 120,
+  "content_hash_sha256": "a6823562e3876730ed98e9101148b94550cd8340d63fe2ba8886f7355dc5455e",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 151639646,
+      "actual_length": 115,
+      "raw_hex": "540b12583c43122438303534376166352d333335372d343830352d613161372d3866616539363262373530391a450a012e124030656361643364363465623633653236336133366133393739393933376330313662353434303461633435306333666531346331346437383364393335343238"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "connect-timeout-ms": "8000",
+    "content-type": "application/proto",
+    "traceparent": "00-bdda1c43bf7b57395ace0d96fa09874e-11ce895e035b1fad-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=6d16fe32-be07-45d8-851d-48f41b6ec792",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "6d16fe32-be07-45d8-851d-48f41b6ec792",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b"
+  }
+}

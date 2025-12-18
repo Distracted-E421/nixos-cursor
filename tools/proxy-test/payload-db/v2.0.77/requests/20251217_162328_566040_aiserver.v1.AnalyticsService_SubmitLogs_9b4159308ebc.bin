@@ -1,0 +1,126 @@
+
+´"Creating dynamic HTTP/1 transports
+servicetransport_factory"
+subkeydynamic_http1_transports
+keepaliveEnabledtrue
+keepaliveInitialDelay60000 Îì£ó²3:	transport
+´"Creating dynamic HTTP/1 transports
+servicetransport_factory"
+subkeydynamic_http1_transports
+keepaliveEnabledtrue
+keepaliveInitialDelay60000 Îì£ó²3:	transport
+´"Creating dynamic HTTP/1 transports
+servicetransport_factory"
+subkeydynamic_http1_transports
+keepaliveEnabledtrue
+keepaliveInitialDelay60000 Ïì£ó²3:	transport
+˜"Creating dynamic HTTP/2 transports
+servicetransport_factory"
+subkeydynamic_http2_transportsw
+
+pingConfigi{"pingIdleConnection":true,"pingIntervalMs":10000,"pingTimeoutMs":20000,"idleConnectionTimeoutMs":300000}#
+baseUrlhttps://repo42.cursor.sh Ðì£ó²3:	transport
+€-HTTP2 transport created with network settings
+servicetransport_factory!
+subkeyhttp2_transport_created
+httpVersion2#
+baseUrlhttps://repo42.cursor.sh#
+compression.sendCompressiongzip)
+compression.acceptCompression["gzip"]
+tls.minVersionTLSv1.2!
+tls.rejectUnauthorizeddefault
+tls.alpnProtocols["h2"]
+tls.hasCustomCAtrue
+tls.systemCertCount293 
+http2.pingIdleConnectiontrue
+http2.pingIntervalMs10000
+http2.pingTimeoutMs20000'
+http2.idleConnectionTimeoutMs300000+
+ http2.settings.initialWindowSizedefault&
+http2.settings.maxFrameSizedefault.
+#http2.settings.maxConcurrentStreamsdefault+
+ http2.settings.maxHeaderListSizedefault!
+http2.settings.enablePushtrue)
+http2.settings.headerTableSizedefault
+dnsAffinity.enabledfalse
+dev.isDevelopmentfalse!
+dev.rejectUnauthorizeddefault Ðì£ó²3:	transport
+ø-HTTP2 transport created with network settings
+servicetransport_factory!
+subkeyhttp2_transport_created
+httpVersion2#
+baseUrlhttps://repo42.cursor.sh#
+compression.sendCompressiongzip)
+compression.acceptCompression["gzip"]
+tls.minVersionTLSv1.2!
+tls.rejectUnauthorizeddefault
+tls.alpnProtocols["h2"]
+tls.hasCustomCAtrue
+tls.systemCertCount293+
+ http2.settings.initialWindowSizedefault&
+http2.settings.maxFrameSizedefault.
+#http2.settings.maxConcurrentStreamsdefault+
+ http2.settings.maxHeaderListSizedefault!
+http2.settings.enablePushtrue)
+http2.settings.headerTableSizedefault
+dnsAffinity.enabledfalse
+dev.isDevelopmentfalse!
+dev.rejectUnauthorizeddefault Ðì£ó²3:	transport
+–"Creating dynamic HTTP/2 transports
+servicetransport_factory"
+subkeydynamic_http2_transportsw
+
+pingConfigi{"pingIdleConnection":true,"pingIntervalMs":10000,"pingTimeoutMs":20000,"idleConnectionTimeoutMs":300000}!
+baseUrlhttps://api4.cursor.sh Ñì£ó²3:	transport
+ý-HTTP2 transport created with network settings
+servicetransport_factory!
+subkeyhttp2_transport_created
+httpVersion2!
+baseUrlhttps://api4.cursor.sh#
+compression.sendCompressiongzip)
+compression.acceptCompression["gzip"]
+tls.minVersionTLSv1.2!
+tls.rejectUnauthorizeddefault
+tls.alpnProtocols["h2"]
+tls.hasCustomCAtrue
+tls.systemCertCount293 
+http2.pingIdleConnectiontrue
+http2.pingIntervalMs10000
+http2.pingTimeoutMs20000'
+http2.idleConnectionTimeoutMs300000+
+ http2.settings.initialWindowSizedefault&
+http2.settings.maxFrameSizedefault.
+#http2.settings.maxConcurrentStreamsdefault+
+ http2.settings.maxHeaderListSizedefault!
+http2.settings.enablePushtrue)
+http2.settings.headerTableSizedefault
+dnsAffinity.enabledtrue
+dev.isDevelopmentfalse!
+dev.rejectUnauthorizeddefault Ñì£ó²3:	transport
+õ-HTTP2 transport created with network settings
+servicetransport_factory!
+subkeyhttp2_transport_created
+httpVersion2!
+baseUrlhttps://api4.cursor.sh#
+compression.sendCompressiongzip)
+compression.acceptCompression["gzip"]
+tls.minVersionTLSv1.2!
+tls.rejectUnauthorizeddefault
+tls.alpnProtocols["h2"]
+tls.hasCustomCAtrue
+tls.systemCertCount293+
+ http2.settings.initialWindowSizedefault&
+http2.settings.maxFrameSizedefault.
+#http2.settings.maxConcurrentStreamsdefault+
+ http2.settings.maxHeaderListSizedefault!
+http2.settings.enablePushtrue)
+http2.settings.headerTableSizedefault
+dnsAffinity.enabledtrue
+dev.isDevelopmentfalse!
+dev.rejectUnauthorizeddefault Ñì£ó²3:	transport
+–"Creating dynamic HTTP/2 transports
+servicetransport_factory"
+subkeydynamic_http2_transportsw
+
+pingConfigi{"pingIdleConnection":true,"pingIntervalMs":10000,"pingTimeoutMs":20000,"idleConnectionTimeoutMs":300000}!
+baseUrlhttps://api4.cursor.sh Óì£ó²3:	transport

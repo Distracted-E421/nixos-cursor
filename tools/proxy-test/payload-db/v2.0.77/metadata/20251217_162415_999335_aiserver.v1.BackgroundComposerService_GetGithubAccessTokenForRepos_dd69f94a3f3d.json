@@ -1,0 +1,44 @@
+{
+  "filename": "20251217_162415_999335_aiserver.v1.BackgroundComposerService_GetGithubAccessTokenForRepos_dd69f94a3f3d",
+  "timestamp": "2025-12-17T16:24:15.999693",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.BackgroundComposerService",
+  "endpoint": "GetGithubAccessTokenForRepos",
+  "full_path": "/aiserver.v1.BackgroundComposerService/GetGithubAccessTokenForRepos",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 41,
+  "content_hash_sha256": "dd69f94a3f3d7650f5c73717058fba9cc7e3c63548567bdc29838c984d88b291",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 661088628,
+      "actual_length": 36,
+      "raw_hex": "6875622e636f6d2f446973747261637465642d453432312f6e69786f732d637572736f72"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-5b8ee6fed37eb091717f263b4a8c0da3-372c07a6f634fa05-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=1149c480-1a12-4ed3-8be1-f0c33aad0738",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "1149c480-1a12-4ed3-8be1-f0c33aad0738",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b"
+  }
+}

@@ -1,0 +1,22 @@
+[project]
+name = "cursor-proxy-test"
+version = "0.1.0"
+description = "mitmproxy addon for testing Cursor API interception"
+requires-python = ">=3.11"
+dependencies = [
+    "mitmproxy>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+

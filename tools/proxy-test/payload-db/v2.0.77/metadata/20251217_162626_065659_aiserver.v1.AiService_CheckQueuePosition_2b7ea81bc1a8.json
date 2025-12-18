@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162626_065659_aiserver.v1.AiService_CheckQueuePosition_2b7ea81bc1a8",
+  "timestamp": "2025-12-17T16:26:26.065981",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AiService",
+  "endpoint": "CheckQueuePosition",
+  "full_path": "/aiserver.v1.AiService/CheckQueuePosition",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 56,
+  "content_hash_sha256": "2b7ea81bc1a8c60fc104f5acae8913f28aab23aa864df01428022644290c0d0d",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 607269221,
+      "actual_length": 51,
+      "raw_hex": "32653036332d313366612d343864382d626535642d65313135313762386534323712100a0c67656d696e692d332d70726f2200"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-c7e659c92dca38d0fc6fefd44981133e-e439c95a5e500826-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=e6a7f2a8-82e9-4453-9eff-26b5d63a204b",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "e6a7f2a8-82e9-4453-9eff-26b5d63a204b",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

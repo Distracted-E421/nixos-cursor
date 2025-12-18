@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162127_319311_aiserver.v1.ToolCallEventService_SubmitToolCallEvents_312e8c63c513",
+  "timestamp": "2025-12-17T16:21:27.319532",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.ToolCallEventService",
+  "endpoint": "SubmitToolCallEvents",
+  "full_path": "/aiserver.v1.ToolCallEventService/SubmitToolCallEvents",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 293,
+  "content_hash_sha256": "312e8c63c5130cd7ec76761c518f965013ab43094b6b4b19c879d4a1f8363e49",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 695496559,
+      "actual_length": 288,
+      "raw_hex": "6c5f63616c6c5f73657373696f6e5f313736363030393639363034305f706c72723535777468129d010a1e746f6f6c755f3031457236514e54764d4567467251773268643362366279121072756e5f7465726d696e616c5f636d641a2433376661613735302d633336612d343330662d616361362d373739663437393035666364221d636c617564652d342e352d6f7075732d686967682d7468696e6b696e672a0c08d8d98cca061080bebac401320c08d8d98cca0610c08ad1c6023a0610c0cc96820150011a06322e302e37372228626139306632663838653439313133313237363161626162393439326334323434323131376366302a0d0a08706c6174666f726d1201332a0b0a04617263681203783634320a666f726567726f756e64"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-ca200711eaaac1c0ef84321cf6cd6b55-f5a195cbd2d5ad3b-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=6af4ff74-9618-44f0-8f43-4bac9978bc27",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "6af4ff74-9618-44f0-8f43-4bac9978bc27",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

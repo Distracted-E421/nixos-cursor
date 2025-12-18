@@ -1,8 +1,10 @@
 {
   "plan_id": "cursor-docs-v0.4-roadmap",
   "created": "2025-12-17T16:30:00Z",
-  "goal": "cursor-docs 0.4: Multi-page crawling, persistent security, integration alternatives",
+  "updated": "2025-12-17T20:40:00Z",
+  "goal": "cursor-docs 0.4: Multi-page crawling, persistent security, streaming proxy, integration alternatives",
   "priority_order": [
+    "streaming_proxy",
     "javadoc_crawler",
     "security_persistence",
     "integration_alternatives",
@@ -10,140 +12,284 @@
   ],
   "phases": [
     {
+      "phase": 0,
+      "name": "Streaming Proxy Research & Development",
+      "status": "in_progress",
+      "notes": "CRITICAL: Intercept Cursor AI traffic for mid-stream context injection",
+      "research_completed": "2025-12-17",
+      "findings_doc": "tools/proxy-test/FINDINGS.md",
+      "tasks": [
+        {
+          "id": "proxy-research-1",
+          "task": "Investigate Cursor network architecture",
+          "status": "completed",
+          "details": "Found: Electron with separate Chromium/Node.js network stacks"
+        },
+        {
+          "id": "proxy-research-2",
+          "task": "Test standard proxy methods",
+          "status": "completed",
+          "details": "FAILED: Cursor ignores HTTP_PROXY env vars in Node.js service"
+        },
+        {
+          "id": "proxy-research-3",
+          "task": "Test transparent proxy (iptables)",
+          "status": "completed",
+          "details": "SUCCESS: iptables NAT redirect works, captured PotentiallyGenerateMemory"
+        },
+        {
+          "id": "proxy-research-4",
+          "task": "Identify protocol",
+          "status": "completed",
+          "details": "gRPC over HTTP/2 with Protobuf serialization"
+        },
+        {
+          "id": "proxy-test-1",
+          "task": "Create robust test script with ulimits",
+          "status": "completed",
+          "details": "tools/proxy-test/robust_intercept_test.sh"
+        },
+        {
+          "id": "proxy-test-2",
+          "task": "Run extended capture session",
+          "status": "in_progress",
+          "details": "Capture actual AI streaming during chat"
+        },
+        {
+          "id": "proxy-test-3",
+          "task": "Decode gRPC/Protobuf payloads",
+          "status": "pending",
+          "details": "May need to reverse-engineer .proto schema"
+        },
+        {
+          "id": "proxy-rust-1",
+          "task": "Design Rust streaming proxy architecture",
+          "status": "pending",
+          "details": "High-performance, gRPC-aware, injection-capable"
+        },
+        {
+          "id": "proxy-rust-2",
+          "task": "Implement Rust proxy core",
+          "status": "pending"
+        },
+        {
+          "id": "proxy-rust-3",
+          "task": "Add mid-stream injection API",
+          "status": "pending"
+        }
+      ],
+      "key_discoveries": {
+        "cursor_architecture": "Electron with two network stacks: Chromium (respects --proxy-server) and Node.js (ignores all proxy settings)",
+        "proxy_bypass_method": "iptables NAT redirect at kernel level",
+        "protocol": "gRPC/Protobuf over HTTP/2",
+        "endpoints_found": [
+          "aiserver.v1.AiService/CheckQueuePosition",
+          "aiserver.v1.AiService/PotentiallyGenerateMemory",
+          "aiserver.v1.ToolCallEventService/SubmitToolCallEvents",
+          "aiserver.v1.AnalyticsService/Batch",
+          "aiserver.v1.DashboardService/GetUsageBasedPremiumRequests"
+        ],
+        "domains": ["api2.cursor.sh", "api3.cursor.sh", "metrics.cursor.sh"]
+      }
+    },
+    {
       "phase": 1,
       "name": "Multi-Page Crawler (Javadoc/Frameset Support)",
-      "status": "not_started",
+      "status": "completed",
       "tasks": [
         {
           "id": "javadoc-1",
           "task": "Create CrawlerStrategy behaviour for different doc types",
-          "status": "not_started",
+          "status": "completed",
           "details": "Single-page, Frameset, Sitemap, Link-following"
         },
         {
           "id": "javadoc-2",
           "task": "Implement FramesetCrawler for Javadoc-style docs",
-          "status": "not_started",
+          "status": "completed",
           "details": "Parse <frameset>, follow frame src, aggregate content"
         },
         {
           "id": "javadoc-3",
           "task": "Add SitemapCrawler for XML sitemap discovery",
-          "status": "not_started",
+          "status": "completed",
           "details": "Parse sitemap.xml, respect crawl limits"
         },
         {
           "id": "javadoc-4",
           "task": "Implement LinkFollower for recursive crawling",
-          "status": "not_started",
+          "status": "completed",
           "details": "Same-domain links, depth limit, seen-url tracking"
         },
         {
           "id": "javadoc-5",
           "task": "Test with Ghidra API docs",
-          "status": "not_started"
+          "status": "completed",
+          "details": "Frameset detection working, needs parallel optimization"
+        },
+        {
+          "id": "javadoc-6",
+          "task": "Implement background crawler with live progress",
+          "status": "completed",
+          "details": "GenServer-based, non-blocking, live updates"
         }
       ]
     },
     {
       "phase": 2,
       "name": "Security Alert Persistence",
-      "status": "not_started",
+      "status": "completed",
       "tasks": [
         {
           "id": "security-1",
           "task": "Create security_alerts SQLite table",
-          "status": "not_started",
+          "status": "completed",
           "details": "id, source_id, alert_type, severity, detected_at, resolved_at, resolution_note"
         },
         {
           "id": "security-2",
           "task": "Create quarantine_items SQLite table",
-          "status": "not_started",
+          "status": "completed",
           "details": "id, source_url, tier, snapshot, raw_hash, reviewed_by, reviewed_at"
         },
         {
           "id": "security-3",
           "task": "Migrate Quarantine module from ETS to SQLite",
-          "status": "not_started"
+          "status": "completed"
         },
         {
           "id": "security-4",
           "task": "Add alert resolution tracking",
-          "status": "not_started",
+          "status": "pending",
           "details": "When source re-indexed, mark alerts resolved or persisting"
         },
         {
           "id": "security-5",
           "task": "Export alerts API for cursor-studio GUI",
-          "status": "not_started"
+          "status": "pending"
         }
       ]
     },
     {
       "phase": 3,
-      "name": "Integration Alternatives (Beyond MCP)",
-      "status": "not_started",
-      "notes": "MCP has ~2-4K token overhead per message. Need lighter approach.",
+      "name": "HTTP API & Daemon Mode",
+      "status": "in_progress",
       "tasks": [
         {
-          "id": "integration-1",
-          "task": "Design file-based injection protocol",
-          "status": "not_started",
-          "details": "~/.cursor-docs/injection.md read by AI via @file reference"
+          "id": "api-1",
+          "task": "Implement basic HTTP server",
+          "status": "completed",
+          "details": "TCP server with custom router"
         },
         {
-          "id": "integration-2",
-          "task": "Create lightweight context file generator",
-          "status": "not_started",
-          "details": "50-100 tokens: search results, relevant chunks, security status"
+          "id": "api-2",
+          "task": "Add REST endpoints for CRUD",
+          "status": "completed",
+          "details": "/api/sources, /api/search, /api/jobs"
         },
         {
-          "id": "integration-3",
-          "task": "Implement watch mode for live updates",
-          "status": "not_started",
-          "details": "Regenerate injection file when docs change"
+          "id": "api-3",
+          "task": "Implement daemon mode (systemd)",
+          "status": "pending"
         },
         {
-          "id": "integration-4",
-          "task": "Research Cursor extension API possibilities",
-          "status": "not_started"
+          "id": "api-4",
+          "task": "Add client/server sync for multi-device",
+          "status": "pending"
         }
       ]
     },
     {
       "phase": 4,
+      "name": "Integration Alternatives (Beyond MCP)",
+      "status": "pending",
+      "notes": "MCP has ~2-4K token overhead per message. Need lighter approach.",
+      "tasks": [
+        {
+          "id": "integration-1",
+          "task": "Design file-based injection protocol",
+          "status": "pending",
+          "details": "~/.cursor-docs/injection.md read by AI via @file reference"
+        },
+        {
+          "id": "integration-2",
+          "task": "Create lightweight context file generator",
+          "status": "pending",
+          "details": "50-100 tokens: search results, relevant chunks, security status"
+        },
+        {
+          "id": "integration-3",
+          "task": "Implement watch mode for live updates",
+          "status": "pending",
+          "details": "Regenerate injection file when docs change"
+        },
+        {
+          "id": "integration-4",
+          "task": "Research Cursor extension API possibilities",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "phase": 5,
       "name": "Custom Modes Foundation",
-      "status": "not_started",
-      "notes": "Per cursor-modes-research.md - building our own since Cursor removed theirs",
+      "status": "partially_complete",
+      "notes": "Rust implementation exists in cursor-studio-egui, needs integration",
       "tasks": [
         {
           "id": "modes-1",
-          "task": "Design ModeConfig struct in Elixir",
-          "status": "not_started",
-          "details": "name, allowed_tools, blocked_tools, model, system_prompt, context_injection"
+          "task": "Design ModeConfig struct",
+          "status": "completed",
+          "details": "Rust implementation in cursor-studio-egui/src/modes/"
         },
         {
           "id": "modes-2",
           "task": "Create Nickel schema for mode definitions",
-          "status": "not_started",
+          "status": "pending",
           "details": "modes.ncl with type contracts"
         },
         {
           "id": "modes-3",
           "task": "Implement tool locking logic",
-          "status": "not_started",
-          "details": "Filter MCP tool list based on mode"
+          "status": "completed",
+          "details": "In Rust ModeConfig"
         },
         {
           "id": "modes-4",
           "task": "Build system prompt composer",
-          "status": "not_started",
+          "status": "pending",
           "details": "Layer 0-3 context injection per environment-awareness-research.md"
+        },
+        {
+          "id": "modes-5",
+          "task": "Integrate with streaming proxy",
+          "status": "pending",
+          "details": "Inject modes via proxy intercept"
         }
       ]
     }
   ],
+  "streaming_proxy_strategy": {
+    "phase1_research": {
+      "status": "completed",
+      "outcome": "iptables NAT redirect works, Cursor uses gRPC/Protobuf"
+    },
+    "phase2_testing": {
+      "status": "in_progress",
+      "tools": ["robust_intercept_test.sh", "test_cursor_proxy.py"],
+      "goals": ["Capture full AI conversation", "Decode protobuf structure", "Identify streaming endpoint"]
+    },
+    "phase3_rust_proxy": {
+      "status": "pending",
+      "requirements": [
+        "High-performance TCP/TLS handling",
+        "gRPC stream interception",
+        "Protobuf parsing (may need reverse-engineered schema)",
+        "Mid-stream injection capability",
+        "Integration with cursor-docs and modes"
+      ]
+    }
+  },
   "integration_alternatives_analysis": {
     "mcp_problems": [
       "2-4K tokens of tool schemas every message",
@@ -151,56 +297,41 @@
       "All tools present even when not needed",
       "No dynamic context injection"
     ],
+    "streaming_proxy_solution": {
+      "description": "Intercept and modify AI traffic at kernel level",
+      "pros": [
+        "Zero token overhead for injection mechanism",
+        "Can inject context mid-stream",
+        "Full control over AI conversation",
+        "Can implement custom modes without Cursor support"
+      ],
+      "cons": [
+        "Requires iptables (root for setup)",
+        "Complex protocol (gRPC/Protobuf)",
+        "May break with Cursor updates"
+      ],
+      "status": "PROVEN_VIABLE"
+    },
     "alternatives": {
       "file_based_injection": {
         "description": "Generate ~/.cursor-docs/context.md that user references via @file",
-        "pros": [
-          "Zero runtime overhead",
-          "User controls when to include",
-          "Simple"
-        ],
-        "cons": [
-          "Manual @file reference",
-          "Not real-time"
-        ],
+        "pros": ["Zero runtime overhead", "User controls when to include", "Simple"],
+        "cons": ["Manual @file reference", "Not real-time"],
         "token_cost": "50-100 per search result"
       },
       "lightweight_mcp": {
         "description": "MCP server with minimal tool set - just search and status",
-        "pros": [
-          "Native integration",
-          "Automatic"
-        ],
-        "cons": [
-          "Still has schema overhead",
-          "~500 tokens minimum"
-        ],
+        "pros": ["Native integration", "Automatic"],
+        "cons": ["Still has schema overhead", "~500 tokens minimum"],
         "token_cost": "500-800 base + 50-100 per result"
       },
-      "cursor_extension": {
-        "description": "Build VS Code extension that injects into Cursor",
-        "pros": [
-          "Deep integration",
-          "Could modify system prompt"
-        ],
-        "cons": [
-          "Complex to build",
-          "Cursor updates may break it"
-        ],
-        "token_cost": "Depends on implementation"
-      },
       "hybrid": {
-        "description": "Lightweight MCP + file injection for context",
-        "pros": [
-          "Best of both",
-          "Flexible"
-        ],
-        "cons": [
-          "Two systems to maintain"
-        ],
-        "token_cost": "300 base + file content"
+        "description": "Streaming proxy + file injection for context",
+        "pros": ["Best of both", "Full control + simple fallback"],
+        "cons": ["Two systems to maintain"],
+        "token_cost": "Minimal with proxy"
       }
     },
-    "recommendation": "Start with file-based injection (simplest), add lightweight MCP later"
+    "recommendation": "Primary: Streaming proxy. Fallback: File-based injection"
   }
 }

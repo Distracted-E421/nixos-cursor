@@ -65,6 +65,7 @@ echo ""
 echo "Press Ctrl+C to stop the proxy."
 echo ""
 
-# Run the proxy with our test addon
-exec mitmdump -s "$SCRIPT_DIR/test_cursor_proxy.py" -p $PROXY_PORT --ssl-insecure
+# Run the proxy with our test addon (tee to log file)
+echo "📝 Logging to: /tmp/proxy.log"
+exec mitmdump -s "$SCRIPT_DIR/test_cursor_proxy.py" -p $PROXY_PORT --ssl-insecure 2>&1 | tee /tmp/proxy.log
 

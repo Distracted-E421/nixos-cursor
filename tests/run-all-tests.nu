@@ -168,14 +168,52 @@ def test-python [repo_root: string]: nothing -> list {
         return [{ test: "Python", status: "skip" }]
     }
     
-    # Check syntax
-    let r1 = (do { python3 -m py_compile $"($scripts_dir)/compute_hashes.py" } | complete)
-    if $r1.exit_code == 0 {
-        pass "compute_hashes.py syntax"
-        $results = ($results | append { test: "compute_hashes.py syntax", status: "pass" })
-    } else {
-        fail "compute_hashes.py syntax"
-        $results = ($results | append { test: "compute_hashes.py syntax", status: "fail" })
+    # Check syntax for all Python scripts
+    let py_scripts = [
+        "compute_hashes.py"
+        "cursor_context_inject.py"
+        "cursor_docs_mcp.py"
+        "cursor_sync_poc.py"
+    ]
+    
+    for script in $py_scripts {
+        let script_path = $"($scripts_dir)/($script)"
+        if ($script_path | path exists) {
+            let r = (do { python3 -m py_compile $script_path } | complete)
+            if $r.exit_code == 0 {
+                pass $"($script) syntax"
+                $results = ($results | append { test: $"($script) syntax", status: "pass" })
+            } else {
+                fail $"($script) syntax"
+                $results = ($results | append { test: $"($script) syntax", status: "fail" })
+            }
+        }
+    }
+    
+    # Check if pytest tests exist and can be discovered
+    let tests_dir = $"($scripts_dir)/tests"
+    if ($tests_dir | path exists) {
+        let test_files = (ls $"($tests_dir)/test_*.py" | length)
+        if $test_files > 0 {
+            pass $"Found ($test_files) pytest test files"
+            $results = ($results | append { test: "Pytest tests discovered", status: "pass" })
+            
+            # Try running pytest if available
+            if (has-command "pytest") {
+                info "Running pytest..."
+                let r = (do { cd $scripts_dir; pytest tests/ -v --tb=short 2>&1 } | complete)
+                if $r.exit_code == 0 {
+                    pass "Pytest tests passed"
+                    $results = ($results | append { test: "Pytest", status: "pass" })
+                } else {
+                    fail "Pytest tests failed"
+                    $results = ($results | append { test: "Pytest", status: "fail", error: $r.stderr })
+                }
+            } else {
+                skip-test "pytest not installed - run with: pip install pytest pytest-asyncio"
+                $results = ($results | append { test: "Pytest", status: "skip" })
+            }
+        }
     }
     
     # Check imports (requires deps)
@@ -281,22 +319,34 @@ def test-rust [repo_root: string]: nothing -> list {
         }
     }
     
-    # Try cargo check (syntax validation) - requires nix develop for deps
-    # Check if we have pkg-config and openssl (required for cargo check)
-    let has_openssl = (do { pkg-config --exists openssl } | complete).exit_code == 0
-    if $has_openssl {
-        info "Running cargo check (this may take a moment)..."
-        let cargo_result = (do { cd $rust_dir; cargo check } | complete)
-        if $cargo_result.exit_code == 0 {
-            pass "cargo check passed"
-            $results = ($results | append { test: "cargo check", status: "pass" })
-        } else {
-            fail "cargo check failed"
-            $results = ($results | append { test: "cargo check", status: "fail", error: $cargo_result.stderr })
+    # Try cargo check (syntax validation)
+    info "Running cargo check (this may take a moment)..."
+    let cargo_result = (do { cd $rust_dir; cargo check 2>&1 } | complete)
+    if $cargo_result.exit_code == 0 {
+        pass "cargo check passed"
+        $results = ($results | append { test: "cargo check", status: "pass" })
+    } else {
+        fail "cargo check failed"
+        $results = ($results | append { test: "cargo check", status: "fail", error: $cargo_result.stderr })
+    }
+    
+    # Run unit tests
+    info "Running cargo test..."
+    let test_result = (do { cd $rust_dir; cargo test 2>&1 } | complete)
+    if $test_result.exit_code == 0 {
+        # Count test results
+        let output = $test_result.stdout
+        pass "cargo test passed"
+        $results = ($results | append { test: "cargo test", status: "pass" })
+        
+        # Extract test count if possible
+        let test_line = ($output | lines | where { |l| $l =~ "test result:" } | first | default "")
+        if ($test_line | str length) > 0 {
+            info $test_line
         }
     } else {
-        skip-test "cargo check - run in nix develop for full deps"
-        $results = ($results | append { test: "cargo check", status: "skip" })
+        fail "cargo test failed"
+        $results = ($results | append { test: "cargo test", status: "fail", error: $test_result.stderr })
     }
     
     $results

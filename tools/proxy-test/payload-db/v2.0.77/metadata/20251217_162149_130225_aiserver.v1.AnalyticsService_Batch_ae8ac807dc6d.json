@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162149_130225_aiserver.v1.AnalyticsService_Batch_ae8ac807dc6d",
+  "timestamp": "2025-12-17T16:21:49.130411",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AnalyticsService",
+  "endpoint": "Batch",
+  "full_path": "/aiserver.v1.AnalyticsService/Batch",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 598,
+  "content_hash_sha256": "ae8ac807dc6d94445004360dff4ee714d35dc43fb1297f401e67a07289dbb0de",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 3389131285,
+      "actual_length": 593,
+      "raw_hex": "636f6d706f7365722e646966665f73756d6d61727912de010a190a0c66696c65734368616e676564120911000000000000f03f0a170a0a6c696e65734164646564120911000000000000f03f0a190a0c6c696e657352656d6f766564120911000000000000f03f0a280a056d6f64656c121f1a1d636c617564652d342e352d6f7075732d686967682d7468696e6b696e670a0f0a0969734167656e746963120220010a3b0a11636f6d706f73657252657175657374494412261a2433376661613735302d633336612d343330662d616361362d3737396634373930356663640a150a06737461747573120b1a09636f6d706c657465641891ea9df3b233322033313666626363373064663134626239623630616537333730663464323666323a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f720a96010a2b636f6d706f7365722e6765745f636f6e746578745f66726f6d5f70726576696f75735f6d6573736167657312150a130a0474797065120b1a096e6f5f63616368656418a5f09df3b233322063623136656333646263623234323333613364336464643437643030343138353a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f720a6e0a18636f6d706f7365722e636f64655f626c6f636b2e636f707912001881f39df3b233322066333134386564346266383734323337393138343638633033313762306463633a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f72"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-667116105f1bfd775351d042a2dcdd02-0a72cb9c464746cb-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=e97a023c-89d1-44a4-bc60-fafa2d3586e2",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "e97a023c-89d1-44a4-bc60-fafa2d3586e2",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

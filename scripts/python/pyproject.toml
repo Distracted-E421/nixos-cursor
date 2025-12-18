@@ -1,0 +1,43 @@
+[project]
+name = "cursor-scripts"
+version = "0.1.0"
+description = "Python scripts for Cursor IDE management and MCP servers"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=0.1.0",
+    "httpx>=0.25.0",
+    "beautifulsoup4>=4.12.0",
+    "sqlite-utils>=3.35.0",
+    "watchfiles>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+

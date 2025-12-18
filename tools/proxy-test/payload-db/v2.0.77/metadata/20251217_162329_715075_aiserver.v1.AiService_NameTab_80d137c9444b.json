@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162329_715075_aiserver.v1.AiService_NameTab_80d137c9444b",
+  "timestamp": "2025-12-17T16:23:29.715270",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AiService",
+  "endpoint": "NameTab",
+  "full_path": "/aiserver.v1.AiService/NameTab",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 703,
+  "content_hash_sha256": "80d137c9444b86f03fc5e0986b2f66775adef132a9f2e5e6aa8d99a690c59ab8",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 3154446988,
+      "actual_length": 698,
+      "raw_hex": "0152656164207468652066696c65202f686f6d652f653432312f6e69786f732d637572736f722f524541444d452e6d6420616e642073756d6d6172697a652069742e207468656e2052756e20606c73202d6c61202f686f6d652f653432312f6e69786f732d637572736f722f746f6f6c732f6020616e642074656c6c206d65207768617427732074686572652e10016a2435636138333638302d356435652d343465332d623330312d373733356561616632623830f802029a030801122908070b0f0ca80301ca0394037b22726f6f74223a7b226368696c6472656e223a5b7b226368696c6472656e223a5b7b2264657461696c223a302c22666f726d6174223a302c226d6f6465223a226e6f726d616c222c227374796c65223a22222c2274657874223a2252656164207468652066696c65202f686f6d652f653432312f6e69786f732d637572736f722f524541444d452e6d6420616e642073756d6d6172697a652069742e207468656e2052756e20606c73202d6c61202f686f6d652f653432312f6e69786f732d637572736f722f746f6f6c732f6020616e642074656c6c206d65207768617427732074686572652e222c2274797065223a2274657874222c2276657273696f6e223a317d5d2c22646972656374696f6e223a226c7472222c22666f726d6174223a22222c22696e64656e74223a302c2274797065223a22706172616772617068222c2276657273696f6e223a317d5d2c22646972656374696f6e223a226c7472222c22666f726d6174223a22222c22696e64656e74223a302c2274797065223a22726f6f74222c2276657273696f6e223a317d7df80300d2042432316532653036332d313366612d343864382d626535642d653131353137623865343237e80400f20418323032352d31322d31375432323a32323a32342e3432305afa040e0a0c67656d696e692d332d70726f800500"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-d7f9aa161c779ce3f9e56e72bf35dbad-58319e2dd9c939c3-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=6694778b-caae-42a0-a956-a38b636b7124",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "6694778b-caae-42a0-a956-a38b636b7124",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

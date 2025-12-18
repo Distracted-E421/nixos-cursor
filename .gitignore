@@ -54,3 +54,12 @@ screenshots/
 # Scratchpad is gitignored, but structure files are committed
 .ai-workspace/scratchpad/*.md
 .ai-workspace/memory.db
+
+# Payload database binaries (large, regeneratable)
+tools/proxy-test/payload-db/**/requests/*.bin
+tools/proxy-test/rust-captures/*.bin
+
+# Python venv (should not be committed)
+scripts/python/.venv/
+**/.venv/
+**/venv/

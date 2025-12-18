@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162527_761646_aiserver.v1.AnalyticsService_Batch_eec05b9c8a6a",
+  "timestamp": "2025-12-17T16:25:27.762155",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AnalyticsService",
+  "endpoint": "Batch",
+  "full_path": "/aiserver.v1.AnalyticsService/Batch",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 112,
+  "content_hash_sha256": "eec05b9c8a6ae9a09cc47417b298798b3408a83435f70eb35fb549bb9c8c7cb5",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 1846155363,
+      "actual_length": 107,
+      "raw_hex": "6f6d706f7365722e636f64655f626c6f636b2e636f7079120018f585a5f3b233322065393864323839366439636134393937623330663933303764393732613939613a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f72"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-034ad08ff247dea4fcdbb7afed4e6f04-e16a3da0d1472e04-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=1a09fb1a-4ae9-4f6c-9097-942f68a3eb43",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "1a09fb1a-4ae9-4f6c-9097-942f68a3eb43",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

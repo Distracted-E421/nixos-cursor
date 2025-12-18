@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162619_728024_aiserver.v1.AnalyticsService_Batch_85cc783c4cd7",
+  "timestamp": "2025-12-17T16:26:19.728549",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AnalyticsService",
+  "endpoint": "Batch",
+  "full_path": "/aiserver.v1.AnalyticsService/Batch",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 246,
+  "content_hash_sha256": "85cc783c4cd75e91561fc3759b1bd0560a64d172ba34a8691023c3136a9a6ea0",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 2114589282,
+      "actual_length": 241,
+      "raw_hex": "726f777365725f7669736962696c69747912160a140a076e756d5461627312091100000000000000001894bdaaf3b233322035316338643164303831616334366135626165653537666165663162626361613a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f720a740a1e636f6d706f7365722e73686966745f7461625f706c616e5f72656e646572120018d2c8adf3b233322037363566323961333537373634636634616462333036616161343061333834393a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f72"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-6cc5fa6461660c34c7e58760c0fa77a2-8c8b3dec37f5ca50-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=cb3531f0-21a0-4e9e-8af9-6eb8b6b8edde",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "cb3531f0-21a0-4e9e-8af9-6eb8b6b8edde",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

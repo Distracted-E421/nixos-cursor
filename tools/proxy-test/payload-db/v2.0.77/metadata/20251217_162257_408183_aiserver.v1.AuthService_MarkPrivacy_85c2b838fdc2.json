@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162257_408183_aiserver.v1.AuthService_MarkPrivacy_85c2b838fdc2",
+  "timestamp": "2025-12-17T16:22:57.408406",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AuthService",
+  "endpoint": "MarkPrivacy",
+  "full_path": "/aiserver.v1.AuthService/MarkPrivacy",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 13,
+  "content_hash_sha256": "85c2b838fdc2c146bbeeb203150716df098fcf6ee6dc1c6b6eb784d1596c450d",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 16,
+      "expected_length": 18874666,
+      "actual_length": 8,
+      "raw_hex": "036e657738004001"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-cda02c8705ac7f019cecabe52ec77fdf-58831766152bc4e7-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=bfb235fb-eb49-406b-aa68-0ac39faa03e8",
+    "x-client-key": "e87eb829bcb14b1873a831cf152f7882a1a0011750cc02ce1c9e0d3df4c74227",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "bfb235fb-eb49-406b-aa68-0ac39faa03e8",
+    "x-session-id": "99cb4008-1ba8-423c-8ecd-137a52ef05df",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

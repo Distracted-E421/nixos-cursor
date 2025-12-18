@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162622_095059_aiserver.v1.AnalyticsService_Batch_415ea7e8ab20",
+  "timestamp": "2025-12-17T16:26:22.095191",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AnalyticsService",
+  "endpoint": "Batch",
+  "full_path": "/aiserver.v1.AnalyticsService/Batch",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 509,
+  "content_hash_sha256": "415ea7e8ab2087fe3ec965e45e21468b2952befe0fd3d697783990cd352e088e",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 3775007247,
+      "actual_length": 504,
+      "raw_hex": "636f6d706f7365722e7375626d697412fb010a0f0a046d6f646512071a054d6178696d0a100a05656e74727912071a05636c69636b0a110a0b757365436f646562617365120220000a0f0a0969734167656e746963120220000a0f0a09697345646974696e67120220000a120a0c697347656e65726174696e67120220000a180a0c636f6d706f7365725479706512081a06656469746f720a280a056d6f64656c121f1a1d636c617564652d342e352d6f7075732d686967682d7468696e6b696e670a170a0d7468696e6b696e674c6576656c12061a046e6f6e650a1e0a11636f6e63757272656e7452756e6e696e6712091100000000000000400a100a0a6973576f726b7472656512022000189ee1a9f3b233322033613663373731343936636334666161623232323837373733353462336166333a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f720a96010a2b636f6d706f7365722e6765745f636f6e746578745f66726f6d5f70726576696f75735f6d6573736167657312150a130a0474797065120b1a096e6f5f63616368656418c8e2a9f3b233322037303165346165383038623534323363383032343238343539386262656163353a270a250a054c696e757812037836341a07362e31322e36322206322e302e37372a06656469746f72"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-47bfb765b471606e6876ff8546732099-c6972bc03a03d701-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=4bc2d069-779f-4c2a-ae0f-fe3ba9c88e87",
+    "x-client-key": "31ec948fe449fd3708aa5c39fea5d71fbf59b2ca40bb5e9d23ccb73a13b4ccc9",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "4bc2d069-779f-4c2a-ae0f-fe3ba9c88e87",
+    "x-session-id": "d7f3052b-67c9-45da-acb8-6ae03b5ba94b",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

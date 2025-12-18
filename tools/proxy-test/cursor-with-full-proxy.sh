@@ -20,10 +20,42 @@ if [ ! -f "$HOME/.mitmproxy/mitmproxy-ca-cert.pem" ]; then
     exit 1
 fi
 
-# Kill existing Cursor to ensure fresh start with new env
-echo "🔄 Killing existing Cursor instances..."
-pkill -9 -f cursor 2>/dev/null || true
-sleep 2
+# Handle options
+KILL_EXISTING=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --kill)
+            KILL_EXISTING=true
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Check if Cursor app is already running
+# Exclude false positives: cursor-docs, mitmproxy scripts, grep itself
+CURSOR_RUNNING=$(pgrep -f "cursor-[0-9].*share/cursor/cursor" 2>/dev/null | head -1 || true)
+
+if [[ -n "$CURSOR_RUNNING" ]]; then
+    if [[ "$KILL_EXISTING" == "true" ]]; then
+        echo "🔄 Killing existing Cursor instances..."
+        # Kill the main process tree
+        pkill -9 -f "cursor-[0-9].*share/cursor/cursor" 2>/dev/null || true
+        sleep 2
+    else
+        echo "⚠️  Cursor is already running! (PID: $CURSOR_RUNNING)"
+        echo ""
+        echo "Options:"
+        echo "  1. Close Cursor manually (Ctrl+Q), then run this script again"
+        echo "  2. Run with --kill flag: $0 --kill"
+        echo "     (⚠️  Don't run --kill from Cursor's integrated terminal!)"
+        echo ""
+        echo "For safest testing, run from Konsole/Kitty AFTER closing Cursor."
+        exit 1
+    fi
+fi
 
 echo "🚀 Launching Cursor with full proxy support..."
 echo "   Proxy: $PROXY_URL"

@@ -2,9 +2,9 @@
 
 > **Goal**: Intercept AI responses mid-stream to inject context, detect needs, and enhance capabilities across all projects.
 
-## 🔬 Testing Status (Dec 17, 2025)
+## 🔬 Testing Status (Dec 17, 2025) - Extended Testing
 
-### Proxy Interception Results
+### Phase 1: Basic Proxy (Chromium flags only)
 
 | Endpoint | Interception | Status |
 |----------|--------------|--------|
@@ -13,19 +13,57 @@
 | `marketplace.cursorapi.com` | ✅ Works | Extensions |
 | `api2.cursor.sh/auth/*` | ✅ Works | Auth/profile |
 | `api2.cursor.sh/updates/*` | ✅ Works | Update checks |
-| `api2.cursor.sh` (streaming) | ❌ Cert-pinned | AI chat - TLS handshake fails |
+| `api2.cursor.sh` (streaming) | ❌ Bypassed | Node.js ignored Chromium proxy |
 | `app.posthog.com` | ❌ Cert-pinned | Analytics |
+
+### Phase 2: Full Proxy (Env vars + Chromium flags)
+
+Added `HTTP_PROXY`, `HTTPS_PROXY`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `NODE_EXTRA_CA_CERTS` to force Node.js through proxy.
+
+**Result**: Node.js process now has all proxy env vars! ✅
+
+| Endpoint Category | Interception | Notes |
+|-------------------|--------------|-------|
+| `aiserver.v1.AnalyticsService/Batch` | ✅ Captured | Analytics batching |
+| `aiserver.v1.DashboardService/*` | ✅ Captured | User/team info |
+| `aiserver.v1.AiService/CheckQueuePosition` | ✅ Captured | Queue status |
+| `aiserver.v1.AiService/AvailableModels` | ✅ Captured | Model list |
+| `aiserver.v1.ToolCallEventService/*` | ✅ Captured | Tool call telemetry |
+| `StreamChat` / `Conversation` | ❓ NOT SEEN | AI chat streaming - **never appeared in logs** |
+
+### Key Finding: AI Streaming Traffic Mystery
+
+Despite capturing 40+ different `api2.cursor.sh` endpoints, we have **ZERO** captures of:
+- `StreamChat`
+- `StreamCode`
+- `Conversation`
+- Any streaming endpoint
+
+**Possible explanations:**
+1. **Different transport**: Uses gRPC/WebSocket over AWS Global Accelerator (IPs: `99.83.165.34`, `35.71.162.24`)
+2. **Separate connection pool**: AI streaming may use a dedicated HTTP client that doesn't respect env vars
+3. **Certificate pinning**: Cursor may pin certs specifically for streaming endpoints
+4. **Need active AI request**: We may not have triggered an actual AI conversation during monitoring
+
+### Direct Connections Observed
+
+These IPs connect directly (bypassing proxy) from the Node.js extension host:
+
+| IP | Reverse DNS | Likely Purpose |
+|----|-------------|----------------|
+| `99.83.165.34` | `awsglobalaccelerator.com` | 🎯 Likely AI streaming |
+| `35.71.162.24` | `awsglobalaccelerator.com` | 🎯 Likely AI streaming |
+| `104.18.19.125` | Cloudflare (no PTR) | api3/CDN |
+| `52.200.210.126` | EC2 | Backend service |
+| `54.84.96.41` | EC2 | Backend service |
 
 ### Next Steps
 
-1. **System-wide CA Trust**: Add mitmproxy CA to NixOS PKI trust store
-2. **Test if system CA bypasses app-level pinning**
-3. **If still blocked**: Investigate Electron app modification or Frida
-
-### Key Finding
-
-Cursor uses **selective cert pinning** - non-critical endpoints work fine,
-but the AI streaming endpoints have additional protection.
+1. **Trigger actual AI conversation** in proxied Cursor and monitor
+2. **Investigate Global Accelerator bypass** - may need different proxy approach
+3. **Try iptables/nftables NAT redirect** - force ALL :443 traffic through proxy
+4. **Test gRPC-specific interception** if Cursor uses gRPC for streaming
+5. **System CA trust** - Add to NixOS PKI as last resort
 
 ## Overview
 

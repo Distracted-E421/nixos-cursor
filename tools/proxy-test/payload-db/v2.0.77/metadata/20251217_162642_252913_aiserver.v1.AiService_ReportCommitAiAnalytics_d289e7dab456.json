@@ -1,0 +1,47 @@
+{
+  "filename": "20251217_162642_252913_aiserver.v1.AiService_ReportCommitAiAnalytics_d289e7dab456",
+  "timestamp": "2025-12-17T16:26:42.253200",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AiService",
+  "endpoint": "ReportCommitAiAnalytics",
+  "full_path": "/aiserver.v1.AiService/ReportCommitAiAnalytics",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 172,
+  "content_hash_sha256": "d289e7dab4560d3d2d9a80a72b3ec64497509f48448269829ac8b51c99bfd6a3",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 674773094,
+      "actual_length": 167,
+      "raw_hex": "3331383637376463373261616136313037313930316161363836306534616161343139323410fa07180b30fa07521c446973747261637465642d453432312f6e69786f732d637572736f72600b6a0862303661366464306a0831373435356535386a0863313365353062667233646f63733a2073747265616d696e672070726f7879202b206461656d6f6e206172636869746563747572652064657369676e7378a0ecf9eab233"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "cookie": "",
+    "traceparent": "00-0a8d5255afcd25e2bf6d1e3a1fb5d92b-7a11dfc8ea21dc63-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=360813dd-2129-4dd8-b1f5-07868c9f702c",
+    "x-client-key": "e87eb829bcb14b1873a831cf152f7882a1a0011750cc02ce1c9e0d3df4c74227",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-streaming": "true",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "360813dd-2129-4dd8-b1f5-07868c9f702c",
+    "x-session-id": "99cb4008-1ba8-423c-8ecd-137a52ef05df",
+    "Host": "api2.cursor.sh",
+    "Connection": "close",
+    "Transfer-Encoding": "chunked"
+  }
+}

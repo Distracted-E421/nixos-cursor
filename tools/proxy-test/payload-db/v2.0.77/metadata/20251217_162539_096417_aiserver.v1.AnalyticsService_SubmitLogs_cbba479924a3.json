@@ -1,0 +1,41 @@
+{
+  "filename": "20251217_162539_096417_aiserver.v1.AnalyticsService_SubmitLogs_cbba479924a3",
+  "timestamp": "2025-12-17T16:25:39.096507",
+  "cursor_version": "2.0.77",
+  "direction": "request",
+  "service": "aiserver.v1.AnalyticsService",
+  "endpoint": "SubmitLogs",
+  "full_path": "/aiserver.v1.AnalyticsService/SubmitLogs",
+  "host": "api2.cursor.sh",
+  "method": "POST",
+  "content_length": 184,
+  "content_hash_sha256": "cbba479924a314a25e656f0f611bf608a659a67f90c73760436da6d7d15e2ebf",
+  "grpc_messages": [
+    {
+      "type": "truncated",
+      "compressed": 10,
+      "expected_length": 3036743682,
+      "actual_length": 179,
+      "raw_hex": "12256f7665727269646541757468546f6b656e20656d7074793b2066616c6c696e67206261636b1a1e0a067375626b657912146f766572726964655f746f6b656e5f656d7074791a300a0773657276696365122561697365727665722e76312e4261636b67726f756e64436f6d706f736572536572766963651a2b0a066d6574686f6412214765744261636b67726f756e64436f6d706f7365725573657253657474696e6773209acbacf3b2333a0461757468"
+    }
+  ],
+  "content_type": "application/proto",
+  "headers": {
+    "accept-encoding": "gzip",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnaXRodWJ8dXNlcl8wMUo5SFQ1QzdaMVhXMUVQUUtWR1JFNlhNUSIsInRpbWUiOiIxNzY1NzY2MjMzIiwicmFuZG9tbmVzcyI6IjZhZjJhMWI2LWZmY2YtNDgzMiIsImV4cCI6MTc3MDk1MDIzMywiaXNzIjoiaHR0cHM6Ly9hdXRoZW50aWNhdGlvbi5jdXJzb3Iuc2giLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG9mZmxpbmVfYWNjZXNzIiwiYXVkIjoiaHR0cHM6Ly9jdXJzb3IuY29tIiwidHlwZSI6InNlc3Npb24ifQ.vJ1tpNQ042z5uMGDyrqPs46TqPhyfoVAMctcbxGX6wU",
+    "connect-protocol-version": "1",
+    "content-type": "application/proto",
+    "traceparent": "00-23dc35acdcc7c3664b6f96d7a084d329-33ef94a862da56e1-00",
+    "user-agent": "connect-es/1.6.1",
+    "x-amzn-trace-id": "Root=cf98e4c7-aef3-42ff-ba96-1eef1768e31d",
+    "x-cursor-checksum": "Vy4wLeOe46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/799962be93e8e508c704f4edecab817f7a82096eaa21c5a78d228232f22ac31c",
+    "x-cursor-client-type": "ide",
+    "x-cursor-client-version": "2.0.77",
+    "x-cursor-config-version": "3a7306ef-e7f1-46f0-9b89-08d2ab65b0f4",
+    "x-cursor-timezone": "America/Chicago",
+    "x-ghost-mode": "true",
+    "x-new-onboarding-completed": "false",
+    "x-request-id": "cf98e4c7-aef3-42ff-ba96-1eef1768e31d",
+    "x-session-id": "99cb4008-1ba8-423c-8ecd-137a52ef05df"
+  }
+}
