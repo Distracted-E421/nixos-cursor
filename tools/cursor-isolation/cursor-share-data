@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+#
+# cursor-share-data: Share specific data between main Cursor and isolated instances
+#
+# Usage:
+#   cursor-share-data link <env>        # Symlink globalStorage to isolated env
+#   cursor-share-data copy-auth <env>   # Copy only auth token
+#   cursor-share-data status <env>      # Check what's shared
+#
+
+set -euo pipefail
+
+MAIN_GLOBAL="$HOME/.config/Cursor/User/globalStorage"
+MAIN_DB="$MAIN_GLOBAL/state.vscdb"
+
+get_env_path() {
+    local env="$1"
+    # Support both cursor-test envs and cursor-versions envs
+    if [[ "$env" == v* ]]; then
+        echo "$HOME/.cursor-test-envs/$env"
+    else
+        echo "$HOME/.cursor-test-envs/$env"
+    fi
+}
+
+cmd_link() {
+    local env="${1:-}"
+    if [[ -z "$env" ]]; then
+        echo "Usage: cursor-share-data link <env>"
+        echo "  e.g., cursor-share-data link v2.0.77"
+        exit 1
+    fi
+    
+    local env_path=$(get_env_path "$env")
+    local env_user="$env_path/User"
+    local env_global="$env_user/globalStorage"
+    
+    echo "Sharing globalStorage with $env"
+    echo "────────────────────────────────"
+    
+    # Create User directory if needed
+    mkdir -p "$env_user"
+    
+    # Check if already linked
+    if [[ -L "$env_global" ]]; then
+        local target=$(readlink "$env_global")
+        echo "✓ Already linked to: $target"
+        return
+    fi
+    
+    # Backup existing if present
+    if [[ -d "$env_global" ]]; then
+        echo "⚠️  Existing globalStorage found, backing up..."
+        mv "$env_global" "${env_global}.backup.$(date +%Y%m%d%H%M%S)"
+    fi
+    
+    # Create symlink
+    ln -sf "$MAIN_GLOBAL" "$env_global"
+    
+    echo "✓ Symlinked: $env_global -> $MAIN_GLOBAL"
+    echo ""
+    echo "⚠️  WARNING: This environment now SHARES data with main Cursor!"
+    echo "   - Auth token: SHARED"
+    echo "   - @Docs access: SHARED"
+    echo "   - Conversations: SHARED"
+    echo ""
+    echo "   Changes in isolated instance WILL affect main Cursor."
+}
+
+cmd_copy_auth() {
+    local env="${1:-}"
+    if [[ -z "$env" ]]; then
+        echo "Usage: cursor-share-data copy-auth <env>"
+        exit 1
+    fi
+    
+    local env_path=$(get_env_path "$env")
+    local env_global="$env_path/User/globalStorage"
+    local env_db="$env_global/state.vscdb"
+    
+    echo "Copying auth token to $env"
+    echo "────────────────────────────"
+    
+    # Create directory structure
+    mkdir -p "$env_global"
+    
+    # If db doesn't exist, create it
+    if [[ ! -f "$env_db" ]]; then
+        echo "Creating empty database..."
+        sqlite3 "$env_db" "CREATE TABLE IF NOT EXISTS ItemTable (key TEXT PRIMARY KEY, value TEXT);"
+        sqlite3 "$env_db" "CREATE TABLE IF NOT EXISTS cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);"
+    fi
+    
+    # Copy auth token
+    echo "Extracting auth token from main Cursor..."
+    local auth_value=$(sqlite3 "$MAIN_DB" "SELECT value FROM ItemTable WHERE key='cursorAuth/accessToken'" 2>/dev/null)
+    
+    if [[ -z "$auth_value" ]]; then
+        echo "❌ Could not find auth token in main Cursor"
+        exit 1
+    fi
+    
+    echo "Copying to isolated environment..."
+    sqlite3 "$env_db" "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('cursorAuth/accessToken', '$auth_value');"
+    
+    # Also copy machine ID and other auth-related keys
+    for key in "cursorAuth/refreshToken" "cursorAuth/accessToken" "encryption.salt"; do
+        local val=$(sqlite3 "$MAIN_DB" "SELECT value FROM ItemTable WHERE key='$key'" 2>/dev/null || true)
+        if [[ -n "$val" ]]; then
+            sqlite3 "$env_db" "INSERT OR REPLACE INTO ItemTable (key, value) VALUES ('$key', '$val');"
+            echo "  ✓ Copied: $key"
+        fi
+    done
+    
+    echo ""
+    echo "✓ Auth copied to: $env_db"
+    echo ""
+    echo "Note: You will have access to your account, but NOT your indexed docs."
+    echo "      @Docs must be re-indexed in the isolated instance."
+}
+
+cmd_status() {
+    local env="${1:-}"
+    if [[ -z "$env" ]]; then
+        echo "Usage: cursor-share-data status <env>"
+        exit 1
+    fi
+    
+    local env_path=$(get_env_path "$env")
+    local env_global="$env_path/User/globalStorage"
+    local env_db="$env_global/state.vscdb"
+    
+    echo "Status for $env"
+    echo "────────────────"
+    echo "Path: $env_path"
+    echo ""
+    
+    if [[ -L "$env_global" ]]; then
+        local target=$(readlink "$env_global")
+        echo "globalStorage: SYMLINKED -> $target"
+        echo "  - Auth: SHARED with main"
+        echo "  - Docs: SHARED with main"
+        echo "  - Conversations: SHARED with main"
+    elif [[ -d "$env_global" ]]; then
+        echo "globalStorage: INDEPENDENT"
+        
+        if [[ -f "$env_db" ]]; then
+            local has_auth=$(sqlite3 "$env_db" "SELECT 1 FROM ItemTable WHERE key='cursorAuth/accessToken' LIMIT 1" 2>/dev/null || echo "0")
+            if [[ "$has_auth" == "1" ]]; then
+                echo "  - Auth: ✓ Present (copied)"
+            else
+                echo "  - Auth: ✗ Not present"
+            fi
+            echo "  - Docs: Must index separately"
+            echo "  - Conversations: Independent"
+        else
+            echo "  - Database: Not initialized"
+        fi
+    else
+        echo "globalStorage: NOT CREATED"
+        echo "  Run Cursor in this env first, or use 'cursor-share-data link/copy-auth'"
+    fi
+}
+
+# Main
+case "${1:-help}" in
+    link)
+        cmd_link "${2:-}"
+        ;;
+    copy-auth)
+        cmd_copy_auth "${2:-}"
+        ;;
+    status)
+        cmd_status "${2:-}"
+        ;;
+    *)
+        echo "cursor-share-data: Share data between main and isolated Cursor"
+        echo ""
+        echo "Commands:"
+        echo "  link <env>       Symlink globalStorage (SHARES everything)"
+        echo "  copy-auth <env>  Copy only auth token (independent, no docs)"
+        echo "  status <env>     Check what's shared"
+        echo ""
+        echo "Examples:"
+        echo "  cursor-share-data link v2.0.77"
+        echo "  cursor-share-data copy-auth proxy-dev"
+        echo "  cursor-share-data status v2.0.77"
+        ;;
+esac
