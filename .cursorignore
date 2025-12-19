@@ -97,3 +97,11 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# ============================================================
+tools/proxy-test/payload-db/
+tools/proxy-test/rust-captures/
+tools/proxy-test/payload-db/**/requests/*.bin
+tools/proxy-test/payload-db/**/responses/*.bin
+tools/proxy-test/payload-db/**/metadata/*.bin
+tools/proxy-test/payload-db/**/metadata/*.bin

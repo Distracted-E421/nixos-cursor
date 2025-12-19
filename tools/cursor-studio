@@ -1,0 +1,271 @@
+#!/usr/bin/env bash
+#
+# cursor-studio - Enhanced Cursor IDE launcher with proxy support
+#
+# Usage:
+#   cursor-studio                    # Normal launch
+#   cursor-studio --proxy            # Launch with proxy enabled
+#   cursor-studio proxy <command>    # Proxy management commands
+#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROXY_BIN="${SCRIPT_DIR}/cursor-proxy/target/release/cursor-proxy"
+PROXY_DIR="${HOME}/.cursor-proxy"
+CONFIG_DIR="${HOME}/.config/cursor-studio"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${BLUE}[cursor-studio]${NC} $1"; }
+log_success() { echo -e "${GREEN}[cursor-studio]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[cursor-studio]${NC} $1"; }
+log_error() { echo -e "${RED}[cursor-studio]${NC} $1"; }
+
+# Check if proxy binary exists
+check_proxy() {
+    if [[ ! -f "$PROXY_BIN" ]]; then
+        log_error "Proxy binary not found at $PROXY_BIN"
+        log_info "Building proxy..."
+        (cd "${SCRIPT_DIR}/cursor-proxy" && cargo build --release)
+    fi
+}
+
+# Initialize proxy (generate CA if needed)
+init_proxy() {
+    check_proxy
+    "$PROXY_BIN" init "$@"
+}
+
+# Start proxy daemon
+start_proxy() {
+    check_proxy
+    
+    local mode_flag=""
+    local port=""
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --dns-mode|-d) mode_flag="--dns-mode"; shift ;;
+            --transparent|-t) mode_flag="--transparent"; shift ;;
+            --port|-p) port="--port $2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+    
+    if [[ -z "$mode_flag" ]]; then
+        log_info "No mode specified. Use --dns-mode (recommended) or --transparent (legacy)"
+        log_info "  --dns-mode: Requires /etc/hosts entry, no DNS rotation issues"
+        log_info "  --transparent: Uses iptables, may have DNS rotation issues"
+        exit 1
+    fi
+    
+    log_info "Starting proxy with ${mode_flag}..."
+    "$PROXY_BIN" start $mode_flag $port --foreground
+}
+
+# Stop proxy
+stop_proxy() {
+    check_proxy
+    "$PROXY_BIN" stop
+}
+
+# Show proxy status
+proxy_status() {
+    check_proxy
+    "$PROXY_BIN" status
+}
+
+# Trust CA
+trust_ca() {
+    check_proxy
+    "$PROXY_BIN" trust-ca "$@"
+}
+
+# Cleanup
+cleanup_proxy() {
+    check_proxy
+    "$PROXY_BIN" cleanup "$@"
+}
+
+# Manage iptables
+manage_iptables() {
+    check_proxy
+    "$PROXY_BIN" iptables "$@"
+}
+
+# Enable proxy
+enable_proxy() {
+    check_proxy
+    "$PROXY_BIN" enable
+}
+
+# Disable proxy
+disable_proxy() {
+    check_proxy
+    "$PROXY_BIN" disable
+}
+
+# Launch Cursor with proxy support
+launch_cursor_with_proxy() {
+    local ca_cert="${PROXY_DIR}/ca-cert.pem"
+    
+    # Check if proxy CA exists
+    if [[ ! -f "$ca_cert" ]]; then
+        log_warn "Proxy CA not found. Initializing..."
+        init_proxy
+    fi
+    
+    # Create combined CA bundle
+    local combined_bundle="${PROXY_DIR}/combined-ca-bundle.pem"
+    
+    log_info "Creating combined CA bundle..."
+    cat /etc/ssl/certs/ca-certificates.crt "$ca_cert" > "$combined_bundle" 2>/dev/null || \
+    cat /etc/ssl/certs/ca-bundle.crt "$ca_cert" > "$combined_bundle" 2>/dev/null || \
+    cp "$ca_cert" "$combined_bundle"
+    
+    # Check if proxy is running
+    if ! pgrep -f "cursor-proxy.*start" > /dev/null; then
+        log_info "Starting proxy in background..."
+        # Start proxy with transparent mode (needs sudo for iptables)
+        if [[ $(id -u) -eq 0 ]] || sudo -n true 2>/dev/null; then
+            nohup "$PROXY_BIN" start --transparent > "${PROXY_DIR}/proxy.log" 2>&1 &
+            sleep 2
+        else
+            log_warn "Cannot start transparent proxy without sudo"
+            log_info "Starting explicit proxy mode..."
+            nohup "$PROXY_BIN" start > "${PROXY_DIR}/proxy.log" 2>&1 &
+            sleep 2
+        fi
+    else
+        log_info "Proxy already running"
+    fi
+    
+    log_success "Launching Cursor with proxy support..."
+    
+    # Launch Cursor with CA trust
+    export NODE_EXTRA_CA_CERTS="$combined_bundle"
+    export NODE_TLS_REJECT_UNAUTHORIZED="0"  # Fallback if combined bundle fails
+    
+    # Find cursor binary
+    local cursor_cmd
+    if command -v cursor &>/dev/null; then
+        cursor_cmd="cursor"
+    elif [[ -f "/usr/bin/cursor" ]]; then
+        cursor_cmd="/usr/bin/cursor"
+    elif [[ -f "${HOME}/.local/bin/cursor" ]]; then
+        cursor_cmd="${HOME}/.local/bin/cursor"
+    else
+        # Try to find via nix
+        cursor_cmd=$(command -v cursor 2>/dev/null || echo "cursor")
+    fi
+    
+    exec "$cursor_cmd" "$@"
+}
+
+# Launch Cursor normally
+launch_cursor() {
+    # Find cursor binary
+    local cursor_cmd
+    if command -v cursor &>/dev/null; then
+        cursor_cmd="cursor"
+    elif [[ -f "/usr/bin/cursor" ]]; then
+        cursor_cmd="/usr/bin/cursor"
+    elif [[ -f "${HOME}/.local/bin/cursor" ]]; then
+        cursor_cmd="${HOME}/.local/bin/cursor"
+    else
+        cursor_cmd=$(command -v cursor 2>/dev/null || echo "cursor")
+    fi
+    
+    exec "$cursor_cmd" "$@"
+}
+
+# Show help
+show_help() {
+    cat << EOF
+cursor-studio - Enhanced Cursor IDE launcher with proxy support
+
+USAGE:
+    cursor-studio [OPTIONS] [-- CURSOR_ARGS...]
+    cursor-studio proxy <COMMAND>
+
+OPTIONS:
+    --proxy, -p       Launch Cursor with proxy enabled
+    --help, -h        Show this help message
+
+PROXY COMMANDS:
+    cursor-studio proxy init          Initialize proxy (generate CA)
+    cursor-studio proxy start         Start proxy server
+    cursor-studio proxy stop          Stop proxy server
+    cursor-studio proxy enable        Enable proxy in configuration
+    cursor-studio proxy disable       Disable proxy (stops if running)
+    cursor-studio proxy status        Show proxy status
+    cursor-studio proxy trust-ca      Show/export CA certificate
+    cursor-studio proxy cleanup       Clean up proxy resources
+    cursor-studio proxy iptables      Manage iptables rules
+
+EXAMPLES:
+    # Normal Cursor launch
+    cursor-studio
+
+    # Launch with proxy
+    cursor-studio --proxy
+
+    # Initialize proxy first time
+    cursor-studio proxy init
+
+    # Start proxy with transparent mode (requires sudo)
+    sudo cursor-studio proxy start --transparent
+
+    # Check proxy status
+    cursor-studio proxy status
+
+    # Clean up everything
+    cursor-studio proxy cleanup --all
+
+For more information, see: ${SCRIPT_DIR}/cursor-proxy/ARCHITECTURE.md
+EOF
+}
+
+# Main entry point
+main() {
+    # Ensure proxy directory exists
+    mkdir -p "$PROXY_DIR"
+    mkdir -p "$CONFIG_DIR"
+    
+    case "${1:-}" in
+        --proxy|-p)
+            shift
+            launch_cursor_with_proxy "$@"
+            ;;
+        proxy)
+            shift
+            case "${1:-}" in
+                init)       shift; init_proxy "$@" ;;
+                start)      shift; start_proxy "$@" ;;
+                stop)       shift; stop_proxy "$@" ;;
+                enable)     shift; enable_proxy "$@" ;;
+                disable)    shift; disable_proxy "$@" ;;
+                status)     shift; proxy_status "$@" ;;
+                trust-ca)   shift; trust_ca "$@" ;;
+                cleanup)    shift; cleanup_proxy "$@" ;;
+                iptables)   shift; manage_iptables "$@" ;;
+                *)          show_help; exit 1 ;;
+            esac
+            ;;
+        --help|-h)
+            show_help
+            ;;
+        *)
+            launch_cursor "$@"
+            ;;
+    esac
+}
+
+main "$@"
+

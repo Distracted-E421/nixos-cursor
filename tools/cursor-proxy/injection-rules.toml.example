@@ -1,0 +1,42 @@
+# Cursor Proxy Injection Rules
+#
+# This file configures how the proxy modifies Cursor API traffic.
+# Copy to ~/.cursor-proxy/injection-rules.toml to activate.
+
+# Master switch for injection
+enabled = true
+
+# System prompt to prepend to all conversations
+# This is injected as a SYSTEM type message at the start of the conversation
+system_prompt = """
+You are an AI assistant with enhanced capabilities. Always consider:
+1. The user's context and current working directory
+2. Safety and security implications of suggestions
+3. Best practices for the language/framework in use
+
+Additional context from the homelab environment follows.
+"""
+
+# Custom mode name (replaces the default mode in requests)
+# Useful for testing different model behaviors
+# custom_mode = "agent-custom"
+
+# Context files to inject into requests
+# These will be included as additional context in chat requests
+context_files = [
+    # "~/.cursor-proxy/context/project-rules.md",
+    # "~/.cursor-proxy/context/coding-standards.md",
+]
+
+# Header overrides - these headers will be added/replaced in all requests
+[headers]
+# X-Custom-Client = "cursor-proxy"
+
+# Version spoofing - if set, overrides X-Cursor-Client-Version header
+# Useful for testing different version requirements
+# spoof_version = "0.50.0"
+
+# Dynamic rules file for hot-reload
+# The proxy will watch this file and reload rules when it changes
+# rules_file = "~/.cursor-proxy/dynamic-rules.toml"
+

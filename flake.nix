@@ -302,6 +302,9 @@
           
           # Cursor Chat Library (DEPRECATED - use cursor-studio)
           cursor-chat-library = pkgs.callPackage ./cursor/chat-library.nix { };
+          
+          # Cursor Proxy - Transparent proxy for AI traffic interception
+          cursor-proxy = pkgs.callPackage ./tools/proxy-test/cursor-proxy { };
         }
         # Darwin-specific extras
         // lib.optionalAttrs isDarwin {
@@ -428,6 +431,16 @@
       homeManagerModules = {
         default = import ./home-manager-module;
         cursor-with-mcp = import ./home-manager-module;
+      };
+
+      # NixOS modules
+      nixosModules = {
+        # Isolated proxy testing environment with network namespace
+        # Usage: services.cursor-proxy-isolated.enable = true;
+        cursor-proxy-isolated = import ./modules/nixos/cursor-proxy-isolated.nix;
+        
+        # Legacy proxy module (deprecated in favor of isolated version)
+        cursor-proxy = import ./modules/nixos/cursor-proxy.nix;
       };
 
       # Development shells

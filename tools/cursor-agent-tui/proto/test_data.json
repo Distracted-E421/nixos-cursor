@@ -1,0 +1,402 @@
+{
+  "description": "Test data generated from Cursor agent's own behavior patterns",
+  "generated_by": "Claude Opus 4.5 (Maxim agent)",
+  "timestamp": "2025-12-19T05:15:00Z",
+  
+  "conversation_examples": [
+    {
+      "name": "simple_user_query",
+      "messages": [
+        {
+          "text": "What files are in the current directory?",
+          "type": "MESSAGE_TYPE_USER",
+          "bubble_id": "user-001-abc123",
+          "attached_code_chunks": [],
+          "attached_folders": [],
+          "images": []
+        }
+      ]
+    },
+    {
+      "name": "user_with_code_selection",
+      "messages": [
+        {
+          "text": "Fix the bug in this function",
+          "type": "MESSAGE_TYPE_USER",
+          "bubble_id": "user-002-def456",
+          "attached_code_chunks": [
+            {
+              "file_path": "/home/e421/project/src/main.rs",
+              "start_line": 45,
+              "end_line": 62,
+              "content": "fn process_data(input: &str) -> Result<String> {\n    // BUG: doesn't handle empty input\n    let parsed = input.parse::<i32>()?;\n    Ok(parsed.to_string())\n}",
+              "language_id": "rust"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "multi_turn_with_tool_results",
+      "messages": [
+        {
+          "text": "Read the config file",
+          "type": "MESSAGE_TYPE_USER",
+          "bubble_id": "user-003-ghi789"
+        },
+        {
+          "text": "I'll read the config file for you.",
+          "type": "MESSAGE_TYPE_ASSISTANT",
+          "bubble_id": "assistant-003-jkl012"
+        },
+        {
+          "text": "{\"tool_name\": \"read_file\", \"result\": \"[package]\\nname = \\\"cursor-agent-tui\\\"\\nversion = \\\"0.1.0\\\"\\nedition = \\\"2021\\\"\", \"success\": true}",
+          "type": "MESSAGE_TYPE_TOOL",
+          "bubble_id": "tool-003-mno345"
+        },
+        {
+          "text": "The config file contains a Rust Cargo.toml with package name `cursor-agent-tui` version 0.1.0.",
+          "type": "MESSAGE_TYPE_ASSISTANT",
+          "bubble_id": "assistant-003-pqr678"
+        }
+      ]
+    }
+  ],
+
+  "tool_call_examples": [
+    {
+      "name": "read_file",
+      "tool_call": {
+        "tool_name": "read_file",
+        "tool_id": "call_abc123",
+        "arguments_json": "{\"path\": \"/home/e421/project/src/main.rs\", \"start_line\": 1, \"end_line\": 100}"
+      },
+      "expected_result": {
+        "tool_id": "call_abc123",
+        "result_json": "{\"content\": \"fn main() {\\n    println!(\\\"Hello, world!\\\");\\n}\", \"total_lines\": 3}",
+        "success": true
+      }
+    },
+    {
+      "name": "edit_file",
+      "tool_call": {
+        "tool_name": "edit_file",
+        "tool_id": "call_def456",
+        "arguments_json": "{\"path\": \"/home/e421/project/src/lib.rs\", \"old_string\": \"fn old_name()\", \"new_string\": \"fn new_name()\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_def456",
+        "result_json": "{\"success\": true, \"message\": \"Replaced 1 occurrence\"}",
+        "success": true
+      }
+    },
+    {
+      "name": "run_terminal_command",
+      "tool_call": {
+        "tool_name": "run_terminal_cmd",
+        "tool_id": "call_ghi789",
+        "arguments_json": "{\"command\": \"cargo build --release\", \"is_background\": false}"
+      },
+      "expected_result": {
+        "tool_id": "call_ghi789",
+        "result_json": "{\"exit_code\": 0, \"stdout\": \"   Compiling cursor-agent-tui v0.1.0\\n    Finished release [optimized] target(s) in 2.34s\", \"stderr\": \"\"}",
+        "success": true
+      }
+    },
+    {
+      "name": "grep_search",
+      "tool_call": {
+        "tool_name": "grep",
+        "tool_id": "call_jkl012",
+        "arguments_json": "{\"pattern\": \"TODO|FIXME\", \"path\": \"/home/e421/project\", \"glob\": \"*.rs\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_jkl012",
+        "result_json": "{\"matches\": [{\"file\": \"src/main.rs\", \"line\": 42, \"content\": \"// TODO: implement error handling\"}], \"total_matches\": 1}",
+        "success": true
+      }
+    },
+    {
+      "name": "list_directory",
+      "tool_call": {
+        "tool_name": "list_dir",
+        "tool_id": "call_mno345",
+        "arguments_json": "{\"path\": \"/home/e421/project/src\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_mno345",
+        "result_json": "{\"entries\": [{\"name\": \"main.rs\", \"type\": \"file\"}, {\"name\": \"lib.rs\", \"type\": \"file\"}, {\"name\": \"utils\", \"type\": \"directory\"}]}",
+        "success": true
+      }
+    },
+    {
+      "name": "codebase_search",
+      "tool_call": {
+        "tool_name": "codebase_search",
+        "tool_id": "call_pqr678",
+        "arguments_json": "{\"query\": \"authentication token handling\", \"limit\": 10}"
+      },
+      "expected_result": {
+        "tool_id": "call_pqr678",
+        "result_json": "{\"results\": [{\"file\": \"src/auth.rs\", \"score\": 0.92, \"snippet\": \"pub fn get_token() -> Result<String>\"}], \"total\": 1}",
+        "success": true
+      }
+    },
+    {
+      "name": "write_file",
+      "tool_call": {
+        "tool_name": "write",
+        "tool_id": "call_stu901",
+        "arguments_json": "{\"file_path\": \"/home/e421/project/src/new_module.rs\", \"contents\": \"//! New module\\n\\npub fn hello() {\\n    println!(\\\"Hello from new module!\\\");\\n}\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_stu901",
+        "result_json": "{\"success\": true, \"bytes_written\": 78}",
+        "success": true
+      }
+    },
+    {
+      "name": "mcp_tool_call",
+      "tool_call": {
+        "tool_name": "mcp",
+        "tool_id": "call_vwx234",
+        "arguments_json": "{\"server\": \"filesystem\", \"tool\": \"read_file\", \"arguments\": {\"path\": \"/home/e421/.config/cursor/settings.json\"}}"
+      },
+      "expected_result": {
+        "tool_id": "call_vwx234",
+        "result_json": "{\"content\": \"{\\\"theme\\\": \\\"dark\\\"}\"}",
+        "success": true
+      }
+    }
+  ],
+
+  "edge_cases": [
+    {
+      "name": "tool_call_error",
+      "tool_call": {
+        "tool_name": "read_file",
+        "tool_id": "call_err001",
+        "arguments_json": "{\"path\": \"/nonexistent/file.txt\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_err001",
+        "result_json": "{}",
+        "success": false,
+        "error_message": "File not found: /nonexistent/file.txt"
+      }
+    },
+    {
+      "name": "large_file_content",
+      "description": "File content exceeding typical context limits",
+      "tool_call": {
+        "tool_name": "read_file",
+        "tool_id": "call_large001",
+        "arguments_json": "{\"path\": \"/home/e421/project/large_file.rs\", \"start_line\": 1, \"end_line\": 5000}"
+      },
+      "notes": "Response may be truncated or summarized"
+    },
+    {
+      "name": "binary_file_attempt",
+      "tool_call": {
+        "tool_name": "read_file",
+        "tool_id": "call_bin001",
+        "arguments_json": "{\"path\": \"/home/e421/project/target/release/binary\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_bin001",
+        "success": false,
+        "error_message": "Cannot read binary file"
+      }
+    },
+    {
+      "name": "long_running_command",
+      "tool_call": {
+        "tool_name": "run_terminal_cmd",
+        "tool_id": "call_long001",
+        "arguments_json": "{\"command\": \"sleep 300\", \"is_background\": true}"
+      },
+      "expected_result": {
+        "tool_id": "call_long001",
+        "result_json": "{\"pid\": 12345, \"status\": \"running_in_background\"}",
+        "success": true
+      }
+    },
+    {
+      "name": "multiple_tool_calls_batch",
+      "description": "When agent requests multiple tools at once",
+      "tool_calls": [
+        {
+          "tool_name": "read_file",
+          "tool_id": "call_batch001",
+          "arguments_json": "{\"path\": \"/home/e421/project/Cargo.toml\"}"
+        },
+        {
+          "tool_name": "read_file",
+          "tool_id": "call_batch002",
+          "arguments_json": "{\"path\": \"/home/e421/project/src/main.rs\"}"
+        },
+        {
+          "tool_name": "list_dir",
+          "tool_id": "call_batch003",
+          "arguments_json": "{\"path\": \"/home/e421/project/src\"}"
+        }
+      ]
+    },
+    {
+      "name": "special_characters_in_content",
+      "description": "Content with unicode, escapes, and special chars",
+      "tool_call": {
+        "tool_name": "edit_file",
+        "tool_id": "call_special001",
+        "arguments_json": "{\"path\": \"/home/e421/project/i18n.rs\", \"old_string\": \"Hello\", \"new_string\": \"こんにちは 🎉 \\\"quoted\\\" and \\\\escaped\\\\\"}"
+      }
+    },
+    {
+      "name": "empty_search_results",
+      "tool_call": {
+        "tool_name": "grep",
+        "tool_id": "call_empty001",
+        "arguments_json": "{\"pattern\": \"NONEXISTENT_PATTERN_XYZ123\", \"path\": \"/home/e421/project\"}"
+      },
+      "expected_result": {
+        "tool_id": "call_empty001",
+        "result_json": "{\"matches\": [], \"total_matches\": 0}",
+        "success": true
+      }
+    }
+  ],
+
+  "model_details_examples": [
+    {
+      "name": "claude_opus",
+      "model_details": {
+        "model_name": "claude-3-5-sonnet-20241022",
+        "provider": "anthropic",
+        "max_tokens": 8192,
+        "temperature": 0.0,
+        "supports_tools": true,
+        "supports_images": true
+      }
+    },
+    {
+      "name": "gpt4_turbo",
+      "model_details": {
+        "model_name": "gpt-4-turbo-preview",
+        "provider": "openai",
+        "max_tokens": 4096,
+        "temperature": 0.0,
+        "supports_tools": true,
+        "supports_images": true
+      }
+    },
+    {
+      "name": "cursor_small",
+      "model_details": {
+        "model_name": "cursor-small",
+        "provider": "cursor",
+        "max_tokens": 2048,
+        "temperature": 0.0,
+        "supports_tools": false,
+        "supports_images": false
+      }
+    }
+  ],
+
+  "context_examples": {
+    "explicit_context": {
+      "file_paths": [
+        "/home/e421/project/src/main.rs",
+        "/home/e421/project/Cargo.toml"
+      ],
+      "folder_paths": [
+        "/home/e421/project/src"
+      ],
+      "web_urls": [
+        "https://docs.rs/tokio/latest/tokio/"
+      ],
+      "doc_identifiers": [
+        "@rust-lang",
+        "@tokio"
+      ]
+    },
+    "current_file_info": {
+      "path": "/home/e421/project/src/main.rs",
+      "content": "fn main() {\n    // cursor is here\n    println!(\"Hello\");\n}",
+      "language_id": "rust",
+      "cursor_line": 2,
+      "cursor_column": 15
+    },
+    "linter_errors": {
+      "errors": [
+        {
+          "file_path": "/home/e421/project/src/main.rs",
+          "line": 10,
+          "column": 5,
+          "message": "unused variable: `x`",
+          "severity": "warning",
+          "code": "unused_variables"
+        },
+        {
+          "file_path": "/home/e421/project/src/lib.rs",
+          "line": 25,
+          "column": 1,
+          "message": "missing documentation for public function",
+          "severity": "warning",
+          "code": "missing_docs"
+        }
+      ]
+    }
+  },
+
+  "streaming_response_chunks": {
+    "description": "How streaming responses are chunked",
+    "example_sequence": [
+      {
+        "event_id": "evt_001",
+        "stream_start": {"padding": ""},
+        "comment": "First chunk - stream initialization"
+      },
+      {
+        "event_id": "evt_002",
+        "stream_unified_chat_response": {
+          "text": "I'll help you "
+        },
+        "comment": "Text chunk 1"
+      },
+      {
+        "event_id": "evt_003",
+        "stream_unified_chat_response": {
+          "text": "fix that bug. "
+        },
+        "comment": "Text chunk 2"
+      },
+      {
+        "event_id": "evt_004",
+        "client_side_tool_v2_call": {
+          "tool_name": "read_file",
+          "tool_id": "call_stream001",
+          "arguments_json": "{\"path\": \"/home/e421/project/src/main.rs\"}"
+        },
+        "comment": "Tool call - client should execute and return result"
+      },
+      {
+        "event_id": "evt_005",
+        "stream_unified_chat_response": {
+          "text": "Looking at the code, I can see the issue..."
+        },
+        "comment": "Text continues after tool result"
+      },
+      {
+        "event_id": "evt_006",
+        "conversation_summary": {
+          "summary": "Fixed null pointer bug in process_data function",
+          "key_topics": ["bug fix", "null handling", "rust"],
+          "message_count": 2
+        },
+        "comment": "Final chunk with summary"
+      }
+    ]
+  }
+}
+
+

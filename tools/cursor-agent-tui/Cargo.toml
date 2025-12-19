@@ -1,0 +1,95 @@
+[package]
+name = "cursor-agent-tui"
+version = "0.1.0"
+edition = "2021"
+authors = ["e421"]
+description = "Lightweight TUI for Cursor AI - No Electron, No Bloat"
+license = "MIT"
+repository = "https://github.com/e421/nixos-cursor"
+
+[dependencies]
+# TUI Framework
+ratatui = "0.26"
+crossterm = "0.27"
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP Client
+reqwest = { version = "0.12", features = ["stream", "json", "rustls-tls"], default-features = false }
+
+# Bytes for streaming
+bytes = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+prost = "0.13"
+prost-types = "0.13"
+
+# SSE Stream Parsing
+eventsource-stream = "0.2"
+futures = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# File Operations
+walkdir = "2"
+ignore = "0.4"
+
+# Git Integration (optional)
+git2 = { version = "0.18", optional = true }
+
+# SQLite for token extraction
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Command lookup
+which = "6"
+
+# Syntax Highlighting (optional)
+syntect = { version = "5", optional = true }
+
+# Diff Display
+similar = "2"
+
+# Error Handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Configuration
+toml = "0.8"
+dirs = "5"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID for conversation IDs
+
+[features]
+default = []
+git = ["git2"]
+syntax = ["syntect"]
+full = ["git", "syntax"]
+
+[build-dependencies]
+prost-build = "0.13"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "cursor-agent"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+

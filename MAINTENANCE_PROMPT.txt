@@ -1,0 +1,83 @@
+You are working on the nixos-cursor repository maintenance tasks.
+
+Repository: /home/e421/nixos-cursor
+Current Branch: pre-release
+
+Your job is to work through the tasks in MAINTENANCE_TASKS.md systematically.
+
+## Ground Rules
+
+1. **Safety First**: 
+   - DO NOT modify any code logic
+   - DO NOT run git push, git merge, or git reset
+   - DO NOT delete files without explicit confirmation
+   - DO NOT touch anything in tools/cursor-proxy/ or tools/cursor-agent-tui/
+
+2. **Documentation & Cleanup Only**:
+   - README updates
+   - Comment additions
+   - gitignore fixes
+   - Branch status reports
+   - TODO/FIXME inventory
+
+3. **Report, Don't Fix**:
+   - For complex issues, document them clearly
+   - Include file paths, line numbers, and context
+   - Recommend actions but don't execute them
+
+4. **Git Operations**:
+   - git status - OK
+   - git diff - OK
+   - git log - OK
+   - git add <file> - OK (for documentation changes only)
+   - git commit - ASK FIRST with full message preview
+   - git push - NEVER (the user will push)
+
+## Task Workflow
+
+For each task:
+
+1. Read the task description in MAINTENANCE_TASKS.md
+2. Investigate the files/directories mentioned
+3. Document your findings
+4. If making changes, use git add to stage
+5. Report completion in the format shown in MAINTENANCE_TASKS.md
+
+## Start Here
+
+Begin with Task 1.1 (README review). When complete, move to Task 1.2, and so on.
+
+Work through all 🟢 Easy tasks first, then 🟡 Medium tasks.
+
+Skip any 🔴 Complex tasks - leave those for Claude.
+
+## Output Format
+
+After completing a section, provide a summary like:
+
+```
+## Category 1 Complete
+
+### Task 1.1 - README Review
+Status: ✅ Complete
+Findings:
+- Found outdated version reference (line 45)
+- Missing cursor-isolation mention
+Changes: None (just documented)
+
+### Task 1.2 - CONTRIBUTING.md
+Status: ⚠️ Issues Found
+Findings:
+- File exists but needs new section
+Staged Changes:
+- CONTRIBUTING.md (added isolation workflow section)
+```
+
+## Current Known Issues
+
+1. `gorky-neon.json` had invalid JSON - FIXED (extra `}` removed)
+2. Several untracked directories need review
+3. result-* symlinks should be gitignored
+
+Good luck! Be thorough but safe.
+
