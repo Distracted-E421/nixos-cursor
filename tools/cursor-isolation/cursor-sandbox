@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+#
+# cursor-sandbox: Run Cursor in an isolated environment
+#
+# This creates a completely separate Cursor instance with its own:
+# - Configuration directory (~/.config/Cursor-Sandbox)
+# - Extensions
+# - State database
+# - Settings
+#
+# The sandbox instance can be completely blown away without affecting
+# your main Cursor installation.
+#
+# Usage:
+#   cursor-sandbox [--reset] [--name NAME] [workspace_path]
+#
+# Options:
+#   --reset    Clear the sandbox and start fresh
+#   --name     Use a custom sandbox name (default: Sandbox)
+#   --appimage Use a specific AppImage path instead of system cursor
+#
+
+set -euo pipefail
+
+# Default settings
+SANDBOX_NAME="Sandbox"
+RESET=false
+APPIMAGE_PATH=""
+WORKSPACE_PATH=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --reset)
+            RESET=true
+            shift
+            ;;
+        --name)
+            SANDBOX_NAME="$2"
+            shift 2
+            ;;
+        --appimage)
+            APPIMAGE_PATH="$2"
+            shift 2
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+        *)
+            WORKSPACE_PATH="$1"
+            shift
+            ;;
+    esac
+done
+
+# Setup paths
+SANDBOX_CONFIG="$HOME/.config/Cursor-${SANDBOX_NAME}"
+SANDBOX_CACHE="$HOME/.cache/Cursor-${SANDBOX_NAME}"
+SANDBOX_DATA="$HOME/.local/share/Cursor-${SANDBOX_NAME}"
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║           Cursor Sandbox Environment: ${SANDBOX_NAME}"
+echo "╠══════════════════════════════════════════════════════════════════╣"
+echo "║  Config:  ${SANDBOX_CONFIG}"
+echo "║  Cache:   ${SANDBOX_CACHE}"
+echo "║  Data:    ${SANDBOX_DATA}"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Reset if requested
+if [[ "$RESET" == "true" ]]; then
+    echo "⚠️  Resetting sandbox environment..."
+    rm -rf "$SANDBOX_CONFIG" "$SANDBOX_CACHE" "$SANDBOX_DATA"
+    echo "✓ Sandbox cleared"
+fi
+
+# Create directories
+mkdir -p "$SANDBOX_CONFIG" "$SANDBOX_CACHE" "$SANDBOX_DATA"
+
+# Find cursor binary
+if [[ -n "$APPIMAGE_PATH" ]]; then
+    CURSOR_BIN="$APPIMAGE_PATH"
+elif command -v cursor &>/dev/null; then
+    # Find the actual binary, not a wrapper
+    CURSOR_BIN=$(command -v cursor)
+    # If it's a symlink, follow it
+    if [[ -L "$CURSOR_BIN" ]]; then
+        CURSOR_BIN=$(readlink -f "$CURSOR_BIN")
+    fi
+else
+    echo "❌ Could not find cursor binary. Use --appimage to specify path."
+    exit 1
+fi
+
+echo "Using Cursor: $CURSOR_BIN"
+echo ""
+
+# Export environment to isolate the instance
+export XDG_CONFIG_HOME="${SANDBOX_CONFIG%/*}"
+export XDG_CACHE_HOME="${SANDBOX_CACHE%/*}"
+export XDG_DATA_HOME="${SANDBOX_DATA%/*}"
+
+# Rename directories so Cursor finds them at the right location
+# Cursor looks for ~/.config/Cursor, so we create a temp structure
+TEMP_HOME=$(mktemp -d)
+mkdir -p "$TEMP_HOME/.config" "$TEMP_HOME/.cache" "$TEMP_HOME/.local/share"
+
+# Symlink our sandbox directories
+ln -sf "$SANDBOX_CONFIG" "$TEMP_HOME/.config/Cursor"
+ln -sf "$SANDBOX_CACHE" "$TEMP_HOME/.cache/Cursor"  
+ln -sf "$SANDBOX_DATA" "$TEMP_HOME/.local/share/Cursor"
+
+# Also need to preserve access to real home for project files
+# We'll use a custom HOME but with mounts
+
+echo "Starting isolated Cursor instance..."
+echo "(Close this terminal or Ctrl+C to stop)"
+echo ""
+
+# Run with modified environment
+# The trick: override only Cursor's config path, not the whole system
+exec env \
+    HOME="$TEMP_HOME" \
+    CURSOR_CONFIG_DIR="$SANDBOX_CONFIG" \
+    "$CURSOR_BIN" --user-data-dir="$SANDBOX_CONFIG" ${WORKSPACE_PATH:+"$WORKSPACE_PATH"} 2>&1
+
+# Cleanup on exit
+trap "rm -rf $TEMP_HOME" EXIT

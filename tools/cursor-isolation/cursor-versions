@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+#
+# cursor-versions: Manage multiple Cursor AppImage versions
+#
+# Usage:
+#   cursor-versions list              # List installed versions
+#   cursor-versions download <ver>    # Download specific version
+#   cursor-versions run <ver> [args]  # Run specific version (isolated)
+#   cursor-versions default <ver>     # Set default version
+#   cursor-versions latest            # Show latest available version
+#
+
+set -euo pipefail
+
+VERSIONS_DIR="$HOME/.cursor-versions"
+DOWNLOADS_CACHE="$VERSIONS_DIR/.cache"
+
+# Known version URLs (add more as needed)
+declare -A VERSION_URLS=(
+    ["2.2.36"]="https://downloads.cursor.com/production/55c9bc11e99cedd1fb93fbb7996abf779c58315f/linux/x64/Cursor-2.2.36-x86_64.AppImage"
+    ["2.1.42"]="https://downloads.cursor.com/production/62b813a16fd79cfb98bc46903e2e4277a7ef0dae/linux/x64/Cursor-2.1.42-x86_64.AppImage"
+    ["2.0.77"]="https://downloads.cursor.com/production/46ecf06b92ae6b5fa9848f3d614d6436213bb9ca90f690a919a9cf3c131780a4/linux/x64/Cursor-2.0.77-x86_64.AppImage"
+)
+
+# Known SHA256 hashes for verification
+declare -A VERSION_HASHES=(
+    ["2.2.36"]=""  # Will be calculated on first download
+    ["2.1.42"]=""
+    ["2.0.77"]=""
+)
+
+cmd_list() {
+    echo "Installed Cursor Versions"
+    echo "═════════════════════════"
+    
+    mkdir -p "$VERSIONS_DIR"
+    
+    local default_ver=""
+    if [[ -f "$VERSIONS_DIR/.default" ]]; then
+        default_ver=$(cat "$VERSIONS_DIR/.default")
+    fi
+    
+    local found=false
+    for appimage in "$VERSIONS_DIR"/Cursor-*.AppImage; do
+        [[ -f "$appimage" ]] || continue
+        found=true
+        local ver=$(basename "$appimage" | sed 's/Cursor-\(.*\)-x86_64.AppImage/\1/')
+        local size=$(du -h "$appimage" | cut -f1)
+        local marker=""
+        if [[ "$ver" == "$default_ver" ]]; then
+            marker=" [default]"
+        fi
+        echo "  $ver ($size)$marker"
+    done
+    
+    if [[ "$found" == "false" ]]; then
+        echo "  (no versions installed)"
+    fi
+    
+    echo ""
+    echo "Available for download:"
+    for ver in "${!VERSION_URLS[@]}"; do
+        if [[ ! -f "$VERSIONS_DIR/Cursor-${ver}-x86_64.AppImage" ]]; then
+            echo "  $ver"
+        fi
+    done
+}
+
+cmd_download() {
+    local version="$1"
+    local url="${VERSION_URLS[$version]:-}"
+    
+    if [[ -z "$url" ]]; then
+        echo "❌ Unknown version: $version"
+        echo "Available versions: ${!VERSION_URLS[*]}"
+        exit 1
+    fi
+    
+    local appimage="$VERSIONS_DIR/Cursor-${version}-x86_64.AppImage"
+    
+    if [[ -f "$appimage" ]]; then
+        echo "✓ Version $version already installed"
+        return
+    fi
+    
+    mkdir -p "$VERSIONS_DIR" "$DOWNLOADS_CACHE"
+    local cache_file="$DOWNLOADS_CACHE/Cursor-${version}.AppImage.partial"
+    
+    echo "Downloading Cursor $version..."
+    echo "URL: $url"
+    echo ""
+    
+    # Download with resume support
+    curl -L --progress-bar -o "$cache_file" -C - "$url"
+    
+    # Verify it's actually an AppImage
+    if ! file "$cache_file" | grep -q "ELF\|AppImage"; then
+        echo "❌ Downloaded file is not a valid AppImage"
+        rm -f "$cache_file"
+        exit 1
+    fi
+    
+    # Move to final location
+    mv "$cache_file" "$appimage"
+    chmod +x "$appimage"
+    
+    # Calculate and display hash
+    local hash=$(sha256sum "$appimage" | cut -d' ' -f1)
+    echo ""
+    echo "✓ Installed: $appimage"
+    echo "  SHA256: $hash"
+}
+
+cmd_run() {
+    local version="$1"
+    shift
+    local appimage="$VERSIONS_DIR/Cursor-${version}-x86_64.AppImage"
+    
+    if [[ ! -f "$appimage" ]]; then
+        echo "❌ Version $version not installed. Run: cursor-versions download $version"
+        exit 1
+    fi
+    
+    # Run in isolated environment by default
+    local data_dir="$HOME/.cursor-test-envs/v${version}"
+    mkdir -p "$data_dir"
+    
+    echo "Running Cursor $version (isolated at $data_dir)"
+    exec "$appimage" --user-data-dir="$data_dir" "$@"
+}
+
+cmd_default() {
+    local version="$1"
+    local appimage="$VERSIONS_DIR/Cursor-${version}-x86_64.AppImage"
+    
+    if [[ ! -f "$appimage" ]]; then
+        echo "❌ Version $version not installed"
+        exit 1
+    fi
+    
+    echo "$version" > "$VERSIONS_DIR/.default"
+    
+    # Create symlink
+    ln -sf "$appimage" "$HOME/.local/bin/cursor-default"
+    
+    echo "✓ Default set to $version"
+    echo "  Use 'cursor-default' or add ~/.local/bin to PATH"
+}
+
+cmd_latest() {
+    echo "Checking latest Cursor version..."
+    
+    # Try to get from GitHub repo that tracks releases
+    local latest=$(curl -s "https://api.github.com/repos/oslook/cursor-ai-downloads/contents/version-history" 2>/dev/null | \
+        grep '"name"' | head -1 | sed 's/.*"name": "\([^"]*\)".*/\1/' | sed 's/.json//')
+    
+    if [[ -n "$latest" ]]; then
+        echo "Latest version: $latest"
+    else
+        echo "Could not determine latest version"
+        echo "Check: https://github.com/oslook/cursor-ai-downloads"
+    fi
+}
+
+# Main
+case "${1:-help}" in
+    list|ls)
+        cmd_list
+        ;;
+    download|dl)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: cursor-versions download <version>"
+            exit 1
+        fi
+        cmd_download "$2"
+        ;;
+    run)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: cursor-versions run <version> [args]"
+            exit 1
+        fi
+        cmd_run "${@:2}"
+        ;;
+    default)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: cursor-versions default <version>"
+            exit 1
+        fi
+        cmd_default "$2"
+        ;;
+    latest)
+        cmd_latest
+        ;;
+    *)
+        echo "cursor-versions: Manage multiple Cursor AppImage versions"
+        echo ""
+        echo "Commands:"
+        echo "  list              List installed versions"
+        echo "  download <ver>    Download specific version"
+        echo "  run <ver> [args]  Run specific version (isolated)"
+        echo "  default <ver>     Set default version"
+        echo "  latest            Show latest available version"
+        echo ""
+        echo "Examples:"
+        echo "  cursor-versions download 2.2.36"
+        echo "  cursor-versions run 2.2.36 ~/myproject"
+        ;;
+esac

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# sync-versions: Sync Cursor version info from oslook/cursor-ai-downloads
+#
+# Usage:
+#   sync-versions           # Show latest versions
+#   sync-versions --update  # Update cursor-versions script with new URLs
+#
+
+set -euo pipefail
+
+REPO_URL="https://api.github.com/repos/oslook/cursor-ai-downloads"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+echo "Fetching version info from oslook/cursor-ai-downloads..."
+echo ""
+
+# Get the README which has the download links
+README=$(curl -s "https://raw.githubusercontent.com/oslook/cursor-ai-downloads/main/README.md")
+
+echo "=== Latest Available Versions ==="
+echo ""
+
+# Extract Linux versions
+echo "Linux (x64):"
+echo "$README" | grep -oP 'linux/x64/Cursor-[0-9]+\.[0-9]+\.[0-9]+-x86_64\.AppImage' | \
+    sed 's|linux/x64/Cursor-||; s|-x86_64.AppImage||' | sort -V | uniq | tail -10 | \
+    while read ver; do
+        echo "  $ver"
+    done
+
+echo ""
+echo "macOS (Universal):"
+echo "$README" | grep -oP 'mac/universal/Cursor-[0-9]+\.[0-9]+\.[0-9]+-universal\.dmg' | \
+    sed 's|mac/universal/Cursor-||; s|-universal.dmg||' | sort -V | uniq | tail -10 | \
+    while read ver; do
+        echo "  $ver"
+    done
+
+echo ""
+echo "─────────────────────────────────────────────────────────"
+echo "To add a new version, edit cursor-versions and add:"
+echo ""
+echo '  ["X.Y.Z"]="https://downloads.cursor.com/production/<commit>/linux/x64/Cursor-X.Y.Z-x86_64.AppImage"'
+echo ""
+echo "Get the commit hash from:"
+echo "  https://github.com/oslook/cursor-ai-downloads/blob/main/version-history/"

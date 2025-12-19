@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+#
+# cursor-backup: Backup and restore Cursor configuration
+#
+# Usage:
+#   cursor-backup save [name]       # Create a named backup
+#   cursor-backup list              # List available backups
+#   cursor-backup restore <name>    # Restore from backup
+#   cursor-backup quick             # Quick snapshot (timestamped)
+#
+
+set -euo pipefail
+
+BACKUP_ROOT="$HOME/.cursor-backups"
+CURSOR_CONFIG="$HOME/.config/Cursor"
+
+cmd_save() {
+    local name="${1:-$(date +%Y%m%d_%H%M%S)}"
+    local backup_dir="$BACKUP_ROOT/$name"
+    
+    if [[ -d "$backup_dir" ]]; then
+        echo "❌ Backup '$name' already exists. Choose different name or delete first."
+        exit 1
+    fi
+    
+    echo "Creating backup: $name"
+    mkdir -p "$backup_dir"
+    
+    # Backup essential files (not caches)
+    echo "  → User settings..."
+    cp -r "$CURSOR_CONFIG/User" "$backup_dir/User" 2>/dev/null || true
+    
+    # Backup the databases separately (most critical)
+    echo "  → State database..."
+    if [[ -f "$CURSOR_CONFIG/User/globalStorage/state.vscdb" ]]; then
+        sqlite3 "$CURSOR_CONFIG/User/globalStorage/state.vscdb" ".backup '$backup_dir/state.vscdb'" 2>/dev/null || \
+            cp "$CURSOR_CONFIG/User/globalStorage/state.vscdb" "$backup_dir/state.vscdb"
+    fi
+    
+    # Record metadata
+    cat > "$backup_dir/metadata.txt" << META
+Backup: $name
+Created: $(date -Iseconds)
+Cursor Config: $CURSOR_CONFIG
+Host: $(hostname)
+User: $USER
+Cursor Version: $(cursor --version 2>/dev/null || echo "unknown")
+META
+    
+    # Calculate size
+    local size=$(du -sh "$backup_dir" | cut -f1)
+    echo ""
+    echo "✓ Backup complete: $backup_dir ($size)"
+}
+
+cmd_list() {
+    echo "Available Cursor backups:"
+    echo "─────────────────────────"
+    
+    if [[ ! -d "$BACKUP_ROOT" ]] || [[ -z "$(ls -A "$BACKUP_ROOT" 2>/dev/null)" ]]; then
+        echo "  (no backups found)"
+        return
+    fi
+    
+    for backup in "$BACKUP_ROOT"/*/; do
+        local name=$(basename "$backup")
+        local size=$(du -sh "$backup" 2>/dev/null | cut -f1)
+        local date=$(head -2 "$backup/metadata.txt" 2>/dev/null | tail -1 | cut -d: -f2- || echo "unknown")
+        printf "  %-25s %8s  %s\n" "$name" "$size" "$date"
+    done
+}
+
+cmd_restore() {
+    local name="$1"
+    local backup_dir="$BACKUP_ROOT/$name"
+    
+    if [[ ! -d "$backup_dir" ]]; then
+        echo "❌ Backup '$name' not found"
+        cmd_list
+        exit 1
+    fi
+    
+    echo "⚠️  This will replace your current Cursor configuration!"
+    echo "    Backup: $name"
+    echo "    Target: $CURSOR_CONFIG"
+    echo ""
+    read -p "Continue? [y/N] " -n 1 -r
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        exit 0
+    fi
+    
+    # First, make emergency backup of current state
+    echo "Creating emergency backup of current state..."
+    local emergency="emergency_$(date +%Y%m%d_%H%M%S)"
+    cmd_save "$emergency"
+    
+    echo ""
+    echo "Restoring from '$name'..."
+    
+    # Restore User directory
+    if [[ -d "$backup_dir/User" ]]; then
+        echo "  → User settings..."
+        rm -rf "$CURSOR_CONFIG/User"
+        cp -r "$backup_dir/User" "$CURSOR_CONFIG/User"
+    fi
+    
+    # Restore database
+    if [[ -f "$backup_dir/state.vscdb" ]]; then
+        echo "  → State database..."
+        cp "$backup_dir/state.vscdb" "$CURSOR_CONFIG/User/globalStorage/state.vscdb"
+    fi
+    
+    echo ""
+    echo "✓ Restore complete. Please restart Cursor."
+}
+
+cmd_quick() {
+    cmd_save "quick_$(date +%Y%m%d_%H%M%S)"
+}
+
+# Main
+mkdir -p "$BACKUP_ROOT"
+
+case "${1:-help}" in
+    save)
+        cmd_save "${2:-}"
+        ;;
+    list)
+        cmd_list
+        ;;
+    restore)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: cursor-backup restore <name>"
+            cmd_list
+            exit 1
+        fi
+        cmd_restore "$2"
+        ;;
+    quick)
+        cmd_quick
+        ;;
+    *)
+        echo "Usage: cursor-backup <command> [args]"
+        echo ""
+        echo "Commands:"
+        echo "  save [name]     Create a named backup"
+        echo "  list            List available backups"  
+        echo "  restore <name>  Restore from backup"
+        echo "  quick           Quick timestamped snapshot"
+        ;;
+esac

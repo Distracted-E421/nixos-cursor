@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+#
+# cursor-test: Run Cursor with isolated user data for testing
+#
+# This is the SIMPLEST and MOST RELIABLE isolation method.
+# It uses Cursor's built-in --user-data-dir flag.
+#
+# Usage:
+#   cursor-test [--env NAME] [--reset] [--appimage PATH] [workspace]
+#
+# Examples:
+#   cursor-test                    # Use default "test" environment
+#   cursor-test --env proxy-dev    # Use "proxy-dev" environment
+#   cursor-test --reset            # Clear test env and start fresh
+#   cursor-test ~/projects/myapp   # Open workspace in test env
+#
+
+set -euo pipefail
+
+ENV_NAME="test"
+RESET=false
+APPIMAGE=""
+WORKSPACE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --env|-e)
+            ENV_NAME="$2"
+            shift 2
+            ;;
+        --reset|-r)
+            RESET=true
+            shift
+            ;;
+        --appimage|-a)
+            APPIMAGE="$2"
+            shift 2
+            ;;
+        -*)
+            echo "Usage: cursor-test [--env NAME] [--reset] [--appimage PATH] [workspace]"
+            exit 1
+            ;;
+        *)
+            WORKSPACE="$1"
+            shift
+            ;;
+    esac
+done
+
+# Isolated data directory
+DATA_DIR="$HOME/.cursor-test-envs/$ENV_NAME"
+
+echo "┌────────────────────────────────────────────────────────────────┐"
+echo "│  Cursor Test Environment: $ENV_NAME"
+echo "├────────────────────────────────────────────────────────────────┤"
+echo "│  Data: $DATA_DIR"
+echo "│  Workspace: ${WORKSPACE:-<none>}"
+echo "└────────────────────────────────────────────────────────────────┘"
+
+if [[ "$RESET" == "true" ]]; then
+    echo ""
+    echo "⚠️  Resetting environment '$ENV_NAME'..."
+    rm -rf "$DATA_DIR"
+    echo "✓ Environment cleared"
+fi
+
+mkdir -p "$DATA_DIR"
+
+# Find cursor
+if [[ -n "$APPIMAGE" ]]; then
+    CURSOR="$APPIMAGE"
+elif [[ -f "$HOME/.local/bin/cursor-appimage" ]]; then
+    CURSOR="$HOME/.local/bin/cursor-appimage"
+elif command -v cursor &>/dev/null; then
+    CURSOR="cursor"
+else
+    echo "❌ Cursor not found"
+    exit 1
+fi
+
+echo ""
+echo "Starting Cursor (isolated)..."
+echo "─────────────────────────────"
+
+# The key flag that isolates everything
+exec "$CURSOR" --user-data-dir="$DATA_DIR" ${WORKSPACE:+"$WORKSPACE"}
