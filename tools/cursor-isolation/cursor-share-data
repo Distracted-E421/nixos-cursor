@@ -4,6 +4,7 @@
 #
 # Usage:
 #   cursor-share-data link <env>        # Symlink globalStorage to isolated env
+#   cursor-share-data unlink <env>      # REVERT - remove symlink, restore independence
 #   cursor-share-data copy-auth <env>   # Copy only auth token
 #   cursor-share-data status <env>      # Check what's shared
 #
@@ -65,6 +66,59 @@ cmd_link() {
     echo "   - Conversations: SHARED"
     echo ""
     echo "   Changes in isolated instance WILL affect main Cursor."
+}
+
+cmd_unlink() {
+    local env="${1:-}"
+    if [[ -z "$env" ]]; then
+        echo "Usage: cursor-share-data unlink <env>"
+        echo "  e.g., cursor-share-data unlink v2.0.77"
+        exit 1
+    fi
+    
+    local env_path=$(get_env_path "$env")
+    local env_global="$env_path/User/globalStorage"
+    
+    echo "Unlinking globalStorage for $env"
+    echo "────────────────────────────────"
+    
+    if [[ ! -L "$env_global" ]]; then
+        if [[ -d "$env_global" ]]; then
+            echo "✓ Already independent (not a symlink)"
+        else
+            echo "Nothing to unlink - globalStorage doesn't exist"
+        fi
+        return
+    fi
+    
+    # Remove symlink
+    rm "$env_global"
+    echo "✓ Symlink removed"
+    
+    # Create fresh independent directory
+    mkdir -p "$env_global"
+    echo "✓ Created fresh independent globalStorage"
+    
+    # Check for backup to restore
+    local backup=$(ls -1t "${env_global}.backup."* 2>/dev/null | head -1)
+    if [[ -n "$backup" ]]; then
+        echo ""
+        echo "Found backup: $backup"
+        read -p "Restore from backup? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -rf "$env_global"
+            mv "$backup" "$env_global"
+            echo "✓ Restored from backup"
+        fi
+    fi
+    
+    echo ""
+    echo "✓ Environment $env is now INDEPENDENT"
+    echo "  You will need to login again and re-index docs."
+    echo ""
+    echo "  To copy auth from main Cursor:"
+    echo "    cursor-share-data copy-auth $env"
 }
 
 cmd_copy_auth() {
@@ -167,6 +221,9 @@ case "${1:-help}" in
     link)
         cmd_link "${2:-}"
         ;;
+    unlink)
+        cmd_unlink "${2:-}"
+        ;;
     copy-auth)
         cmd_copy_auth "${2:-}"
         ;;
@@ -178,11 +235,13 @@ case "${1:-help}" in
         echo ""
         echo "Commands:"
         echo "  link <env>       Symlink globalStorage (SHARES everything)"
+        echo "  unlink <env>     Remove symlink, restore independence (SAFE REVERT)"
         echo "  copy-auth <env>  Copy only auth token (independent, no docs)"
         echo "  status <env>     Check what's shared"
         echo ""
         echo "Examples:"
         echo "  cursor-share-data link v2.0.77"
+        echo "  cursor-share-data unlink v2.0.77   # Revert if things break"
         echo "  cursor-share-data copy-auth proxy-dev"
         echo "  cursor-share-data status v2.0.77"
         ;;
