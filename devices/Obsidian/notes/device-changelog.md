@@ -1,3 +1,131 @@
+## 2025-12-27 18:00:00 - [AI] Phase 3: Elixir LNN Port & Arc A770 Issues
+
+**Description**: Implemented IBM LNN Elixir port for cursor-docs, discovered critical Arc A770 Vulkan issues
+
+**Files Created**:
+- `services/cursor-docs/lib/cursor_docs/ai/lnn.ex` - Main LNN module
+- `services/cursor-docs/lib/cursor_docs/ai/lnn/model.ex` - LNN model container (GenServer)
+- `services/cursor-docs/lib/cursor_docs/ai/lnn/formula.ex` - Base formula + Lukasiewicz bounds
+- `services/cursor-docs/lib/cursor_docs/ai/lnn/connectives.ex` - And, Or, Not, Implies, Iff, Predicate, Proposition
+- `services/cursor-docs/lib/cursor_docs/ai/lnn/graph.ex` - DAG for formula dependencies
+- `services/cursor-docs/lib/cursor_docs/ai/lnn/python.ex` - Optional Python interop for training
+
+**LNN Elixir Port Features**:
+- ✅ Propositional logic (And, Or, Not, Implies, Iff)
+- ✅ First-order predicates with groundings
+- ✅ Upward inference (leaf to root)
+- ✅ Belief bounds [L, U] ∈ [0,1]²
+- ✅ Lukasiewicz semantics (differentiable t-norms)
+- 🔄 Downward inference (modus ponens) - partial
+- 🔄 Training via Python interop - scaffolded
+
+**⚠️ Arc A770 Vulkan Critical Issue Discovered**:
+- Models download and load successfully on Arc A770 (port 11435)
+- Inference produces **gibberish output** (repetitive nonsense)
+- Tested: qwen2.5:7b and qwen2.5:14b both fail
+- Root cause: Vulkan compute shader compatibility with Intel Arc
+- **Workaround**: Use RTX 2080 (port 11434) until fixed
+
+**Recommended Solutions for Arc A770**:
+1. llama.cpp with SYCL/Level Zero (better Intel support)
+2. IPEX-LLM (Intel's optimized runtime)
+3. CPU offload mode (`OLLAMA_NUM_GPU=0`)
+4. Wait for Ollama Vulkan fixes
+
+**Research Document Updated**:
+- Added Section 6.5: Elixir LNN Port details
+- Updated Section 6: Hardware with Arc A770 Vulkan issues
+- Added llama.cpp distributed inference architecture
+- Marked IBM LNN as selected solution
+
+**Verified Working**:
+- LNN formula calculations (implies, and, or, not bounds)
+- Model knowledge base construction
+- Graph traversal for inference
+- Upward belief propagation
+
+**Next Steps**:
+- Implement full downward inference (modus ponens)
+- Test llama.cpp with SYCL on Framework laptop
+- Integrate LNN with neuro-symbolic pipeline
+- Create cursor-docs documentation KB
+
+---
+
+## 2025-12-27 16:00:00 - [AI] Phase 2: Models & Distributed Architecture
+
+**Description**: Expanded AI model inventory, documented distributed inference, added IBM LNN deep dive
+
+**Models Added**:
+- `qwen2.5:14b` (9.0GB) - Large reasoning model for Arc A770
+- `nomic-embed-text` (274MB) - Embedding model for semantic search
+
+**Research Added**:
+- IBM LNN architecture deep dive (Section 9)
+- llama.cpp RPC distributed inference (Section 10)
+- Elixir co-routine implementation patterns (Section 11)
+- Model inventory and GPU allocation strategy (Section 12)
+
+**Application Changes**:
+- Registered `CursorDocs.AI.Neurosymbolic.Orchestrator` in application supervisor
+- Added `ModelSelector` module for task-based model selection
+
+**Infrastructure Notes**:
+- RTX 2080: qwen2.5:3b, qwen2.5:7b, qwen2.5-coder:7b, nomic-embed-text
+- Arc A770: qwen2.5:14b (ready for large reasoning tasks)
+- Network cap: 1Gbps (suitable for batch processing, not real-time distributed)
+
+**Next Steps**:
+- Configure Arc A770 Ollama with ONEAPI optimizations
+- Test llama.cpp RPC across homelab machines
+- Evaluate IBM LNN Python integration in Elixir via ports
+
+---
+
+## 2025-12-27 15:30:00 - [AI]
+
+**Description**: Neuro-Symbolic AI Framework - Initial Implementation
+
+**Files**:
+- docs/research/NEUROSYMBOLIC_AI_FRAMEWORK.md (comprehensive research document)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic.ex (main module)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/orchestrator.ex (co-routine orchestrator)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/parser.ex (NL parser)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/grounder.ex (symbol grounder)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/reasoner.ex (logical reasoner)
+- services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/explainer.ex (explanation generator)
+
+**New Capabilities**:
+- Co-routine-based reasoning pipeline with YIELD/RESUME semantics
+- LLM-powered natural language parsing (qwen2.5-coder:7b for code queries)
+- Symbol grounding connecting NL to knowledge graph entities
+- Hybrid reasoning (rule-based + LLM-guided inference)
+- Multi-level explanation generation (brief/standard/detailed)
+- Fast mode without LLM for quick heuristic reasoning
+
+**Models Upgraded**:
+- Downloaded qwen2.5-coder:7b (4.7GB) for code-focused parsing
+- Existing: qwen2.5:7b, qwen2.5:3b for general reasoning
+
+**Research Topics Documented**:
+- Symbol Grounding Problem and LLM solutions
+- IBM Logical Neural Networks (LNN)
+- Stanford DSPy framework for programming LLMs
+- Co-routine patterns for interruptible AI workflows
+- Local training strategies for custom SLMs
+
+**Hardware Utilization**:
+- RTX 2080 (8GB): qwen2.5:7b, qwen2.5-coder:7b (NL interface, reasoning)
+- Arc A770 (16GB): Available for larger models, embeddings
+
+**Next Steps**:
+- Test full pipeline with documentation queries
+- Integrate with cursor-docs search
+- Evaluate IBM LNN vs Clingo ASP for formal reasoning
+- Create training data for custom grounding model
+
+---
+
 ## 2025-12-19 11:45:00 - [SCRIPT]
 
 **Description**: Cursor Isolation & Recovery Tools created after experimental work broke main Cursor
@@ -1188,5 +1316,39 @@ This captures users from zero-setup to power users building full data pipelines.
 - Version spoofing tested but all versions return OUTDATED_CLIENT
 - Server appears to check request format, not just headers
 - Ready for traffic capture testing to reverse-engineer exact format
+
+---
+
+## 2025-12-27 17:22:00 - [AI]
+
+**Description**: llama.cpp SYCL backend research + Intel GPU module enhancement + Neuro-symbolic documentation update
+
+**Arc A770 SYCL Findings**:
+- llama.cpp SYCL backend officially verified for Arc A770 (~55 tokens/s)
+- Ollama Vulkan backend produces gibberish (Intel shader compatibility issue)
+- Solution: Build llama.cpp with SYCL backend using Intel oneAPI
+
+**NixOS Configuration Updates**:
+- Enhanced gpu-intel.nix module with Level-Zero and AdaptiveCpp (SYCL) support
+- Added enableSycl option for AI workloads
+- Added ACPP_TARGETS environment variable for backend discovery
+- Verified dry-build succeeds (11m46s evaluation)
+
+**Research Documentation**:
+- Updated NEUROSYMBOLIC_AI_FRAMEWORK.md with llama.cpp SYCL findings
+- Documented Arc A770 Vulkan issues and workarounds
+- Added build instructions for llama.cpp with SYCL on NixOS
+- Added performance comparison table (SYCL vs Vulkan vs OpenCL)
+- Created roadmap for immediate, short-term, and medium-term tasks
+
+**Files**:
+- /home/e421/homelab/nixos/modules/hardware/gpu-intel.nix (enhanced)
+- /home/e421/nixos-cursor/docs/research/NEUROSYMBOLIC_AI_FRAMEWORK.md (updated)
+- /home/e421/llama.cpp (cloned for SYCL build)
+
+**Notes**: 
+- Next steps: Install Intel oneAPI toolkit, build llama.cpp with SYCL
+- Consider Docker container approach for cleanest isolation
+- RTX 2080 remains reliable for Ollama CUDA inference
 
 ---
