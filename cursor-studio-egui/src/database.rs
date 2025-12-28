@@ -517,7 +517,9 @@ impl ChatDatabase {
     pub fn get_versions(&self) -> Result<Vec<CursorVersion>> {
         let home = dirs::home_dir().context("No home directory")?;
         let mut versions = Vec::new();
+        let mut seen_versions = std::collections::HashSet::new();
 
+        // 1. Main Cursor installation (default)
         let main_cursor = home.join(".config/Cursor");
         if main_cursor.exists() {
             versions.push(CursorVersion {
@@ -526,20 +528,57 @@ impl ChatDatabase {
                 is_installed: true,
                 is_default: true,
             });
+            seen_versions.insert("default".to_string());
         }
 
+        // 2. Legacy versioned installations (~/.cursor-{version}/)
         for entry in std::fs::read_dir(&home)? {
             let entry = entry?;
             let name = entry.file_name().to_string_lossy().to_string();
 
             if name.starts_with(".cursor-") && entry.file_type()?.is_dir() {
+                // Skip cursor-studio directory
+                if name == ".cursor-studio" {
+                    continue;
+                }
                 let version = name.strip_prefix(".cursor-").unwrap_or(&name).to_string();
-                versions.push(CursorVersion {
-                    version,
-                    path: entry.path(),
-                    is_installed: true,
-                    is_default: false,
-                });
+                if !seen_versions.contains(&version) {
+                    versions.push(CursorVersion {
+                        version: version.clone(),
+                        path: entry.path(),
+                        is_installed: true,
+                        is_default: false,
+                    });
+                    seen_versions.insert(version);
+                }
+            }
+        }
+
+        // 3. Cursor Studio managed installations (~/.cursor-studio/versions/)
+        let studio_versions_dir = home.join(".cursor-studio/versions");
+        if studio_versions_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&studio_versions_dir) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        // Directory names are like "cursor-2.0.77"
+                        if let Some(version) = name.strip_prefix("cursor-") {
+                            // Check if the AppImage actually exists
+                            let appimage = entry.path().join(format!("Cursor-{}.AppImage", version));
+                            if appimage.exists() && !seen_versions.contains(version) {
+                                // Use the data directory for this version
+                                // (create ~/.cursor-{version}/ if it doesn't exist for user data)
+                                let data_path = home.join(format!(".cursor-{}", version));
+                                versions.push(CursorVersion {
+                                    version: version.to_string(),
+                                    path: data_path,
+                                    is_installed: true,
+                                    is_default: false,
+                                });
+                                seen_versions.insert(version.to_string());
+                            }
+                        }
+                    }
+                }
             }
         }
 

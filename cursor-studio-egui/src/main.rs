@@ -1649,16 +1649,48 @@ impl CursorStudio {
         } else {
             // Try to find version-specific installation
             if let Some(home) = dirs::home_dir() {
-                // Check for versioned Cursor installations
+                // Priority order for finding Cursor installations:
+                // 1. Cursor Studio managed: ~/.cursor-studio/versions/cursor-{version}/Cursor-{version}.AppImage
+                // 2. Nix cursor-versions: cursor-{version} binary
+                // 3. Legacy versioned: ~/.cursor-{version}/cursor
+                // 4. Legacy AppImage: ~/Applications/Cursor-{version}.AppImage
+                
+                // 1. Cursor Studio managed install location
+                let studio_path = home.join(format!(
+                    ".cursor-studio/versions/cursor-{}/Cursor-{}.AppImage", 
+                    version, version
+                ));
+                
+                // 2. Try version-specific binary from Nix (cursor-versions.nix)
+                let nix_binary = format!("cursor-{}", version);
+                
+                // 3. Legacy versioned installation
                 let versioned_path = home.join(format!(".cursor-{}/cursor", version));
+                
+                // 4. Legacy AppImage location
                 let appimage_path = home.join(format!("Applications/Cursor-{}.AppImage", version));
 
-                if versioned_path.exists() {
+                if studio_path.exists() {
+                    log::info!("Launching from cursor-studio: {:?}", studio_path);
+                    Command::new(&studio_path)
+                        .arg("--user-data-dir")
+                        .arg(home.join(format!(".cursor-{}", version)))
+                        .spawn()
+                } else if which::which(&nix_binary).is_ok() {
+                    log::info!("Launching Nix binary: {}", nix_binary);
+                    Command::new(&nix_binary).spawn()
+                } else if versioned_path.exists() {
+                    log::info!("Launching from versioned path: {:?}", versioned_path);
                     Command::new(&versioned_path).spawn()
                 } else if appimage_path.exists() {
-                    Command::new(&appimage_path).spawn()
+                    log::info!("Launching from AppImage: {:?}", appimage_path);
+                    Command::new(&appimage_path)
+                        .arg("--user-data-dir")
+                        .arg(home.join(format!(".cursor-{}", version)))
+                        .spawn()
                 } else {
                     // Fall back to main cursor with env var hint
+                    log::warn!("No installation found for v{}, falling back to main cursor", version);
                     Command::new("cursor")
                         .env("CURSOR_VERSION", version)
                         .spawn()
@@ -1676,13 +1708,46 @@ impl CursorStudio {
 
     fn get_all_versions(&self) -> Vec<(String, bool)> {
         // Returns (version, is_installed)
-        let installed: std::collections::HashSet<_> =
+        // An version is "installed" if:
+        // 1. It exists in the database (self.versions)
+        // 2. OR it has an AppImage in ~/.cursor-studio/versions/
+        // 3. OR its Nix binary exists (cursor-{version})
+        
+        let mut installed: std::collections::HashSet<String> =
             self.versions.iter().map(|v| v.version.clone()).collect();
+        
+        // Also check for cursor-studio managed installations on disk
+        if let Some(home) = dirs::home_dir() {
+            let versions_dir = home.join(".cursor-studio/versions");
+            if versions_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&versions_dir) {
+                    for entry in entries.flatten() {
+                        if let Some(name) = entry.file_name().to_str() {
+                            // Directory names are like "cursor-2.0.77"
+                            if let Some(version) = name.strip_prefix("cursor-") {
+                                // Check if the AppImage actually exists
+                                let appimage = entry.path().join(format!("Cursor-{}.AppImage", version));
+                                if appimage.exists() {
+                                    installed.insert(version.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also check for Nix-installed versions
+        for available in &self.available_versions {
+            let nix_binary = format!("cursor-{}", available.version);
+            if which::which(&nix_binary).is_ok() {
+                installed.insert(available.version.clone());
+            }
+        }
 
-        let mut all_versions: Vec<(String, bool)> = self
-            .versions
+        let mut all_versions: Vec<(String, bool)> = installed
             .iter()
-            .map(|v| (v.version.clone(), true))
+            .map(|v| (v.clone(), true))
             .collect();
 
         if self.show_all_versions {
@@ -1828,18 +1893,50 @@ impl CursorStudio {
                                 None
                             };
 
-                            self.download_state = DownloadState::Completed {
-                                version: version.clone(),
-                                path: path.clone(),
-                            };
+                            // Install the downloaded AppImage to the proper location
+                            match versions::install_version(&path, &version) {
+                                Ok(installed_path) => {
+                                    log::info!("Installed v{} to {:?}", version, installed_path);
+                                    
+                                    // Create user data directory for this version if it doesn't exist
+                                    if let Some(home) = dirs::home_dir() {
+                                        let data_dir = home.join(format!(".cursor-{}", version));
+                                        if !data_dir.exists() {
+                                            if let Err(e) = std::fs::create_dir_all(&data_dir) {
+                                                log::warn!("Failed to create data dir: {}", e);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Refresh versions list to show the new installation
+                                    // (get_versions scans the filesystem, so it will find the new install)
+                                    self.versions = self.db.get_versions().unwrap_or_default();
+                                    
+                                    // Also refresh available_versions to update installed status
+                                    self.available_versions = get_available_versions();
+                                    
+                                    self.download_state = DownloadState::Completed {
+                                        version: version.clone(),
+                                        path: installed_path,
+                                    };
 
-                            let status_msg = match hash_status {
-                                Some(hash_msg) => {
-                                    format!("✓ Downloaded v{} - {}", version, hash_msg)
+                                    let status_msg = match hash_status {
+                                        Some(hash_msg) => {
+                                            format!("✓ Installed v{} - {}", version, hash_msg)
+                                        }
+                                        None => format!("✓ Installed v{}", version),
+                                    };
+                                    self.set_status(&status_msg);
                                 }
-                                None => format!("✓ Downloaded v{}", version),
-                            };
-                            self.set_status(&status_msg);
+                                Err(e) => {
+                                    log::error!("Failed to install v{}: {}", version, e);
+                                    self.download_state = DownloadState::Failed {
+                                        version: version.clone(),
+                                        error: format!("Installation failed: {}", e),
+                                    };
+                                    self.set_status(&format!("✗ Installation failed: {}", e));
+                                }
+                            }
                         }
                         self.download_receiver = None;
                         self.download_progress = None;

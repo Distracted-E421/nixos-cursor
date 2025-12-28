@@ -36,6 +36,11 @@ let
   setup-namespace = pkgs.writeShellScript "cursor-proxy-setup-ns" ''
     set -euo pipefail
     
+    # Use full paths for NixOS systemd
+    IP="${pkgs.iproute2}/bin/ip"
+    IPTABLES="${pkgs.iptables}/bin/iptables"
+    GREP="${pkgs.gnugrep}/bin/grep"
+    
     NS="${nsName}"
     VETH_HOST="${vethHost}"
     VETH_NS="${vethNs}"
@@ -43,7 +48,7 @@ let
     NS_IP="${nsIP}"
     
     # Check if namespace already exists
-    if ip netns list | grep -q "^$NS"; then
+    if $IP netns list | $GREP -q "^$NS"; then
       echo "Namespace $NS already exists"
       exit 0
     fi
@@ -51,37 +56,37 @@ let
     echo "Creating network namespace: $NS"
     
     # Create namespace
-    ip netns add "$NS"
+    $IP netns add "$NS"
     
     # Create veth pair
-    ip link add "$VETH_HOST" type veth peer name "$VETH_NS"
+    $IP link add "$VETH_HOST" type veth peer name "$VETH_NS"
     
     # Move one end to namespace
-    ip link set "$VETH_NS" netns "$NS"
+    $IP link set "$VETH_NS" netns "$NS"
     
     # Configure host side
-    ip addr add "$HOST_IP/24" dev "$VETH_HOST"
-    ip link set "$VETH_HOST" up
+    $IP addr add "$HOST_IP/24" dev "$VETH_HOST"
+    $IP link set "$VETH_HOST" up
     
     # Configure namespace side
-    ip netns exec "$NS" ip addr add "$NS_IP/24" dev "$VETH_NS"
-    ip netns exec "$NS" ip link set "$VETH_NS" up
-    ip netns exec "$NS" ip link set lo up
+    $IP netns exec "$NS" $IP addr add "$NS_IP/24" dev "$VETH_NS"
+    $IP netns exec "$NS" $IP link set "$VETH_NS" up
+    $IP netns exec "$NS" $IP link set lo up
     
     # Set default route in namespace to go through host
-    ip netns exec "$NS" ip route add default via "$HOST_IP"
+    $IP netns exec "$NS" $IP route add default via "$HOST_IP"
     
     # Enable IP forwarding on host (for namespace internet access)
     echo 1 > /proc/sys/net/ipv4/ip_forward
     
     # NAT for namespace traffic going to internet (through host)
     # Use specific interface to avoid touching Mullvad/Tailscale
-    iptables -t nat -A POSTROUTING -s ${subnet} -o "$VETH_HOST" -j MASQUERADE 2>/dev/null || \
-    iptables -t nat -A POSTROUTING -s ${subnet} ! -d ${subnet} -j MASQUERADE
+    $IPTABLES -t nat -A POSTROUTING -s ${subnet} -o "$VETH_HOST" -j MASQUERADE 2>/dev/null || \
+    $IPTABLES -t nat -A POSTROUTING -s ${subnet} ! -d ${subnet} -j MASQUERADE
     
     # Allow forwarding for namespace traffic
-    iptables -A FORWARD -i "$VETH_HOST" -j ACCEPT
-    iptables -A FORWARD -o "$VETH_HOST" -j ACCEPT
+    $IPTABLES -A FORWARD -i "$VETH_HOST" -j ACCEPT
+    $IPTABLES -A FORWARD -o "$VETH_HOST" -j ACCEPT
     
     echo "Namespace $NS configured successfully"
     echo "  Host: $VETH_HOST ($HOST_IP)"
@@ -95,16 +100,19 @@ let
   setup-namespace-iptables = pkgs.writeShellScript "cursor-proxy-setup-ns-iptables" ''
     set -euo pipefail
     
+    # Use full paths for NixOS systemd
+    IPTABLES="${pkgs.iptables}/bin/iptables"
+    
     PROXY_PORT="${toString proxyPort}"
     
     echo "Setting up transparent proxy redirect in namespace..."
     
     # Redirect all outgoing port 443 traffic to local proxy
     # This uses REDIRECT which works with SO_ORIGINAL_DST
-    iptables -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to-port "$PROXY_PORT"
+    $IPTABLES -t nat -A OUTPUT -p tcp --dport 443 -j REDIRECT --to-port "$PROXY_PORT"
     
     # Also catch port 80 for any HTTP redirects
-    iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-port "$PROXY_PORT"
+    $IPTABLES -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-port "$PROXY_PORT"
     
     echo "Transparent redirect active:"
     echo "  Port 443 → localhost:$PROXY_PORT"
@@ -115,22 +123,26 @@ let
   teardown-namespace = pkgs.writeShellScript "cursor-proxy-teardown-ns" ''
     set -euo pipefail
     
+    # Use full paths for NixOS systemd
+    IP="${pkgs.iproute2}/bin/ip"
+    IPTABLES="${pkgs.iptables}/bin/iptables"
+    
     NS="${nsName}"
     VETH_HOST="${vethHost}"
     
     echo "Tearing down namespace: $NS"
     
     # Remove iptables rules (best effort)
-    iptables -t nat -D POSTROUTING -s ${subnet} -o "$VETH_HOST" -j MASQUERADE 2>/dev/null || true
-    iptables -t nat -D POSTROUTING -s ${subnet} ! -d ${subnet} -j MASQUERADE 2>/dev/null || true
-    iptables -D FORWARD -i "$VETH_HOST" -j ACCEPT 2>/dev/null || true
-    iptables -D FORWARD -o "$VETH_HOST" -j ACCEPT 2>/dev/null || true
+    $IPTABLES -t nat -D POSTROUTING -s ${subnet} -o "$VETH_HOST" -j MASQUERADE 2>/dev/null || true
+    $IPTABLES -t nat -D POSTROUTING -s ${subnet} ! -d ${subnet} -j MASQUERADE 2>/dev/null || true
+    $IPTABLES -D FORWARD -i "$VETH_HOST" -j ACCEPT 2>/dev/null || true
+    $IPTABLES -D FORWARD -o "$VETH_HOST" -j ACCEPT 2>/dev/null || true
     
     # Delete namespace (also removes veth pair and namespace iptables)
-    ip netns del "$NS" 2>/dev/null || true
+    $IP netns del "$NS" 2>/dev/null || true
     
     # Clean up any orphaned veth
-    ip link del "$VETH_HOST" 2>/dev/null || true
+    $IP link del "$VETH_HOST" 2>/dev/null || true
     
     echo "Namespace $NS removed"
   '';
@@ -138,6 +150,9 @@ let
   # Script to run the proxy inside the namespace
   run-proxy-in-ns = pkgs.writeShellScript "cursor-proxy-run-in-ns" ''
     set -euo pipefail
+    
+    # Use full paths for NixOS systemd
+    IP="${pkgs.iproute2}/bin/ip"
     
     NS="${nsName}"
     CA_DIR="${cfg.caDir}"
@@ -153,7 +168,7 @@ let
     echo "Starting cursor-proxy in namespace $NS..."
     
     # Run proxy inside the namespace
-    exec ip netns exec "$NS" ${cursor-proxy}/bin/cursor-proxy start \
+    exec $IP netns exec "$NS" ${cursor-proxy}/bin/cursor-proxy start \
       --port "$PROXY_PORT" \
       --ca-cert "$CA_DIR/ca-cert.pem" \
       --ca-key "$CA_DIR/ca-key.pem" \
@@ -461,7 +476,7 @@ in {
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = setup-namespace;
-        ExecStartPost = "${pkgs.bash}/bin/bash -c 'ip netns exec ${nsName} ${setup-namespace-iptables}'";
+        ExecStartPost = "${pkgs.bash}/bin/bash -c '${pkgs.iproute2}/bin/ip netns exec ${nsName} ${setup-namespace-iptables}'";
         ExecStop = teardown-namespace;
       };
     };

@@ -97,6 +97,9 @@ futures-util = "0.3"
 sha2 = "0.10"
 base64 = "0.22"
 
+# Binary lookup for Nix-installed versions
+which = "6.0"
+
 # Terminal detection for approval system
 atty = "0.2"
 
