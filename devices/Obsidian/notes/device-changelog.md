@@ -3,6 +3,7 @@
 **Description**: Implemented IBM LNN Elixir port for cursor-docs, discovered critical Arc A770 Vulkan issues
 
 **Files Created**:
+
 - `services/cursor-docs/lib/cursor_docs/ai/lnn.ex` - Main LNN module
 - `services/cursor-docs/lib/cursor_docs/ai/lnn/model.ex` - LNN model container (GenServer)
 - `services/cursor-docs/lib/cursor_docs/ai/lnn/formula.ex` - Base formula + Lukasiewicz bounds
@@ -11,6 +12,7 @@
 - `services/cursor-docs/lib/cursor_docs/ai/lnn/python.ex` - Optional Python interop for training
 
 **LNN Elixir Port Features**:
+
 - ✅ Propositional logic (And, Or, Not, Implies, Iff)
 - ✅ First-order predicates with groundings
 - ✅ Upward inference (leaf to root)
@@ -20,6 +22,7 @@
 - 🔄 Training via Python interop - scaffolded
 
 **⚠️ Arc A770 Vulkan Critical Issue Discovered**:
+
 - Models download and load successfully on Arc A770 (port 11435)
 - Inference produces **gibberish output** (repetitive nonsense)
 - Tested: qwen2.5:7b and qwen2.5:14b both fail
@@ -27,24 +30,28 @@
 - **Workaround**: Use RTX 2080 (port 11434) until fixed
 
 **Recommended Solutions for Arc A770**:
+
 1. llama.cpp with SYCL/Level Zero (better Intel support)
 2. IPEX-LLM (Intel's optimized runtime)
 3. CPU offload mode (`OLLAMA_NUM_GPU=0`)
 4. Wait for Ollama Vulkan fixes
 
 **Research Document Updated**:
+
 - Added Section 6.5: Elixir LNN Port details
 - Updated Section 6: Hardware with Arc A770 Vulkan issues
 - Added llama.cpp distributed inference architecture
 - Marked IBM LNN as selected solution
 
 **Verified Working**:
+
 - LNN formula calculations (implies, and, or, not bounds)
 - Model knowledge base construction
 - Graph traversal for inference
 - Upward belief propagation
 
 **Next Steps**:
+
 - Implement full downward inference (modus ponens)
 - Test llama.cpp with SYCL on Framework laptop
 - Integrate LNN with neuro-symbolic pipeline
@@ -57,25 +64,30 @@
 **Description**: Expanded AI model inventory, documented distributed inference, added IBM LNN deep dive
 
 **Models Added**:
+
 - `qwen2.5:14b` (9.0GB) - Large reasoning model for Arc A770
 - `nomic-embed-text` (274MB) - Embedding model for semantic search
 
 **Research Added**:
+
 - IBM LNN architecture deep dive (Section 9)
 - llama.cpp RPC distributed inference (Section 10)
 - Elixir co-routine implementation patterns (Section 11)
 - Model inventory and GPU allocation strategy (Section 12)
 
 **Application Changes**:
+
 - Registered `CursorDocs.AI.Neurosymbolic.Orchestrator` in application supervisor
 - Added `ModelSelector` module for task-based model selection
 
 **Infrastructure Notes**:
+
 - RTX 2080: qwen2.5:3b, qwen2.5:7b, qwen2.5-coder:7b, nomic-embed-text
 - Arc A770: qwen2.5:14b (ready for large reasoning tasks)
 - Network cap: 1Gbps (suitable for batch processing, not real-time distributed)
 
 **Next Steps**:
+
 - Configure Arc A770 Ollama with ONEAPI optimizations
 - Test llama.cpp RPC across homelab machines
 - Evaluate IBM LNN Python integration in Elixir via ports
@@ -87,6 +99,7 @@
 **Description**: Neuro-Symbolic AI Framework - Initial Implementation
 
 **Files**:
+
 - docs/research/NEUROSYMBOLIC_AI_FRAMEWORK.md (comprehensive research document)
 - services/cursor-docs/lib/cursor_docs/ai/neurosymbolic.ex (main module)
 - services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/orchestrator.ex (co-routine orchestrator)
@@ -96,6 +109,7 @@
 - services/cursor-docs/lib/cursor_docs/ai/neurosymbolic/explainer.ex (explanation generator)
 
 **New Capabilities**:
+
 - Co-routine-based reasoning pipeline with YIELD/RESUME semantics
 - LLM-powered natural language parsing (qwen2.5-coder:7b for code queries)
 - Symbol grounding connecting NL to knowledge graph entities
@@ -104,10 +118,12 @@
 - Fast mode without LLM for quick heuristic reasoning
 
 **Models Upgraded**:
+
 - Downloaded qwen2.5-coder:7b (4.7GB) for code-focused parsing
 - Existing: qwen2.5:7b, qwen2.5:3b for general reasoning
 
 **Research Topics Documented**:
+
 - Symbol Grounding Problem and LLM solutions
 - IBM Logical Neural Networks (LNN)
 - Stanford DSPy framework for programming LLMs
@@ -115,10 +131,12 @@
 - Local training strategies for custom SLMs
 
 **Hardware Utilization**:
+
 - RTX 2080 (8GB): qwen2.5:7b, qwen2.5-coder:7b (NL interface, reasoning)
 - Arc A770 (16GB): Available for larger models, embeddings
 
 **Next Steps**:
+
 - Test full pipeline with documentation queries
 - Integrate with cursor-docs search
 - Evaluate IBM LNN vs Clingo ASP for formal reasoning
@@ -131,6 +149,7 @@
 **Description**: Cursor Isolation & Recovery Tools created after experimental work broke main Cursor
 
 **Files**:
+
 - tools/cursor-isolation/cursor-test (run Cursor with isolated user data)
 - tools/cursor-isolation/cursor-backup (backup/restore Cursor config)
 - tools/cursor-isolation/cursor-versions (manage multiple AppImage versions)
@@ -139,12 +158,14 @@
 - tools/cursor-isolation/README.md (documentation)
 
 **New Capabilities**:
+
 - `cursor-test --env <name>` - Run isolated Cursor instances for safe testing
 - `cursor-backup save/restore` - Snapshot and restore configuration
 - `cursor-versions download/run <ver>` - Multiple version management
 - Downloaded Cursor 2.2.36 with verified hash
 
 **Verified Hashes**:
+
 - Cursor-2.2.36-x86_64.AppImage: `b7a3c925c4e52d53dddcc7c911d31fb1bc1431e0c139f006662400ac6ac7ccba`
 
 **Incident Triage**:
@@ -152,6 +173,7 @@ After proxy injection work broke the main Cursor (crashes, charging for no-outpu
 these tools ensure we can safely test experimental features without affecting production.
 
 **Usage**:
+
 ```bash
 # Safe testing workflow
 cursor-backup quick              # Backup before experiment
@@ -167,6 +189,7 @@ cursor-backup restore <name>     # Restore if needed
 **Description**: Comprehensive cursor-proxy injection system and API analysis
 
 **Files**:
+
 - tools/cursor-proxy/src/injection.rs (new - request/response injection engine)
 - tools/cursor-proxy/src/config.rs (added InjectionConfig)
 - tools/cursor-proxy/src/main.rs (added inject CLI commands)
@@ -176,6 +199,7 @@ cursor-backup restore <name>     # Restore if needed
 - tools/cursor-agent-tui/capture/quick-capture.sh (new - traffic capture)
 
 **Injection System Features**:
+
 - System prompt injection via protobuf modification
 - X-Cursor-Client-Version header spoofing
 - Context file injection
@@ -194,6 +218,7 @@ cursor-backup restore <name>     # Restore if needed
 
 **Key Discovery**:
 Cursor sends additional headers we weren't using:
+
 - `x-cursor-checksum` - Likely integrity/version validation hash
 - `x-cursor-config-version` - Feature flag configuration
 - `x-cursor-timezone` - Timezone info
@@ -203,6 +228,7 @@ Version validation is more than just the header - likely includes checksum
 that incorporates client version + request body + installation ID.
 
 **Next Steps**:
+
 1. Update Cursor version via nixpkgs
 2. Capture real traffic with SSLKEYLOGFILE
 3. Reverse engineer checksum algorithm
@@ -214,6 +240,7 @@ that incorporates client version + request body + installation ID.
 **Description**: Enhanced cursor-agent-tui with protobuf support and comprehensive documentation
 
 **Files**:
+
 - tools/cursor-agent-tui/src/proto.rs (new - Protobuf message definitions)
 - tools/cursor-agent-tui/src/api.rs (enhanced - Connect Protocol, better errors)
 - tools/cursor-agent-tui/src/error.rs (added - ProtobufSchemaUnknown error)
@@ -221,6 +248,7 @@ that incorporates client version + request body + installation ID.
 - Cargo.toml (added prost for protobuf)
 
 **Current Status**:
+
 | Feature | Status |
 |---------|--------|
 | Auth extraction | ✅ Working |
@@ -230,12 +258,14 @@ that incorporates client version + request body + installation ID.
 | Chat/Query | 🚧 Schema needed |
 
 **Technical Discovery**:
+
 - Cursor API uses Connect Protocol (gRPC-web) with binary protobuf
 - `AvailableModels` accepts JSON (works!)
 - `StreamUnifiedChatWithTools` requires protobuf (schema unknown)
 - mitmproxy can't capture streaming gRPC for reverse engineering
 
 **Next Steps**:
+
 1. Capture protobuf traffic with Wireshark/Charles
 2. Decode wire format to reconstruct message structure
 3. Update proto.rs with correct schema
@@ -248,6 +278,7 @@ that incorporates client version + request body + installation ID.
 **Description**: Enhanced cursor-agent-tui with working auth extraction, models command, and tests
 
 **Files**:
+
 - tools/cursor-agent-tui/src/auth.rs (fixed - correct SQLite key path)
 - tools/cursor-agent-tui/src/api.rs (enhanced - Connect Protocol headers, ModelInfo struct)
 - tools/cursor-agent-tui/src/main.rs (added - `models` command)
@@ -256,17 +287,20 @@ that incorporates client version + request body + installation ID.
 - scripts/cleanup-cursor-db.sh (fixed - removed bc dependency)
 
 **Fixes**:
+
 1. Auth now correctly reads from `ItemTable` key `cursorAuth/accessToken`
 2. Removed `bc` dependency from cleanup script (pure bash arithmetic)
 3. Added proper Connect Protocol headers (X-Cursor-*, session IDs)
 
 **New Features**:
+
 1. `cursor-agent models` - List available AI models
 2. `cursor-agent models --agent-only` - Show only agent-capable models  
 3. Full model details including thinking support, context limits
 4. 6 passing tests (3 auth + 3 API)
 
 **DB Cleanup Results**:
+
 - Before: 2.1GB (32833 bubbles, 7251 checkpoints)
 - After: 968MB (removed checkpoints, ran VACUUM)
 - Saved: ~1.1GB
@@ -278,6 +312,7 @@ that incorporates client version + request body + installation ID.
 **Description**: Created cursor-agent-tui - A lightweight TUI for Cursor AI without Electron bloat
 
 **Files**:
+
 - tools/cursor-agent-tui/ARCHITECTURE.md (new - comprehensive design document)
 - tools/cursor-agent-tui/Cargo.toml (new - Rust dependencies)
 - tools/cursor-agent-tui/src/main.rs (new - CLI entry point)
@@ -293,11 +328,13 @@ that incorporates client version + request body + installation ID.
 - scripts/cleanup-cursor-db.sh (new - Database cleanup utility)
 
 **Motivation**:
+
 - Cursor's state.vscdb grew to 2.1GB causing severe slowdowns
 - Electron/V8 GC pressure makes Cursor sluggish over time
 - Need for lightweight, composable AI agent interface
 
 **Features**:
+
 1. **Direct API Access** - HTTPS to api2.cursor.sh without Electron IPC
 2. **Token Extraction** - Can extract auth from Cursor's SQLite storage
 3. **Bounded State** - Maximum 50MB state file (vs Cursor's 2GB+)
@@ -306,6 +343,7 @@ that incorporates client version + request body + installation ID.
 6. **Streaming** - SSE stream parsing for real-time responses
 
 **Performance Targets**:
+
 | Metric | Cursor IDE | cursor-agent-tui |
 |--------|-----------|------------------|
 | Memory (idle) | 500MB+ | <50MB |
@@ -314,6 +352,7 @@ that incorporates client version + request body + installation ID.
 | State file | 2GB+ | <50MB (hard limit) |
 
 **Usage**:
+
 ```bash
 # Start TUI
 cursor-agent chat
@@ -326,6 +365,7 @@ cursor-agent auth --test
 ```
 
 **Notes**:
+
 - Phase 1 implementation - core infrastructure working
 - API protocol based on proxy captures
 - State manager with automatic pruning prevents bloat
@@ -338,9 +378,11 @@ cursor-agent auth --test
 **Description**: Database cleanup script for Cursor's bloated state.vscdb
 
 **Files**:
+
 - scripts/cleanup-cursor-db.sh (new)
 
 **Features**:
+
 - Shows database statistics and table breakdown
 - Creates automatic backups before cleanup
 - Three cleanup modes:
@@ -350,12 +392,14 @@ cursor-agent auth --test
 - Runs VACUUM to reclaim disk space
 
 **Root Cause Found**:
+
 - `cursorDiskKV` table: 2,096 MB
 - `bubbleId` entries: 32,769 (788 MB) - conversation messages
 - `checkpointId` entries: 7,227 (1,094 MB) - agent rollback state
 - Some single bubbles were 118MB each!
 
 **Usage**:
+
 ```bash
 # Close Cursor first!
 ./scripts/cleanup-cursor-db.sh stats
@@ -369,6 +413,7 @@ cursor-agent auth --test
 **Description**: Critical memory leak fixes for cursor-proxy system - addresses RAM accumulation and sluggish behavior
 
 **Files**:
+
 - tools/cursor-proxy/src/pool.rs (memory leak fix - connection pool cleanup)
 - tools/cursor-proxy/src/dashboard.rs (memory leak fix - in-flight request cleanup)
 - tools/cursor-proxy/src/capture.rs (memory leak fix - bounded concurrent saves)
@@ -412,13 +457,15 @@ cursor-agent auth --test
    - Disable now stops proxy and updates config
 
 **New Commands**:
+
 - `cursor-proxy enable` - Enable proxy in configuration
 - `cursor-proxy disable` - Disable proxy (stops if running)
 - `cursor-proxy start --force` - Start even if disabled in config
 - `cursor-studio proxy enable` - Same via cursor-studio
 - `cursor-studio proxy disable` - Same via cursor-studio
 
-**Notes**: 
+**Notes**:
+
 - The "minimal cursor command" mentioned by user likely bypassed the proxy
 - Reverting to generation 151 was necessary because the proxy was consuming RAM
 - After these fixes, garbage collection should work properly
@@ -431,6 +478,7 @@ cursor-agent auth --test
 **Description**: Complete redesign of cursor-proxy v2 with hyper-based HTTP/1.1+HTTP/2 support and cursor-studio CLI integration
 
 **Files**:
+
 - tools/cursor-proxy/ARCHITECTURE.md (new - comprehensive design doc)
 - tools/cursor-proxy/Cargo.toml (new - dependencies)
 - tools/cursor-proxy/src/main.rs (new - CLI with subcommands)
@@ -483,7 +531,7 @@ cursor-agent auth --test
 Previous h2-only approach failed with "invalid preface" errors.
 Solution: Use hyper which handles both protocols seamlessly.
 
-**Notes**: Run `cursor-studio proxy init` to generate CA, then 
+**Notes**: Run `cursor-studio proxy init` to generate CA, then
 `cursor-studio --proxy` to launch with interception enabled.
 
 ---
@@ -493,6 +541,7 @@ Solution: Use hyper which handles both protocols seamlessly.
 **Description**: Comprehensive test coverage for cursor-manager and Python MCP servers
 
 **Files**:
+
 - scripts/rust/cursor-manager/src/config.rs (8 tests added)
 - scripts/rust/cursor-manager/src/version.rs (20 tests added)
 - scripts/rust/cursor-manager/src/instance.rs (9 tests added)
@@ -541,6 +590,7 @@ Run: `cargo test -p cursor-manager` or `pytest scripts/python/tests/ -v`
 **Description**: Background crawler + project inventory for cursor-docs
 
 **Files**:
+
 - services/cursor-docs/lib/cursor_docs/scraper/background.ex (new)
 - services/cursor-docs/lib/cursor_docs/cli.ex (bg commands)
 - services/cursor-docs/lib/cursor_docs/application.ex
@@ -563,6 +613,7 @@ Run: `cargo test -p cursor-manager` or `pytest scripts/python/tests/ -v`
    - Future architecture diagram
 
 **Usage**:
+
 ```bash
 # Start background crawl
 mix cursor_docs.bg https://docs.example.com --name "Example"
@@ -583,6 +634,7 @@ mix cursor_docs.bg jobs
 **Description**: Multi-page crawler strategies + security persistence for cursor-docs
 
 **Files**:
+
 - services/cursor-docs/lib/cursor_docs/scraper/crawler_strategy.ex (new)
 - services/cursor-docs/lib/cursor_docs/scraper/strategies/*.ex (new - 4 strategies)
 - services/cursor-docs/lib/cursor_docs/storage/sqlite.ex (security tables + APIs)
@@ -610,6 +662,7 @@ mix cursor_docs.bg jobs
    - Simplified content page scraping for discovered URLs
 
 **Testing**:
+
 ```bash
 # Ghidra found 590 initial links (but crawling is slow)
 mix cursor_docs.add "https://ghidra.re/ghidra_docs/api/" --name "Ghidra-API" --max-pages 20
@@ -627,6 +680,7 @@ sqlite3 ~/.local/share/cursor-docs-dev/cursor_docs.db ".tables"
 **Description**: Successfully indexed Cursor's failed docs locally via cursor-docs service
 
 **Files**:
+
 - services/cursor-docs/lib/cursor_docs/cli.ex (derive_name_from_url fix)
 - services/cursor-docs/lib/cursor_docs/storage/sqlite.ex (handle_call grouping fix)
 
@@ -651,6 +705,7 @@ sqlite3 ~/.local/share/cursor-docs-dev/cursor_docs.db ".tables"
 **Total Indexed**: 6 sources, 1336 chunks
 
 **Testing**:
+
 ```bash
 mix cursor_docs.add "https://raw.githubusercontent.com/.../README.md" --name "project"
 mix cursor_docs.search "NixOS cursor module"
@@ -666,6 +721,7 @@ mix cursor_docs.status
 **Description**: Fixed cursor-studio-dev alias for Wayland/OpenGL context creation
 
 **Files**:
+
 - nixos/modules/shell/homelab-aliases.nix
 - cursor-studio-egui/src/main.rs
 
@@ -686,6 +742,7 @@ mix cursor_docs.status
    - Forge panel: used warning_card_frame for Coming Soon
 
 **Testing**:
+
 ```bash
 # After rebuilding NixOS:
 cursor-studio-dev  # Now works with full Wayland/GL support
@@ -698,6 +755,7 @@ cursor-studio-dev  # Now works with full Wayland/GL support
 **Description**: Real-time progress tracking and UI consistency improvements
 
 **Files**:
+
 - services/cursor-docs/lib/cursor_docs/progress.ex (new)
 - services/cursor-docs/lib/cursor_docs/cli.ex
 - cursor-studio-egui/src/docs/ui.rs
@@ -738,6 +796,7 @@ cursor-studio-dev  # Now works with full Wayland/GL support
 **Description**: Major Index panel improvements for cursor-studio-egui
 
 **Files**:
+
 - cursor-studio-egui/src/docs/ui.rs (complete rewrite)
 - cursor-studio-egui/src/docs/mod.rs
 - cursor-studio-egui/src/main.rs
@@ -784,6 +843,7 @@ cursor-studio-dev  # Now works with full Wayland/GL support
 **Description**: Fixed vector storage modules and tested cursor-docs integration
 
 **Files**:
+
 - services/cursor-docs/lib/cursor_docs/storage/vector/surrealdb.ex
 - services/cursor-docs/lib/cursor_docs/storage/vector/sqlite_vss.ex
 - services/cursor-docs/lib/cursor_docs/storage/vector/disabled.ex
@@ -817,6 +877,7 @@ cursor-studio-dev  # Now works with full Wayland/GL support
 **Description**: Comprehensive cursor-studio-egui update - naming, export, and polish
 
 **Files**:
+
 - cursor-studio-egui/src/main.rs (major updates)
 
 **Changes**:
@@ -841,6 +902,7 @@ cursor-studio-dev  # Now works with full Wayland/GL support
    - Supports both documentation and training data formats
 
 **Commits**:
+
 - f853f1e: refactor(cursor-studio): Rename sub-apps
 - ac21d6f: feat(cursor-studio): Add export dialog
 
@@ -850,17 +912,19 @@ cursor-studio-dev  # Now works with full Wayland/GL support
 
 **Description**: Integrated Index (Documentation) panel into cursor-studio-egui + established Cursor Studio vision
 
-**Files**: 
+**Files**:
+
 - cursor-studio-egui/src/docs/ (new - Index module)
   - mod.rs, client.rs, models.rs, ui.rs
 - cursor-studio-egui/src/main.rs (Index panel integration)
 - docs/CURSOR_STUDIO_ARCHITECTURE.md (new - project vision + sub-app naming)
 - .cursor/rules/languages/nickel-config.mdc (new - Nickel config standards)
 
-**Notes**: 
+**Notes**:
 
 **Vision Statement:**
 Cursor Studio is the "escape pod" from VS Code/Electron - a native, GPU-accelerated IDE that:
+
 - Uses Cursor's AI as temporary brain while building independence
 - Native egui UI, no Electron bloat
 - Local compute first (Ollama, ONNX)
@@ -869,6 +933,7 @@ Cursor Studio is the "escape pod" from VS Code/Electron - a native, GPU-accelera
 - NixOS-native
 
 **Sub-App Naming:**
+
 | Module | Name | Description |
 |--------|------|-------------|
 | Chat | Archive 📚 | Chat history export/import |
@@ -885,16 +950,18 @@ Cursor Studio is the "escape pod" from VS Code/Electron - a native, GPU-accelera
 
 **Description**: Created Nix flake for cursor-docs v0.3.0-pre with dev shells, NixOS module, and Home Manager module
 
-**Files**: 
+**Files**:
+
 - services/cursor-docs/flake.nix (new - dev shells + modules)
 - services/cursor-docs/flake.lock (new - generated)
 - services/cursor-docs/docs/INSTALLATION.md (new - installation guide)
 - services/cursor-docs/mix.exs (version 0.3.0-pre)
 - services/cursor-docs/CHANGELOG.md (consolidated to 0.3.0-pre)
 
-**Notes**: 
+**Notes**:
 
 **Flake Features:**
+
 - `nix develop` - Development shell with Elixir, SQLite, optional backends
 - `nix develop .#full` - Full shell with all tools including ChromeDriver
 - NixOS module: `services.cursor-docs.enable`, `services.cursor-docs.surrealdb.enable`
@@ -904,6 +971,7 @@ Cursor Studio is the "escape pod" from VS Code/Electron - a native, GPU-accelera
 To publish: `git checkout -b cursor-docs-0.3.0-pre && git push origin cursor-docs-0.3.0-pre`
 
 **Usage from other flakes:**
+
 ```nix
 cursor-docs = {
   url = "github:Distracted-E421/nixos-cursor?dir=services/cursor-docs&ref=cursor-docs-0.3.0-pre";
@@ -916,7 +984,8 @@ cursor-docs = {
 
 **Description**: Full implementation of tiered vector storage architecture for cursor-docs v0.3.0-pre - sqlite-vss, SurrealDB, embedding generator, and hybrid search
 
-**Files**: 
+**Files**:
+
 - services/cursor-docs/lib/cursor_docs/storage/vector.ex (new - vector storage behaviour)
 - services/cursor-docs/lib/cursor_docs/storage/vector/disabled.ex (new - FTS5-only fallback)
 - services/cursor-docs/lib/cursor_docs/storage/vector/sqlite_vss.ex (new - embedded vectors)
@@ -929,9 +998,10 @@ cursor-docs = {
 - services/cursor-docs/CHANGELOG.md (updated - v0.4.0)
 - services/cursor-docs/mix.exs (version 0.4.0)
 
-**Notes**: 
+**Notes**:
 
 **Tiered Architecture:**
+
 | Tier | Backend | Features | Use Case |
 |------|---------|----------|----------|
 | 1 | Disabled | FTS5 only | Zero setup, just works |
@@ -939,6 +1009,7 @@ cursor-docs = {
 | 3 | SurrealDB | Vectors + graphs | Power users, full pipeline |
 
 **Key Features:**
+
 - Graceful SurrealDB startup (Nice=19, IOSchedulingClass=idle, lazy connect)
 - Auto-detection of best available backend
 - Hybrid search combining semantic + keyword results
@@ -953,7 +1024,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Designed and implemented pluggable AI provider architecture for cursor-docs v0.3.0 - hardware detection, model registry, and provider abstraction
 
-**Files**: 
+**Files**:
+
 - services/cursor-docs/lib/cursor_docs/ai/provider.ex (new - provider behaviour)
 - services/cursor-docs/lib/cursor_docs/ai/hardware.ex (new - hardware detection)
 - services/cursor-docs/lib/cursor_docs/ai/model_registry.ex (new - verified models)
@@ -973,7 +1045,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Created Elixir sync daemon with OTP supervision, named pipes IPC, and full database integration
 
-**Files**: 
+**Files**:
+
 - sync-daemon-elixir/ (new directory - complete Elixir project)
   - mix.exs - Project definition with deps
   - config/*.exs - Environment configs
@@ -994,7 +1067,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Added Rust sync daemon scaffold and comprehensive Rust vs Elixir language comparison research
 
-**Files**: 
+**Files**:
+
 - docs/research/SYNC_DAEMON_LANGUAGE_COMPARISON.md (new - comprehensive comparison)
 - cursor-studio-egui/src/sync/mod.rs (new - module structure)
 - cursor-studio-egui/src/sync/config.rs (new - TOML config)
@@ -1014,7 +1088,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Implemented native D2 diagram viewer for cursor-studio egui with interactive rendering, VS Code theme integration, and pan/zoom support
 
-**Files**: 
+**Files**:
+
 - cursor-studio-egui/src/diagram/mod.rs
 - cursor-studio-egui/src/diagram/graph.rs
 - cursor-studio-egui/src/diagram/parser.rs
@@ -1029,19 +1104,20 @@ This captures users from zero-setup to power users building full data pipelines.
 
 ---
 
-
 ## 2025-12-17 22:35:00 - [SCRIPT]
 
 **Description**: Built comprehensive Cursor API payload analysis tooling and Rust-based filter
 
-**Files**: 
+**Files**:
+
 - `tools/proxy-test/payload-filter/` (new Rust crate)
 - `tools/proxy-test/analyze_payloads.py`
 - `tools/proxy-test/decode_protobuf.py`
 - `tools/proxy-test/SCHEMA_RECONSTRUCTION.md`
 - `tools/proxy-test/FINDINGS.md`
 
-**Notes**: 
+**Notes**:
+
 - Created Rust payload-filter tool that loads 29,864 payloads in 583ms and analyzes in 22ms
 - Discovered only 140 unique payloads out of 29,864 (excellent deduplication)
 - Found PotentiallyGenerateMemory endpoint contains 1.7MB full conversation context
@@ -1055,13 +1131,15 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Created Rust transparent proxy skeleton and deep analyzed PotentiallyGenerateMemory
 
-**Files**: 
+**Files**:
+
 - `tools/proxy-test/cursor-proxy/` (new Rust crate)
 - `tools/proxy-test/MEMORY_PAYLOAD_SCHEMA.md`
 - `tools/proxy-test/decode_memory_payload.py`
 - `tools/proxy-test/cp` (symlink to cursor-proxy)
 
-**Notes**: 
+**Notes**:
+
 - Rust proxy starts and accepts connections on port 8443
 - CA certificate generation working (~/.cursor-proxy/)
 - PotentiallyGenerateMemory contains 1.65MB of full conversation context
@@ -1075,12 +1153,14 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Built complete HTTP/2 streaming proxy with h2 crate
 
-**Files**: 
+**Files**:
+
 - `tools/proxy-test/cursor-proxy/src/main.rs` - Full HTTP/2 proxy implementation
 - `tools/proxy-test/cursor-with-proxy.sh` - Helper script for proxy + iptables
 - `tools/proxy-test/rust-captures/` - Capture output directory
 
-**Notes**: 
+**Notes**:
+
 - Proxy successfully handles HTTP/2 connections via h2 crate
 - Dynamic certificate generation working (per-domain certs signed by CA)
 - iptables integration for transparent proxying
@@ -1094,12 +1174,14 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Enhanced Cursor launcher with combined CA bundle for proxy interception
 
-**Files**: 
+**Files**:
+
 - `~/.local/bin/cursor-with-ca` - Updated wrapper with combined CA bundle
 - `~/.cursor-proxy/combined-ca-bundle.pem` - System CAs + Proxy CA bundle
 - `~/.local/share/applications/cursor.desktop` - Desktop entry (already pointed to wrapper)
 
-**Notes**: 
+**Notes**:
+
 - NODE_EXTRA_CA_CERTS now points to combined bundle (system + proxy CAs)
 - Bundle auto-regenerates when system CAs or proxy CA change
 - Also sets SSL_CERT_FILE and REQUESTS_CA_BUNDLE for other tools
@@ -1112,14 +1194,16 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Cursor Proxy v3 - DNS-based interception mode (major redesign)
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/` - Core proxy with external DNS resolution
 - `tools/cursor-proxy/ARCHITECTURE_V3.md` - New architecture documentation
 - `tools/cursor-proxy/src/dns.rs` - External DNS resolver (bypasses /etc/hosts)
 - `modules/nixos/cursor-proxy.nix` - NixOS service module
 - `tools/cursor-studio` - Updated with --dns-mode support
 
-**Notes**: 
+**Notes**:
+
 - DNS-based mode solves the DNS rotation issue that caused agent hangs
 - Uses hickory-resolver to bypass /etc/hosts and resolve real AWS IPs
 - Much more reliable than iptables-based approach
@@ -1133,11 +1217,13 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Fixed Cursor Proxy HTTP/2 upstream connection bug
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/src/proxy.rs` - Changed upstream connection from HTTP/1.1 to HTTP/2
 - `tools/cursor-proxy/test-dns-mode.sh` - Added comprehensive test script
 
-**Notes**: 
+**Notes**:
+
 - Root cause: Proxy was using `http1::handshake` but Cursor API requires HTTP/2
 - Fixed by changing to `http2::handshake` with TokioExecutor
 - Also fixed version header from HTTP_11 to HTTP_2
@@ -1150,10 +1236,12 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Fixed streaming response bug - proxy no longer blocks on collect()
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/src/proxy.rs` - Changed response handling from `body.collect().await.to_bytes()` to direct stream pass-through
 
-**Notes**: 
+**Notes**:
+
 - Root cause: `collect().await` blocks until entire response body is received
 - For streaming AI responses (StreamChat), this would wait forever
 - Fix passes the body stream directly through without buffering
@@ -1165,10 +1253,12 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Added retry logic to reduce 502 Bad Gateway errors
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/src/proxy.rs` - Added `try_forward_to_upstream` with retry logic
 
-**Notes**: 
+**Notes**:
+
 - Added 1 retry on connection failure (100ms delay between attempts)
 - Added 10-second timeout on TCP connection
 - Better error messages for debugging
@@ -1181,7 +1271,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Added LED-style real-time dashboard for cursor-proxy
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/src/events.rs` - Event broadcast system with tokio::broadcast
 - `tools/cursor-proxy/src/dashboard.rs` - TUI dashboard with LED indicators
 - `tools/cursor-proxy/src/dashboard_egui.rs` - egui widget for cursor-studio integration
@@ -1189,7 +1280,8 @@ This captures users from zero-setup to power users building full data pipelines.
 - `tools/cursor-proxy/src/lib.rs` - Library exports for cursor-studio
 - `tools/cursor-proxy/src/proxy.rs` - Event emission on requests
 
-**Notes**: 
+**Notes**:
+
 - Architecture: tokio::broadcast for zero-copy multi-consumer event distribution
 - TUI Features: LED decay animations, service categories, latency percentiles (p50/p99)
 - Metrics: Bytes in/out, active streaming count, pool connections
@@ -1203,12 +1295,14 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Enhanced cursor-proxy dashboard with theme-aware colors and advanced metrics
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-proxy/src/dashboard.rs` - ANSI 16-color palette for terminal theme compatibility
 - `tools/cursor-proxy/src/dashboard_egui.rs` - Light/dark theme toggle
 - `tools/cursor-proxy/src/events.rs` - AgentActivity event type for tool call monitoring
 
 **New Features**:
+
 - **Theme-aware colors**: Uses ANSI 16-color palette that respects terminal themes
 - **Request queue**: Per-category in-flight request counts with activity bars
 - **Error breakdown**: Categorized errors (Timeout, Upstream, TLS, Network, Protocol)
@@ -1218,7 +1312,8 @@ This captures users from zero-setup to power users building full data pipelines.
 - **Latency percentiles**: p50, p99, average with running window
 - **Traffic counters**: Bytes in/out with auto-formatting (B/K/M/G)
 
-**Notes**: 
+**Notes**:
+
 - ANSI 16-color ensures colors adapt to user's terminal color scheme
 - Agent state shows during streaming to track AI thinking/tool execution
 - egui version has matching features with light/dark theme toggle
@@ -1229,7 +1324,8 @@ This captures users from zero-setup to power users building full data pipelines.
 
 **Description**: Reverse-engineered Cursor API protobuf schema from bundled JavaScript
 
-**Files**: 
+**Files**:
+
 - `tools/cursor-agent-tui/proto/aiserver.proto` - Complete protobuf schema (2,129 types)
 - `tools/cursor-agent-tui/capture/PROTO_SCHEMA_ANALYSIS.md` - Discovery documentation
 - `tools/cursor-agent-tui/capture/proto-types.txt` - All discovered type names
@@ -1237,12 +1333,14 @@ This captures users from zero-setup to power users building full data pipelines.
 - `tools/cursor-agent-tui/README.md` - Updated with schema status
 
 **Discovery Method**:
+
 - Analyzed `cursor-always-local` extension's bundled JS code
 - Extracted protobuf-es type definitions using grep/sed
 - Found field numbers, types, and nesting structure
 - SSL key logging didn't work for api2.cursor.sh (uses separate TLS implementation)
 
 **Key Findings**:
+
 - **2,129 protobuf types** in `aiserver.v1` namespace
 - **ChatService** endpoints: `StreamUnifiedChatWithTools`, `StreamUnifiedChatWithToolsSSE`
 - **StreamUnifiedChatRequestWithTools** structure:
@@ -1254,7 +1352,8 @@ This captures users from zero-setup to power users building full data pipelines.
   - Fields 3-7: Summary, rules, tracing context, event ID
 - **ConversationMessage** has 13+ fields including bubble_id, type enum, code chunks
 
-**Notes**: 
+**Notes**:
+
 - This unblocks the TUI agent chat implementation
 - Next step: Generate Rust code with prost-build and implement encoding
 - SSL key logging only captured metrics/telemetry traffic, not API calls
@@ -1267,18 +1366,21 @@ This captures users from zero-setup to power users building full data pipelines.
 **Description**: cursor-agent-tui - significant debugging progress on chat endpoint
 
 **Progress Made**:
+
 - Confirmed protobuf encoding is correct (WarmStreamUnifiedChatWithTools accepts it)
 - Identified version issue: Cursor 2.0.77 is too old for StreamUnifiedChatWithTools
 - Added proto_test binary for testing encoded requests
 - Created STATUS.md documenting current blockers
 
 **Endpoint Status**:
+
 - WarmStreamUnifiedChatWithTools: ✅ Works
 - StreamUnifiedChatWithTools: ❌ OUTDATED_CLIENT error
 - StreamUnifiedChatWithToolsSSE: ⏳ Hangs (needs investigation)
 - AvailableModels: ✅ Works (58 models returned)
 
-**Files**: 
+**Files**:
+
 - tools/cursor-agent-tui/STATUS.md
 - tools/cursor-agent-tui/src/bin/proto_test.rs
 - tools/cursor-agent-tui/proto/test_data.json
@@ -1292,6 +1394,7 @@ This captures users from zero-setup to power users building full data pipelines.
 **Description**: cursor-proxy injection system implemented
 
 **Features Added**:
+
 - System prompt injection into chat requests
 - Version spoofing via X-Cursor-Client-Version header
 - Context file injection support
@@ -1299,12 +1402,14 @@ This captures users from zero-setup to power users building full data pipelines.
 - CLI commands: inject enable/disable/status/prompt/version/add-context
 
 **Protobuf Wire Format Support**:
+
 - Manual varint encoding/decoding
 - ConversationMessage encoding
 - Request body modification for chat endpoints
 - Connect protocol framing preserved
 
 **Files**:
+
 - tools/cursor-proxy/src/injection.rs (new)
 - tools/cursor-proxy/src/config.rs (updated with InjectionConfigFile)
 - tools/cursor-proxy/src/proxy.rs (integrated injection engine)
@@ -1312,7 +1417,8 @@ This captures users from zero-setup to power users building full data pipelines.
 - tools/cursor-proxy/injection-rules.toml.example
 - tools/cursor-proxy/test-capture.sh
 
-**Notes**: 
+**Notes**:
+
 - Version spoofing tested but all versions return OUTDATED_CLIENT
 - Server appears to check request format, not just headers
 - Ready for traffic capture testing to reverse-engineer exact format
@@ -1324,17 +1430,20 @@ This captures users from zero-setup to power users building full data pipelines.
 **Description**: llama.cpp SYCL backend research + Intel GPU module enhancement + Neuro-symbolic documentation update
 
 **Arc A770 SYCL Findings**:
+
 - llama.cpp SYCL backend officially verified for Arc A770 (~55 tokens/s)
 - Ollama Vulkan backend produces gibberish (Intel shader compatibility issue)
 - Solution: Build llama.cpp with SYCL backend using Intel oneAPI
 
 **NixOS Configuration Updates**:
+
 - Enhanced gpu-intel.nix module with Level-Zero and AdaptiveCpp (SYCL) support
 - Added enableSycl option for AI workloads
 - Added ACPP_TARGETS environment variable for backend discovery
 - Verified dry-build succeeds (11m46s evaluation)
 
 **Research Documentation**:
+
 - Updated NEUROSYMBOLIC_AI_FRAMEWORK.md with llama.cpp SYCL findings
 - Documented Arc A770 Vulkan issues and workarounds
 - Added build instructions for llama.cpp with SYCL on NixOS
@@ -1342,11 +1451,13 @@ This captures users from zero-setup to power users building full data pipelines.
 - Created roadmap for immediate, short-term, and medium-term tasks
 
 **Files**:
+
 - /home/e421/homelab/nixos/modules/hardware/gpu-intel.nix (enhanced)
 - /home/e421/nixos-cursor/docs/research/NEUROSYMBOLIC_AI_FRAMEWORK.md (updated)
 - /home/e421/llama.cpp (cloned for SYCL build)
 
-**Notes**: 
+**Notes**:
+
 - Next steps: Install Intel oneAPI toolkit, build llama.cpp with SYCL
 - Consider Docker container approach for cleanest isolation
 - RTX 2080 remains reliable for Ollama CUDA inference

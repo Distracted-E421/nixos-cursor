@@ -292,6 +292,56 @@
           '';
 
           # ═══════════════════════════════════════════════════════════════════
+          # UNIFIED CLI: `cs` - Cursor Studio command line
+          # ═══════════════════════════════════════════════════════════════════
+          # Short, memorable, delegates to cursor-studio-cli
+          # Usage: cs list, cs download 2.0.77, cs launch, cs test, etc.
+          cs = pkgs.writeShellScriptBin "cs" ''
+            exec ${self.packages.${system}.cursor-studio}/bin/cursor-studio-cli "$@"
+          '';
+
+          # Backward compatibility: cursor-versions -> cs
+          cursor-versions = pkgs.writeShellScriptBin "cursor-versions" ''
+            echo "⚠️  cursor-versions is deprecated. Use 'cs' instead."
+            echo "   Redirecting to: cs $*"
+            echo ""
+            exec ${self.packages.${system}.cursor-studio}/bin/cursor-studio-cli "$@"
+          '';
+
+          # ═══════════════════════════════════════════════════════════════════
+          # BASH TOOLS: Lightweight scripts for isolation/testing
+          # ═══════════════════════════════════════════════════════════════════
+          # These are simple bash scripts for MVP/quick isolation work.
+          # Prefer `cs` for full functionality, use these for minimal deps.
+          
+          cursor-isolation-tools = pkgs.stdenv.mkDerivation {
+            pname = "cursor-isolation-tools";
+            version = "0.1.0";
+            src = ./tools/cursor-isolation;
+            
+            installPhase = ''
+              mkdir -p $out/bin
+              for script in cursor-backup cursor-sandbox cursor-share-data cursor-test sync-versions; do
+                if [ -f "$src/$script" ]; then
+                  cp "$src/$script" "$out/bin/"
+                  chmod +x "$out/bin/$script"
+                fi
+              done
+              
+              # Don't install cursor-versions bash script (use cs instead)
+              # But keep README for documentation
+              mkdir -p $out/share/doc/cursor-isolation-tools
+              cp "$src/README.md" "$out/share/doc/cursor-isolation-tools/" 2>/dev/null || true
+            '';
+            
+            meta = with pkgs.lib; {
+              description = "Lightweight bash tools for Cursor IDE isolation and testing";
+              license = licenses.mit;
+              platforms = platforms.linux;
+            };
+          };
+
+          # ═══════════════════════════════════════════════════════════════════
           # DEPRECATED - Legacy Python/tkinter managers
           # ═══════════════════════════════════════════════════════════════════
           # These packages display deprecation warnings and redirect to cursor-studio.
@@ -346,6 +396,12 @@
           # Cursor Studio (modern Rust/egui manager) - Linux only
           cursor-studio = mkApp pkgs.cursor-studio "cursor-studio";
           cursor-studio-cli = mkApp pkgs.cursor-studio-cli "cursor-studio-cli";
+          
+          # Unified CLI (short name)
+          cs = mkApp pkgs.cs "cs";
+          
+          # Backward compatibility
+          cursor-versions = mkApp pkgs.cursor-versions "cursor-versions";
 
           # 2.2.x Latest Era (11 versions)
           cursor-2_2_27 = mkApp pkgs.cursor-2_2_27 "cursor-2.2.27";
