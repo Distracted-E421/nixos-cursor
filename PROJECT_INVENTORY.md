@@ -12,7 +12,7 @@
 | **cursor-studio-egui** | Rust | ✅ Active | GUI companion app for Cursor |
 | **services/cursor-docs** | Elixir | ✅ Active | Local documentation indexer |
 | **cursor** | Nix | ✅ Active | Cursor AppImage packaging for NixOS |
-| **cursor-studio** (legacy) | Rust | ⚠️ Deprecated | Original GPUI experiment |
+| **cursor-studio** (legacy) | Rust | 📦 Archived | Original GPUI experiment (moved to `archive/cursor-studio-gpui-legacy/`) |
 
 ---
 
@@ -245,11 +245,11 @@ end
 
 ## 🗑️ Candidates for Cleanup
 
-| Path | Reason | Action |
-|------|--------|--------|
-| `cursor-studio/` (not egui) | Legacy GPUI experiment | Archive or delete |
-| `services/cursor-docs/lib/cursor_docs/storage/surrealdb.ex` | Replaced by SQLite | Keep as reference |
-| `.ai-workspace/plans/*.json` | Outdated plans | Review and archive |
+| Path | Reason | Action | Status |
+|------|--------|--------|--------|
+| `cursor-studio/` (not egui) | Legacy GPUI experiment | Archive or delete | ✅ Archived to `archive/cursor-studio-gpui-legacy/` |
+| `services/cursor-docs/lib/cursor_docs/storage/surrealdb.ex` | Replaced by SQLite | Keep as reference | ⏳ Pending |
+| `.ai-workspace/plans/*.json` | Outdated plans | Review and archive | ⏳ Pending (only 1 current file) |
 
 ---
 
