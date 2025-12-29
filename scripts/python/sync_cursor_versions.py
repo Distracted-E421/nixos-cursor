@@ -380,10 +380,47 @@ def clean_cache():
 
 
 @app.command()
-def hash_url(url: str = typer.Argument(..., help="URL to download and hash")):
+def hash_url(
+    url: str = typer.Argument(..., help="URL to download and hash"),
+    use_nix: bool = typer.Option(True, "--nix/--no-nix", help="Use nix-prefetch-url for accurate hashing")
+):
     """Download a single URL and compute its hash."""
     console.print(f"[cyan]Downloading: {url}[/cyan]")
     
+    if use_nix:
+        # Use nix-prefetch-url for exact Nix-compatible hashing
+        console.print("[dim]Using nix-prefetch-url for accurate hashing...[/dim]")
+        try:
+            result = subprocess.run(
+                ["nix-prefetch-url", "--type", "sha256", url],
+                capture_output=True,
+                text=True,
+                timeout=600
+            )
+            if result.returncode == 0:
+                nix_hash = result.stdout.strip()
+                console.print(f"\n[green]Nix hash (base32):[/green] {nix_hash}")
+                
+                # Convert to SRI format
+                sri_result = subprocess.run(
+                    ["nix", "hash", "to-sri", "--type", "sha256", nix_hash],
+                    capture_output=True,
+                    text=True
+                )
+                if sri_result.returncode == 0:
+                    sri_hash = sri_result.stdout.strip()
+                    console.print(f"[green]SRI format:[/green] {sri_hash}")
+                    console.print(f"\n[bold cyan]For Nix file, use:[/bold cyan]")
+                    console.print(f'  hash = "{sri_hash}";')
+                return
+            else:
+                console.print(f"[yellow]nix-prefetch-url failed, falling back to Python: {result.stderr}[/yellow]")
+        except FileNotFoundError:
+            console.print("[yellow]nix-prefetch-url not found, using Python fallback[/yellow]")
+        except subprocess.TimeoutExpired:
+            console.print("[yellow]nix-prefetch-url timed out, using Python fallback[/yellow]")
+    
+    # Python fallback
     with tempfile.NamedTemporaryFile(delete=True) as tmp:
         try:
             with httpx.Client(timeout=300, follow_redirects=True) as client:
@@ -406,15 +443,66 @@ def hash_url(url: str = typer.Argument(..., help="URL to download and hash")):
                             progress.advance(task, len(chunk))
                         
                         hash_result = sha256.hexdigest()
-                        console.print(f"\n[green]SHA256:[/green] {hash_result}")
-                        console.print(f"[green]Nix format:[/green] sha256-{hash_result}")
+                        console.print(f"\n[green]SHA256 (hex):[/green] {hash_result}")
                         
                         # Also compute SRI format
                         import base64
                         sri = base64.b64encode(bytes.fromhex(hash_result)).decode()
                         console.print(f"[green]SRI format:[/green] sha256-{sri}")
+                        console.print("\n[yellow]Note: Use --nix for exact Nix-compatible hashing[/yellow]")
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
+
+
+@app.command()
+def nix_hash(url: str = typer.Argument(..., help="URL to hash using nix-prefetch-url")):
+    """
+    Get exact Nix-compatible hash using nix-prefetch-url.
+    
+    This is the most reliable method as it uses the same
+    download and hashing that Nix will use during build.
+    """
+    console.print(f"[cyan]Fetching: {url}[/cyan]")
+    console.print("[dim]This uses nix-prefetch-url for 100% accurate hashing...[/dim]\n")
+    
+    try:
+        # Run nix-prefetch-url
+        result = subprocess.run(
+            ["nix-prefetch-url", "--type", "sha256", url],
+            capture_output=True,
+            text=True,
+            timeout=600
+        )
+        
+        if result.returncode != 0:
+            console.print(f"[red]nix-prefetch-url failed:[/red] {result.stderr}")
+            return
+        
+        nix_hash = result.stdout.strip()
+        console.print(f"[green]Base32 hash:[/green] {nix_hash}")
+        
+        # Convert to SRI format
+        sri_result = subprocess.run(
+            ["nix", "hash", "to-sri", "--type", "sha256", nix_hash],
+            capture_output=True,
+            text=True
+        )
+        
+        if sri_result.returncode == 0:
+            sri_hash = sri_result.stdout.strip()
+            console.print(f"[green]SRI format:[/green]  {sri_hash}")
+            
+            # Generate Nix snippet
+            console.print(f"\n[bold cyan]═══ Copy this to cursor-versions.nix ═══[/bold cyan]")
+            console.print(f'hash = "{sri_hash}";')
+            console.print(f'srcUrl = "{url}";')
+        else:
+            console.print(f"[yellow]Could not convert to SRI: {sri_result.stderr}[/yellow]")
+            
+    except FileNotFoundError:
+        console.print("[red]Error: nix-prefetch-url not found. Make sure Nix is installed.[/red]")
+    except subprocess.TimeoutExpired:
+        console.print("[red]Error: Download timed out after 10 minutes[/red]")
 
 
 if __name__ == "__main__":
