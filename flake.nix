@@ -53,6 +53,8 @@
 
       # All version names (shared across platforms)
       allVersions = [
+        # 2.3.x Latest Era (1 version)
+        "cursor-2_3_10"
         # 2.2.x Latest Era (11 versions)
         "cursor-2_2_27"
         "cursor-2_2_23"
@@ -161,7 +163,10 @@
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
 
-          # Version-specific packages for running multiple instances (69 total)
+          # Version-specific packages for running multiple instances (70 total)
+          # Latest Era - 2.3.x (1 version)
+          inherit (cursorVersions) cursor-2_3_10;
+
           # Latest Era - 2.2.x (11 versions)
           inherit (cursorVersions)
             cursor-2_2_27
@@ -402,6 +407,9 @@
           
           # Backward compatibility
           cursor-versions = mkApp pkgs.cursor-versions "cursor-versions";
+
+          # 2.3.x Latest Era (1 version)
+          cursor-2_3_10 = mkApp pkgs.cursor-2_3_10 "cursor-2.3.10";
 
           # 2.2.x Latest Era (11 versions)
           cursor-2_2_27 = mkApp pkgs.cursor-2_2_27 "cursor-2.2.27";

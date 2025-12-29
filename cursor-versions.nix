@@ -6,7 +6,8 @@
 #   - /bin/cursor-VERSION     (instead of /bin/cursor)
 # This allows multiple versions to coexist in home.packages without conflicts.
 #
-# Total Versions: 63+ (1.7.11 through 2.2.27)
+# Total Versions: 64+ (1.7.11 through 2.3.10)
+#   - 2.3.x Latest Era: 1 version (2.3.10) - NO CUSTOM MODES, LATEST
 #   - 2.2.x Latest Era: 11 versions (2.2.3 - 2.2.27) - NO CUSTOM MODES
 #   - 2.1.x Post-Removal: 21 versions (2.1.6 - 2.1.50) - NO CUSTOM MODES  
 #   - 2.0.x Custom Modes Era: 17 versions (2.0.11 - 2.0.77) - HAS CUSTOM MODES
@@ -554,6 +555,22 @@ in
   # ===== 2.2.x Latest Era (11 versions) - NO CUSTOM MODES =====
   # These versions require Cursor Studio external modes for custom mode functionality
   
+  # ═══════════════════════════════════════════════════════════════════
+  # 2.3.x Era - LATEST (auto-synced from GitHub)
+  # ═══════════════════════════════════════════════════════════════════
+
+  cursor-2_3_10 = mkCursorVersion {
+    version = "2.3.10";
+    hash = "sha256-qFaT0jQUcy1q3USdaeKBrrd3n9GtlPz94iQd8iW5/l0=";
+    srcUrl = "https://downloads.cursor.com/production/af6d64e4848e6185e482a2de5bac040191c8d79f/linux/x64/Cursor-2.3.10-x86_64.AppImage";
+    binaryName = "cursor-2.3.10";
+    dataStrategy = "isolated";
+  };
+
+  # ═══════════════════════════════════════════════════════════════════
+  # 2.2.x Era (11 versions: 2.2.3 - 2.2.27)
+  # ═══════════════════════════════════════════════════════════════════
+
   cursor-2_2_27 = mkCursorVersion {
     version = "2.2.27";
     hash = "sha256-zK0uSKNJ2N6C5nBz0QqLgWbUXXQ/A9oavVK62DKsGpc=";
