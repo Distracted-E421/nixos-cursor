@@ -347,6 +347,43 @@
           };
 
           # ═══════════════════════════════════════════════════════════════════
+          # PROXY TESTING: AI Traffic Interception
+          # ═══════════════════════════════════════════════════════════════════
+          # Painless proxy launcher for intercepting Cursor's AI traffic.
+          # Handles CA trust, iptables, and cleanup automatically.
+          
+          cursor-proxy-launcher = pkgs.stdenv.mkDerivation {
+            pname = "cursor-proxy-launcher";
+            version = "0.1.0";
+            src = ./tools/proxy-test;
+            
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            buildInputs = [ pkgs.openssl pkgs.dig pkgs.iptables ];
+            
+            installPhase = ''
+              mkdir -p $out/bin
+              cp cursor-proxy-launcher $out/bin/
+              chmod +x $out/bin/cursor-proxy-launcher
+              
+              # Wrap with runtime dependencies
+              wrapProgram $out/bin/cursor-proxy-launcher \
+                --prefix PATH : ${pkgs.lib.makeBinPath [ 
+                  pkgs.openssl 
+                  pkgs.dig 
+                  pkgs.coreutils 
+                  pkgs.gnugrep
+                  pkgs.gnused
+                ]}
+            '';
+            
+            meta = with pkgs.lib; {
+              description = "Painless launcher for Cursor AI traffic interception";
+              license = licenses.mit;
+              platforms = platforms.linux;
+            };
+          };
+
+          # ═══════════════════════════════════════════════════════════════════
           # DEPRECATED - Legacy Python/tkinter managers
           # ═══════════════════════════════════════════════════════════════════
           # These packages display deprecation warnings and redirect to cursor-studio.

@@ -498,7 +498,7 @@ Launch Cursor with CA explicitly:
 NODE_EXTRA_CA_CERTS=~/.cursor-proxy/ca-cert.pem cursor
 ```
 
-Or modify Cursor's launch wrapper to always include this.
+Or use the new **cursor-proxy-launcher** script that handles everything automatically.
 
 ### Key Files
 
@@ -507,8 +507,88 @@ Or modify Cursor's launch wrapper to always include this.
 | `~/.cursor-proxy/ca-cert.pem` | Proxy CA certificate |
 | `~/.cursor-proxy/ca-key.pem` | Proxy CA private key |
 | `/home/e421/homelab/nixos/hosts/Obsidian/certs/cursor-proxy-ca.pem` | CA in NixOS config |
-| `cursor-with-proxy.sh` | Launch script with iptables |
+| `cursor-with-proxy.sh` | Legacy launch script |
+| `cursor-proxy-launcher` | **NEW** Painless all-in-one launcher |
 | `cursor-proxy/` | Rust HTTP/2 proxy |
+
+---
+
+## 2025-12-29 - Painless Proxy Launcher
+
+### Problem
+Users were getting "TLS handshake eof" errors because:
+1. Cursor wasn't being launched with `NODE_EXTRA_CA_CERTS`
+2. iptables setup was manual and error-prone
+3. Cleanup was inconsistent
+
+### Solution: cursor-proxy-launcher
+
+A new all-in-one launcher that handles everything automatically:
+
+```bash
+# First-time setup (generates CA, builds proxy)
+./cursor-proxy-launcher --setup
+
+# Launch Cursor with full proxy interception
+./cursor-proxy-launcher
+
+# Launch specific version
+./cursor-proxy-launcher --version 2.3.10
+
+# Launch with CA trust only (no interception)
+./cursor-proxy-launcher --no-proxy
+
+# Check status
+./cursor-proxy-launcher --status
+
+# Cleanup
+./cursor-proxy-launcher --cleanup
+```
+
+### What the Launcher Does
+
+1. **Ensures CA certificate exists** - Generates ECDSA CA if missing
+2. **Builds Rust proxy** - First run only, cached afterwards  
+3. **Starts proxy** - On port 8443, captures to `rust-captures/`
+4. **Sets up iptables** - Transparently redirects api2.cursor.sh traffic
+5. **Launches Cursor** - With `NODE_EXTRA_CA_CERTS` set correctly
+6. **Cleans up on exit** - Removes iptables rules automatically
+
+### Installation
+
+```bash
+# Direct usage
+./tools/proxy-test/cursor-proxy-launcher
+
+# Or install via flake
+nix run .#cursor-proxy-launcher
+```
+
+### Expected Log Output (Success)
+
+```
+[*] Starting proxy on port 8443...
+[✓] Proxy started (PID: 12345)
+[*] Setting up iptables rules...
+[✓] iptables configured (8 new rules)
+[*] Launching Cursor with proxy CA trust...
+
+# In proxy logs:
+INFO [1] New connection from 192.168.0.11:55880 -> 100.52.102.154:443
+DEBUG [1] Generated certificate for api2.cursor.sh
+INFO [1] TLS handshake successful  ← This is the success indicator!
+INFO [1] HTTP/2 connection established
+INFO [1] gRPC stream: /aiserver.v1.ChatService/StreamUnifiedChatWithTools
+```
+
+### Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| "TLS handshake eof" | CA not trusted | Restart Cursor with launcher |
+| "sudo: no new privileges" | Running in sandbox | Use external terminal |
+| "No rules active" | iptables failed | Run with sudo access |
+| "Proxy failed to start" | Port in use | `./cursor-proxy-launcher --cleanup` |
 
 ### Next Steps
 
