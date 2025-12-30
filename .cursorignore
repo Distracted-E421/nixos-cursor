@@ -61,6 +61,5 @@ coverage/
 htmlcov/
 .pytest_cache/
 
-# Payload database (large binary captures)
-tools/proxy-test/payload-db/
-tools/proxy-test/rust-captures/
+# Proxy test data (67,000+ files - captures, JSON payloads, etc.)
+tools/proxy-test/
