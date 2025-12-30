@@ -63,3 +63,24 @@ tools/proxy-test/rust-captures/*.bin
 scripts/python/.venv/
 **/.venv/
 **/venv/
+
+# ==============================================================================
+# Elixir/Erlang Build Artifacts
+# ==============================================================================
+# Mix build output
+_build/
+# Dependencies fetched by Mix
+deps/
+# Elixir Language Server cache
+.elixir_ls/
+# Compiled BEAM bytecode
+*.beam
+# Erlang crash dumps
+erl_crash.dump
+# Mix archives (hex, etc.)
+.mix/
+# Phoenix-specific
+priv/static/assets/
+# Dialyzer PLT files
+*.plt
+*.plt.hash

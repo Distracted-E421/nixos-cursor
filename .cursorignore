@@ -78,12 +78,19 @@ Thumbs.db
 *.rpm
 
 # ============================================================
-# Elixir/Erlang Build
+# Elixir/Erlang Build (can be 1000s of files!)
 # ============================================================
 _build/
-deps/
+**/deps/
 .elixir_ls/
 *.beam
+erl_crash.dump
+**/.mix/
+# Phoenix-specific
+priv/static/assets/
+# Dialyzer PLT files
+*.plt
+*.plt.hash
 
 # ============================================================
 # Git Submodules (vendor directories)
