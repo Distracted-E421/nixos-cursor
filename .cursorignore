@@ -1,74 +1,48 @@
-# ============================================================
 # Cursor IDE Index Exclusions for nixos-cursor
-# ============================================================
-# This file prevents ~18,000+ build artifacts from being indexed
-# Without this, Cursor indexes 22,500+ files instead of ~700
+# Keep patterns simple - avoid complex globs that may not work
 
-# ============================================================
-# Rust Build Artifacts (CRITICAL - 18,000+ files!)
-# ============================================================
-# All Rust target directories anywhere in the repo
-**/target/
+# Rust build artifacts (CRITICAL - 45,000+ files on disk!)
 target/
 
-# Specific known locations
-cursor-studio/target/
-cursor-studio-egui/target/
-scripts/rust/cursor-manager/target/
+# Elixir/Erlang
+_build/
+deps/
+.elixir_ls/
+.mix/
+*.beam
+*.plt
+erl_crash.dump
 
-# Cargo artifacts
-Cargo.lock
-# Note: cursor-studio-egui/Cargo.lock is intentionally tracked (binary reproducibility)
-
-# ============================================================
-# Nix Build Outputs
-# ============================================================
-# Symlinks to /nix/store
+# Nix
 result
 result-*
-
-# direnv
 .direnv/
 
-# ============================================================
-# Python Artifacts
-# ============================================================
+# Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-.Python
+.venv/
+venv/
 *.egg-info/
 .eggs/
-*.egg
 
-# ============================================================
-# Node.js / NPM
-# ============================================================
+# Node.js
 node_modules/
 .npm/
-package-lock.json
 
-# ============================================================
-# Editor & IDE
-# ============================================================
+# IDE/OS
 .idea/
+.DS_Store
+Thumbs.db
 *.swp
 *.swo
 *~
 *.bak
-
-# ============================================================
-# OS Artifacts
-# ============================================================
-.DS_Store
-Thumbs.db
 *.tmp
 *.temp
 
-# ============================================================
-# Large Binary Files
-# ============================================================
+# Large binary files
 *.AppImage
 *.dmg
 *.zip
@@ -77,38 +51,16 @@ Thumbs.db
 *.deb
 *.rpm
 
-# ============================================================
-# Elixir/Erlang Build (can be 1000s of files!)
-# ============================================================
-_build/
-**/deps/
-.elixir_ls/
-*.beam
-erl_crash.dump
-**/.mix/
-# Phoenix-specific
-priv/static/assets/
-# Dialyzer PLT files
-*.plt
-*.plt.hash
-
-# ============================================================
-# Git Submodules (vendor directories)
-# ============================================================
+# Git submodules/vendor
 cursor-studio/vendor/
+cursor-studio/
 
-# ============================================================
-# Test Outputs & Coverage
-# ============================================================
+# Test/Coverage
 coverage/
 .coverage
 htmlcov/
 .pytest_cache/
 
-# ============================================================
+# Payload database (large binary captures)
 tools/proxy-test/payload-db/
 tools/proxy-test/rust-captures/
-tools/proxy-test/payload-db/**/requests/*.bin
-tools/proxy-test/payload-db/**/responses/*.bin
-tools/proxy-test/payload-db/**/metadata/*.bin
-tools/proxy-test/payload-db/**/metadata/*.bin
