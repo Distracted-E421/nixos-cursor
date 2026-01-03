@@ -1,3 +1,0 @@
-{"sent_at":"2025-12-17T22:25:47.959Z","sdk":{"name":"sentry.javascript.electron","version":"6.10.0"}}
-{"type":"session"}
-{"sid":"b0b941b5fe374fce808a8fc1c24d2de7","init":false,"started":"2025-12-17T21:49:14.258Z","timestamp":"2025-12-17T21:49:19.613Z","status":"ok","errors":1,"did":"github|user_01J9HT5C7Z1XW1EPQKVGRE6XMQ","duration":5.3549699783325195,"attrs":{"release":"Cursor@2.0.77","environment":"cursor","user_agent":"Node.js/22"}}

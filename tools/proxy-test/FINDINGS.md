@@ -592,7 +592,217 @@ INFO [1] gRPC stream: /aiserver.v1.ChatService/StreamUnifiedChatWithTools
 
 ### Next Steps
 
-1. Test Cursor with `NODE_EXTRA_CA_CERTS` explicitly set
-2. If that fails, Cursor may have certificate pinning (harder to bypass)
-3. Alternative: Modify Cursor's startup script/wrapper
+1. ✅ **DONE**: Script now handles `NODE_EXTRA_CA_CERTS` automatically
+2. ✅ **DONE**: Sandbox detection added (warns if running from Cursor's terminal)
+3. **TODO**: Test from external terminal (Konsole, Kitty)
+4. **TODO**: Capture `StreamUnifiedChatWithTools` endpoint
+5. If TLS still fails: Cursor may have certificate pinning (harder to bypass)
+
+---
+
+## 2025-12-29 - Script Improvements
+
+### Issues Fixed
+
+1. **Bash arithmetic error (line 364)** - Fixed `grep -c` output handling
+2. **Sandbox detection** - Script now warns when run from Cursor's terminal
+3. **Better error handling** - iptables failures now provide clear guidance
+4. **Test mode** - Added `--test` flag to set up proxy without launching Cursor
+
+### Root Cause of TLS Failures
+
+The "TLS handshake eof" errors occurred because:
+
+1. **Traffic WAS being redirected** - iptables rules worked correctly
+2. **Proxy WAS generating certificates** - CA was properly configured  
+3. **Cursor did NOT trust the CA** - Even with system-wide CA trust
+
+**Why:** Electron/Node.js apps bundle their own CA store at build time. They do NOT use the system CA store by default. The `NODE_EXTRA_CA_CERTS` environment variable MUST be set when launching Cursor.
+
+### Testing Procedure (Updated)
+
+**IMPORTANT: Run from EXTERNAL terminal (Konsole, Kitty), NOT from Cursor!**
+
+```bash
+# 1. From external terminal (e.g., Konsole)
+cd /home/e421/nixos-cursor/tools/proxy-test
+
+# 2. First-time setup (only needed once)
+./cursor-proxy-launcher --setup
+
+# 3. Option A: Test mode (sets up proxy, doesn't launch Cursor)
+./cursor-proxy-launcher --test
+# Then in another terminal, manually test:
+# NODE_EXTRA_CA_CERTS=~/.cursor-proxy/ca-cert.pem cursor
+
+# 4. Option B: Full automatic (recommended)
+./cursor-proxy-launcher
+
+# 5. Monitor in another terminal
+tail -f /tmp/cursor-proxy.log
+```
+
+### Expected Successful Output
+
+```
+[*] Starting proxy on port 8443...
+[✓] Proxy started (PID: 12345)
+[i] Resolved api2.cursor.sh to: 52.200.135.112 54.89.126.254 ...
+[✓] iptables configured (8 new rules)
+[i] Verified: 8 iptables rules active
+[✓] Proxy setup complete!
+[*] Launching Cursor...
+```
+
+In the proxy log (`/tmp/cursor-proxy.log`):
+```
+INFO [1] New connection from 192.168.0.11:55880 -> 100.52.102.154:443
+DEBUG [1] Generated certificate for api2.cursor.sh
+INFO [1] TLS handshake successful  ← SUCCESS!
+INFO [1] HTTP/2 connection established
+INFO [1] gRPC stream: /aiserver.v1.ChatService/StreamUnifiedChatWithTools
+```
+
+### If You Still See "TLS handshake eof"
+
+1. **Kill all Cursor processes**: `pkill -f cursor`
+2. **Cleanup**: `./cursor-proxy-launcher --cleanup`
+3. **Re-run**: `./cursor-proxy-launcher`
+4. **Verify env var is set**: Check launcher output shows `NODE_EXTRA_CA_CERTS=...`
+
+### Crash When Sending Agent Messages
+
+If Cursor crashes when using an agent:
+1. This likely means traffic IS being intercepted
+2. But the proxy may be dropping/mangling packets
+3. Check proxy logs for errors
+4. Try with `--no-proxy` to confirm it's proxy-related
+
+---
+
+## 2025-12-30 - Network Namespace Isolation
+
+### Problem
+
+Running the proxy affects **ALL** Cursor instances and any process connecting to `api2.cursor.sh`. This causes issues when you want to:
+- Keep your main Cursor working normally (for development)
+- Only proxy a specific test Cursor instance
+
+### Solution: `--isolated` Mode
+
+The launcher now supports **network namespace isolation** which creates a completely separate network environment for the proxied Cursor.
+
+```bash
+# ★ RECOMMENDED - Full isolation
+./cursor-proxy-launcher --isolated
+```
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Host System                                 │
+│                                                                      │
+│  ┌──────────────────┐           ┌─────────────────────────────────┐ │
+│  │   Main Cursor    │           │    cursor-proxy-ns namespace    │ │
+│  │   (unaffected)   │           │                                 │ │
+│  │        │         │           │  ┌─────────────────┐            │ │
+│  │        ▼         │           │  │ Proxied Cursor  │            │ │
+│  │  api2.cursor.sh  │           │  │                 │            │ │
+│  │    (direct)      │           │  └────────┬────────┘            │ │
+│  └──────────────────┘           │           │                     │ │
+│                                 │           ▼                     │ │
+│                                 │     veth-proxy (10.200.1.2)     │ │
+│                                 └───────────┬─────────────────────┘ │
+│                                             │                       │
+│  ┌──────────────────────────────────────────┼─────────────────────┐ │
+│  │               veth-host (10.200.1.1)     │                     │ │
+│  │                         ▲                │                     │ │
+│  │              iptables NAT PREROUTING     │                     │ │
+│  │              (redirect :443 → :8443)     │                     │ │
+│  │                         │                │                     │ │
+│  │              ┌─────────────────┐         │                     │ │
+│  │              │  Cursor Proxy   │─────────┘                     │ │
+│  │              │  (port 8443)    │                               │ │
+│  │              └────────┬────────┘                               │ │
+│  │                       ▼                                        │ │
+│  │              api2.cursor.sh (real)                             │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Benefits
+
+| Feature | Standard Mode | Isolated Mode |
+|---------|--------------|---------------|
+| Main Cursor affected | ✗ YES | ✓ NO |
+| Other apps affected | ✗ YES (same IPs) | ✓ NO |
+| Cleanup reliability | Medium | High |
+| iptables complexity | High | Low |
+| File permissions | Normal | Normal |
+| Root required | Yes | Yes |
+
+### Usage
+
+```bash
+# From Konsole/Kitty (NOT from Cursor's terminal)
+cd ~/nixos-cursor/tools/proxy-test
+
+# Option 1: Automatic (recommended)
+./cursor-proxy-launcher --isolated
+
+# Option 2: Manual setup
+sudo ./setup-network-namespace.sh setup
+./cursor-proxy-launcher --test
+sudo ./setup-network-namespace.sh run cursor
+sudo ./setup-network-namespace.sh teardown
+
+# Check status
+sudo ./setup-network-namespace.sh status
+
+# Cleanup
+./cursor-proxy-launcher --cleanup  # Standard mode
+sudo ./setup-network-namespace.sh teardown  # Isolated mode
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `setup-network-namespace.sh` | Namespace setup/teardown script |
+| `NETWORK_NAMESPACE_SETUP.md` | Detailed documentation |
+| `cursor-proxy-launcher --isolated` | All-in-one isolated mode |
+
+### Troubleshooting Isolated Mode
+
+| Issue | Solution |
+|-------|----------|
+| "Namespace already exists" | `sudo ./setup-network-namespace.sh teardown` first |
+| "Permission denied" in Cursor | Check you're running as your user inside namespace |
+| "Cannot connect" | `sudo ./setup-network-namespace.sh status` to check connectivity |
+| DNS not working | Check `/etc/netns/cursor-proxy-ns/resolv.conf` exists |
+
+### Standard vs Isolated: When to Use
+
+**Use `--isolated` when:**
+- You want to keep working in your main Cursor
+- Testing proxy changes without affecting your workflow
+- You need reliable cleanup
+
+**Use standard mode when:**
+- Testing ONE Cursor instance only
+- Network namespaces aren't available (older kernels)
+- You need simpler setup (no sudo for namespace)
+
+---
+
+## Key Documentation Files
+
+| File | Content |
+|------|---------|
+| `FINDINGS.md` | This file - research timeline and findings |
+| `NETWORK_NAMESPACE_SETUP.md` | Detailed namespace setup guide |
+| `cursor-proxy-launcher` | Main launcher script with `--help` |
+| `setup-network-namespace.sh` | Namespace management script |
+| `cursor-proxy/README.md` | Rust proxy documentation |
 

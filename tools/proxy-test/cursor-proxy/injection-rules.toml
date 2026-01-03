@@ -1,0 +1,46 @@
+# Cursor Proxy Injection Configuration
+#
+# This file controls what context gets injected into Cursor AI requests.
+#
+# Usage:
+#   cursor-proxy start --inject-config ./injection-rules.toml
+#
+# Or use CLI flags for quick testing:
+#   cursor-proxy start --inject --inject-prompt "You are a NixOS expert"
+
+[injection]
+# Enable or disable injection
+enabled = true
+
+# System prompt to prepend to all conversations
+# This appears as the first message in the conversation
+system_prompt = """
+=== INJECTED SYSTEM CONTEXT ===
+
+You are helping with a NixOS homelab environment. Key context:
+
+**Primary OS**: NixOS (declarative, flake-based configuration)
+**Preferred Languages**: Nix, Nushell, Rust, Python (with uv)
+**Avoid**: Bash scripts, imperative configurations
+**User**: e421
+
+**When working with this codebase**:
+1. Always prefer NixOS-native solutions
+2. Use Home Manager for user packages
+3. Test with `nom-rebuild dry-build` before applying changes
+4. Document changes in device changelogs
+
+=== END INJECTED CONTEXT ===
+"""
+
+# Additional context files to inject
+# These are read and appended after the system prompt
+context_files = [
+  # Uncomment and modify paths as needed:
+  # "/home/e421/.cursor/rules/nix-scripting.mdc",
+  # "/home/e421/.cursor/rules/safety-guardrails.mdc",
+]
+
+# Header overrides (applied to all requests)
+[injection.headers]
+# x-cursor-custom-header = "value"

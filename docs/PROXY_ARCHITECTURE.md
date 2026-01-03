@@ -6,6 +6,7 @@
 ## Executive Summary
 
 We built a transparent HTTP/2 proxy that intercepts Cursor IDE's AI traffic for the purpose of context injection. The proxy successfully:
+
 - Intercepts all HTTPS traffic via network namespace + iptables
 - Terminates TLS with dynamically generated certificates
 - Proxies HTTP/2/gRPC streams bidirectionally
@@ -65,6 +66,7 @@ We built a transparent HTTP/2 proxy that intercepts Cursor IDE's AI traffic for 
 **Problem**: Cursor's chat is a bi-directional gRPC stream. Standard proxies wait for the client to close the stream (EOF) before forwarding. Since Cursor keeps the stream open for the response, a naive buffer deadlocks (Client waits for Server, Proxy waits for Client).
 
 **Solution**:
+
 1. Read the 5-byte gRPC header (`[Flags][Length]`).
 2. Buffer *only* the length specified in the header.
 3. Perform injection on this isolated message.
@@ -74,6 +76,7 @@ We built a transparent HTTP/2 proxy that intercepts Cursor IDE's AI traffic for 
 ### 2. Context File Injection (Solving Protobuf Complexity)
 
 **Problem**: Injecting a "System Message" into the chat history is hard because:
+
 - The Protobuf schema for user/bot messages is complex (UUIDs, specific types).
 - Modifying the body invalidates checksums, and generating new UUIDs might trigger server-side validation.
 
@@ -81,6 +84,7 @@ We built a transparent HTTP/2 proxy that intercepts Cursor IDE's AI traffic for 
 We discovered that `ConversationEntry` (Field 3) is polymorphic. By using a simpler schema matching "Context Files", we can inject system prompts that appear as files to the LLM.
 
 **Schema**:
+
 - Field 1: Filename (String) -> "system-context.md"
 - Field 2: Content (String) -> "**System Context**\n\n..."
 - Field 5: Type (Int32) -> 0
@@ -90,6 +94,7 @@ This avoids the need for valid `bubble_id`s or complex nested message structures
 ### 3. Checksum & Header Management
 
 **Critical Findings**:
+
 - **`x-cursor-checksum`**: MUST be forwarded. Stripping it causes `ERROR_OUTDATED_CLIENT`.
 - **`content-length`**: MUST be stripped. Since we modify the body size, the original length is invalid. Mismatch causes `FRAME_SIZE_ERROR` or connection drops.
 
@@ -126,6 +131,7 @@ The proxy generates certificates on-the-fly.
 ## Current State
 
 ### Working ✅
+
 - Transparent interception
 - TLS termination
 - HTTP/2 bidirectional streaming (No Deadlocks)
