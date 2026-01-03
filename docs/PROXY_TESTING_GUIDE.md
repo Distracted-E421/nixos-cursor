@@ -61,7 +61,7 @@ Use the wrapper script to launch Cursor inside the isolated namespace:
 
 ```bash
 cd ~/nixos-cursor/tools/proxy-test
-./run-proxy-test.sh
+./start-proxy-test.sh
 ```
 
 ### 6. Verify
