@@ -1,12 +1,13 @@
 [package]
 name = "cursor-proxy"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Transparent HTTP/2 proxy for Cursor AI streaming interception"
+description = "Transparent HTTP/2 proxy for Cursor AI streaming interception with context injection"
 
 [dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+futures = "0.3"
 
 # HTTP/2 support
 h2 = "0.4"  # Low-level HTTP/2 for frame inspection
@@ -20,7 +21,7 @@ tokio-rustls = "0.26"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-pemfile = "2"
 webpki-roots = "0.26"
-rcgen = "0.13"  # For generating CA certs
+rcgen = { version = "0.13", features = ["pem", "x509-parser"] }  # For generating CA certs
 
 # Networking
 socket2 = "0.5"
@@ -33,6 +34,10 @@ bytes = "1"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+toml = "0.8"  # For injection config files
+
+# Compression (for gzip in Connect protocol)
+flate2 = "1"
 
 # Logging
 tracing = "0.1"
@@ -49,6 +54,7 @@ shellexpand = "3"
 time = "0.3"
 libc = "0.2"
 chrono = "0.4"
+uuid = { version = "1.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [build-dependencies]
 prost-build = "0.13"
