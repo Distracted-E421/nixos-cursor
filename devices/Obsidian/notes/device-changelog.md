@@ -1,3 +1,23 @@
+## 2026-01-18 01:30:00 - [UPDATE]
+
+**Description**: Released cursor-studio v0.3.0 with Interactive Dialog System
+
+**Files**: 
+- flake.nix (added cursor-dialog-daemon, cursor-dialog-cli packages)
+- tools/cursor-dialog-daemon/default.nix (updated to v0.3.0)
+- CHANGELOG.md (release notes)
+- All dialog daemon source files committed
+
+**Notes**:
+- Tagged and pushed v0.3.0 to GitHub
+- Flake packages now include: cursor-dialog-daemon, cursor-dialog-cli
+- Apps: cursor-dialog-daemon, cursor-dialog-cli available via `nix run`
+- cursor-studio dialog commands: enable, disable, start, stop, status, test
+- Merged pre-release → main
+- Full feature set: dialogs, toasts, sidebar, comments, pause timer, sounds, window attention
+
+---
+
 ## 2026-01-17 15:00:00 - [SCRIPT]
 
 **Description**: Created D-Bus Interactive Dialog System for AI Agent Feedback
