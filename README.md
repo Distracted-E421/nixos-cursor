@@ -1,6 +1,6 @@
 # nixos-cursor
 
-**v0.3.0** · **69+ Versions** · **NixOS + macOS**
+**v0.3.1** · **69 Versions** · **NixOS + macOS**
 [![CI](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml/badge.svg)](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -16,6 +16,9 @@ nix run github:Distracted-E421/nixos-cursor#cursor-studio
 
 # Run the latest stable Cursor
 nix run github:Distracted-E421/nixos-cursor#cursor
+
+# Run a specific version
+nix run github:Distracted-E421/nixos-cursor#cursor-2_0_77
 ```
 
 ### Add to Your Flake
@@ -31,9 +34,9 @@ nix run github:Distracted-E421/nixos-cursor#cursor
 # In your Home Manager or NixOS configuration
 { inputs, pkgs, ... }: {
   home.packages = [
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest stable (2.3.10)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Default (2.0.77)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor-2_3_10   # Latest 2.3.x
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # GUI manager
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # CLI (optional)
   ];
 }
 ```
@@ -42,7 +45,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor
 
 ## ✨ What's New in v0.3.0
 
-### 🎯 Interactive Dialog System (NEW!)
+### 🎯 Interactive Dialog System
 
 AI agents can now request user feedback **without burning API requests**:
 
@@ -62,9 +65,52 @@ cursor-studio dialog enable
 
 # Test it
 cursor-studio dialog test
+
+# Check status
+cursor-studio dialog status
 ```
 
-### 🛡️ Cursor Isolation Tools
+See [docs/designs/INTERACTIVE_DIALOG_SYSTEM.md](docs/designs/INTERACTIVE_DIALOG_SYSTEM.md) for details.
+
+---
+
+## 📦 Available Packages
+
+### Core Packages
+
+| Package | Description |
+|---------|-------------|
+| `cursor` | Default Cursor IDE (2.0.77 - last with custom modes) |
+| `cursor-studio` | GUI version manager + chat library |
+| `cursor-studio-cli` / `cs` | CLI interface for automation |
+| `cursor-test` | Isolated test instance |
+| `cursor-dialog-daemon` | D-Bus daemon for agent dialogs |
+| `cursor-dialog-cli` | CLI for dialog system |
+
+### Version Highlights
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| `cursor-2_3_10` | 2.3.10 | Latest available |
+| `cursor-2_2_27` | 2.2.27 | Latest 2.2.x |
+| `cursor-2_1_50` | 2.1.50 | Latest 2.1.x |
+| `cursor-2_0_77` | 2.0.77 | **Last with custom modes** |
+| `cursor-1_7_54` | 1.7.54 | Classic era |
+
+### All 69 Versions
+
+- **2.3.x**: 1 version (2.3.10)
+- **2.2.x**: 11 versions (2.2.3 - 2.2.27)
+- **2.1.x**: 21 versions (2.1.6 - 2.1.50)
+- **2.0.x**: 17 versions (2.0.11 - 2.0.77) — **Custom modes era**
+- **1.7.x**: 19 versions (1.7.11 - 1.7.54)
+- **1.6.x**: ❌ Dropped (no longer supported by Cursor)
+
+See [cursor-versions.nix](cursor-versions.nix) for the full list.
+
+---
+
+## 🛡️ Cursor Isolation Tools
 
 Suite of scripts to prevent configuration corruption and ensure safe testing:
 
@@ -73,12 +119,15 @@ Suite of scripts to prevent configuration corruption and ensure safe testing:
 | `cursor-test` | Run Cursor in isolated environments |
 | `cursor-backup` | Snapshot configuration before risky operations |
 | `cursor-sandbox` | Full environment isolation |
+| `cursor-share-data` | Share data between versions |
 
 See [tools/cursor-isolation/README.md](tools/cursor-isolation/README.md) for details.
 
-### Cursor Studio — Native Rust Application
+---
 
-A complete rewrite from Python/Tkinter to **Rust/egui**:
+## 🎨 Cursor Studio
+
+A native **Rust/egui** application for managing Cursor:
 
 | Feature | Description |
 |---------|-------------|
@@ -89,27 +138,14 @@ A complete rewrite from Python/Tkinter to **Rust/egui**:
 | 🔄 **Sync** | P2P and server sync infrastructure (experimental) |
 | 🏠 **Home Manager** | Declarative configuration via Nix |
 
-### Multi-Version Management
+```bash
+# Run the GUI
+nix run github:Distracted-E421/nixos-cursor#cursor-studio
 
-- **64+ versions** available (2.3.x, 2.2.x, 2.1.x, 2.0.x, 1.7.x)
-- **Isolated configs** — each version has its own `~/.cursor-VERSION/`
-- **Run concurrently** — 2.3.10 and 2.0.77 side-by-side
-- **Shared auth** — keep login synced across versions (optional)
-
----
-
-## 📦 Available Packages
-
-| Package | Description |
-|---------|-------------|
-| `cursor` | Latest stable Cursor IDE (2.3.10) |
-| `cursor-studio` | GUI: Version manager + Chat library |
-| `cursor-studio-cli` | CLI interface for automation |
-| `cursor-2_3_10` | Latest 2.3.x version |
-| `cursor-2_0_77` | Last version with custom modes |
-| `cursor-1_7_54` | Classic version |
-
-**All 64+ versions**: See [cursor-versions.nix](cursor-versions.nix)
+# Or use the CLI
+nix run github:Distracted-E421/nixos-cursor#cs -- list
+nix run github:Distracted-E421/nixos-cursor#cs -- download 2.0.77
+```
 
 ---
 
@@ -197,27 +233,31 @@ See [SECURITY.md](SECURITY.md) for details.
 
 ## 🗺️ Roadmap
 
-### v0.2.x (Current)
+### v0.3.x (Current)
 
-- [x] Cursor Studio GUI (Rust/egui)
-- [x] 48 version support
-- [x] Security scanning
-- [x] Chat library with bookmarks
-- [x] Home Manager modules
-- [ ] Window size persistence
-- [ ] Global search across chats
+- [x] Interactive Dialog System (D-Bus daemon)
+- [x] Toast notifications with sidebar
+- [x] Comment fields on all dialogs
+- [x] 69 version support (2.3.x - 1.7.x)
+- [x] 1.6.x EOL cleanup
+- [ ] Darwin dialog support (Unix sockets)
 
-### v0.3.0 (Next)
+### v0.4.0 (Next)
+
+- [ ] **System Prompt Injection** — Restore custom modes via proxy
+- [ ] **Context Injection** — Inject documentation/context into AI requests
+- [ ] **Proxy Dashboard** — Web UI for monitoring AI traffic
+
+### v0.5.0 (Future)
 
 - [ ] **P2P Sync** — Sync chats across devices via local network
 - [ ] **Server Sync** — Central server for cloud sync
-- [ ] **CLI/TUI** — Headless interfaces
-- [ ] **2.1.x versions** — Add newer releases
+- [ ] **Headless Cursor TUI** — Terminal-based Cursor client
 
-### v1.0.0 (Future)
+### v1.0.0
 
-- [ ] Custom modes reimplementation for 2.1.x
-- [ ] Plugin system
+- [ ] Custom modes fully restored
+- [ ] Plugin system for extensions
 - [ ] AI integration (summaries, auto-titles)
 
 ---
@@ -246,16 +286,31 @@ See [docs/DARWIN_TESTING.md](docs/DARWIN_TESTING.md)
 
 ## 📖 Documentation
 
-- [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) — Multi-version usage
-- [SECURITY.md](SECURITY.md) — Security principles
-- [CHANGELOG.md](CHANGELOG.md) — Release history
-- [cursor-studio-egui/README.md](cursor-studio-egui/README.md) — Cursor Studio details
+| Document | Description |
+|----------|-------------|
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [VERSION_MANAGER_GUIDE.md](VERSION_MANAGER_GUIDE.md) | Multi-version usage |
+| [SECURITY.md](SECURITY.md) | Security principles |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [cursor-studio-egui/README.md](cursor-studio-egui/README.md) | Cursor Studio details |
+| [docs/designs/INTERACTIVE_DIALOG_SYSTEM.md](docs/designs/INTERACTIVE_DIALOG_SYSTEM.md) | Dialog system architecture |
 
 ---
 
 ## 🤝 Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+```bash
+# Development shell
+nix develop
+
+# Run tests
+nix flake check
+
+# Build specific package
+nix build .#cursor-studio
+```
 
 ---
 
