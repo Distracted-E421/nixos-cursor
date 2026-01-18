@@ -1,3 +1,24 @@
+## 2026-01-18 02:00:00 - [UPDATE]
+
+**Description**: Comprehensive documentation update for v0.3.x release
+
+**Files**: 
+- README.md (complete rewrite)
+- .github/workflows/build.yml (removed 1.6.x)
+- .github/workflows/release.yml (removed 1.6.x, updated highlights)
+- CHANGELOG.md (added v0.3.1)
+
+**Notes**:
+- Updated version badge to v0.3.1
+- Fixed version count (69 versions, not 64+)
+- Updated roadmap (v0.3.x current, not v0.2.x)
+- Added Interactive Dialog System documentation
+- Removed 1.6.x from CI (EOL by Cursor)
+- Created GitHub releases for v0.3.0 and v0.3.1
+- All documentation links verified
+
+---
+
 ## 2026-01-18 01:30:00 - [UPDATE]
 
 **Description**: Released cursor-studio v0.3.0 with Interactive Dialog System
