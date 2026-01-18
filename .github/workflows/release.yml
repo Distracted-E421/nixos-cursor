@@ -86,10 +86,11 @@ jobs:
       - name: Build representative versions
         run: |
           echo "🔨 Building representative versions..."
-          nix build .#cursor-2_0_64 --print-build-logs
+          nix build .#cursor-2_3_10 --print-build-logs
+          nix build .#cursor-2_0_77 --print-build-logs
           nix build .#cursor-1_7_54 --print-build-logs
-          nix build .#cursor-1_6_45 --print-build-logs
           echo "✅ Representative versions built successfully"
+          # Note: 1.6.x dropped - no longer supported by Cursor
 
       - name: Generate release notes
         id: notes
@@ -101,10 +102,11 @@ jobs:
           
           ### 🎯 Highlights
           
-          - **37 Cursor versions** available (2.0.x, 1.7.x, 1.6.x)
+          - **69+ Cursor versions** available (2.3.x, 2.2.x, 2.1.x, 2.0.x, 1.7.x)
+          - **Interactive Dialog System** - AI agents can request feedback mid-task
           - **Multi-version installation** - run multiple versions simultaneously
+          - **Cursor Studio** - Native Rust/egui GUI manager
           - **Isolated user data** - each version has its own config directory
-          - **GUI Version Manager** - easy dropdown selection by era
           - **Pure Nix builds** - reproducible with SRI hashes
           
           ### 📦 Installation

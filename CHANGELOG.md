@@ -2,6 +2,23 @@
 
 All notable changes to cursor-studio will be documented in this file.
 
+## [v0.3.1] - 2026-01-18
+
+### 🧹 Maintenance
+
+#### Removed 1.6.x Version Support
+- **cursor-1_6_45** removed from CI/CD workflows
+- Cursor no longer supports 1.6.x versions (EOL)
+- CI now tests 69 versions (2.3.x through 1.7.x)
+
+### 📝 Documentation
+
+- Updated README to v0.3.0 with Interactive Dialog System feature showcase
+- Fixed version badge (was showing 0.2.1-pre)
+- Updated GitHub Actions workflows to reflect current version inventory
+
+---
+
 ## [v0.3.0] - 2026-01-18
 
 ### 🎉 New Features

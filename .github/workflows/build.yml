@@ -90,8 +90,7 @@ jobs:
           - "cursor-1_7_54" # Latest 1.7.x (most wanted)
           - "cursor-1_7_28" # Mid-range
           - "cursor-1_7_11" # First 1.7.x
-          # 1.6.x Legacy Era
-          - "cursor-1_6_45" # Only legacy version
+          # 1.6.x DROPPED - No longer supported by Cursor
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -154,11 +153,11 @@ jobs:
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
         continue-on-error: true
 
-      - name: Build all 37 versions (evaluation only)
+      - name: Build all 36 versions (evaluation only)
         run: |
-          echo "🔨 Evaluating all 37 Cursor versions..."
+          echo "🔨 Evaluating all 36 Cursor versions..."
 
-          # List of all versions
+          # List of all versions (1.6.x DROPPED - no longer supported)
           VERSIONS=(
             # 2.0.x Custom Modes Era (17)
             cursor-2_0_77 cursor-2_0_75 cursor-2_0_74 cursor-2_0_73 cursor-2_0_69
@@ -170,8 +169,7 @@ jobs:
             cursor-1_7_43 cursor-1_7_40 cursor-1_7_39 cursor-1_7_38 cursor-1_7_36
             cursor-1_7_33 cursor-1_7_28 cursor-1_7_25 cursor-1_7_23 cursor-1_7_22
             cursor-1_7_17 cursor-1_7_16 cursor-1_7_12 cursor-1_7_11
-            # 1.6.x Legacy Era (1)
-            cursor-1_6_45
+            # 1.6.x DROPPED - No longer supported by Cursor
           )
 
           TOTAL=${#VERSIONS[@]}
@@ -198,6 +196,7 @@ jobs:
             exit 1
           fi
           echo "✅ All $TOTAL versions validated!"
+          # Note: 1.6.x versions dropped as of v0.3.1 - no longer supported by Cursor
 
   # Summary job
   ci-success:

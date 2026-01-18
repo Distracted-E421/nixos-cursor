@@ -1,6 +1,6 @@
 # nixos-cursor
 
-**v0.2.1-pre** · **64+ Versions** · **NixOS + macOS**
+**v0.3.0** · **69+ Versions** · **NixOS + macOS**
 [![CI](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml/badge.svg)](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -40,17 +40,38 @@ nix run github:Distracted-E421/nixos-cursor#cursor
 
 ---
 
-## ✨ What's New in v0.2.1
+## ✨ What's New in v0.3.0
+
+### 🎯 Interactive Dialog System (NEW!)
+
+AI agents can now request user feedback **without burning API requests**:
+
+| Feature | Description |
+|---------|-------------|
+| 📋 **Multiple Choice** | Single or multi-select with descriptions |
+| ✏️ **Text Input** | With optional validation and multiline |
+| ✅ **Confirmation** | Yes/No with customizable labels |
+| 🎚️ **Slider** | Numeric input with min/max/step |
+| 🔔 **Toast Notifications** | Non-blocking status updates |
+| 💬 **Comment Field** | Add context to any selection |
+| ⏸️ **Pause Timer** | Take your time on decisions |
+
+```bash
+# Enable the dialog system
+cursor-studio dialog enable
+
+# Test it
+cursor-studio dialog test
+```
 
 ### 🛡️ Cursor Isolation Tools
 
-New suite of scripts to prevent configuration corruption and ensure safe testing:
+Suite of scripts to prevent configuration corruption and ensure safe testing:
 
 | Tool | Description |
 |------|-------------|
-| `cursor-test` | Run Cursor in isolated environments (safe for proxy testing) |
+| `cursor-test` | Run Cursor in isolated environments |
 | `cursor-backup` | Snapshot configuration before risky operations |
-| `cursor-versions` | CLI to download and manage local versions |
 | `cursor-sandbox` | Full environment isolation |
 
 See [tools/cursor-isolation/README.md](tools/cursor-isolation/README.md) for details.
