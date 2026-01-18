@@ -1,10 +1,10 @@
 # nixos-cursor
 
-**v0.2.0 Stable** · **48 Versions** · **NixOS + macOS**  
+**v0.2.1-pre** · **64+ Versions** · **NixOS + macOS**
 [![CI](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml/badge.svg)](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The **definitive Cursor IDE package for NixOS** — featuring multi-version management, MCP server integration, and the new **Cursor Studio** native application.
+The **definitive Cursor IDE package for NixOS** — featuring multi-version management, MCP server integration, isolation tools, and the new **Cursor Studio** native application.
 
 ---
 
@@ -14,7 +14,7 @@ The **definitive Cursor IDE package for NixOS** — featuring multi-version mana
 # Try Cursor Studio (GUI) without installing
 nix run github:Distracted-E421/nixos-cursor#cursor-studio
 
-# Or run Cursor directly
+# Run the latest stable Cursor
 nix run github:Distracted-E421/nixos-cursor#cursor
 ```
 
@@ -31,7 +31,7 @@ nix run github:Distracted-E421/nixos-cursor#cursor
 # In your Home Manager or NixOS configuration
 { inputs, pkgs, ... }: {
   home.packages = [
-    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest stable (2.0.77)
+    inputs.nixos-cursor.packages.${pkgs.system}.cursor          # Latest stable (2.3.10)
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio   # GUI manager
     inputs.nixos-cursor.packages.${pkgs.system}.cursor-studio-cli  # CLI (optional)
   ];
@@ -40,7 +40,20 @@ nix run github:Distracted-E421/nixos-cursor#cursor
 
 ---
 
-## ✨ What's New in v0.2.0
+## ✨ What's New in v0.2.1
+
+### 🛡️ Cursor Isolation Tools
+
+New suite of scripts to prevent configuration corruption and ensure safe testing:
+
+| Tool | Description |
+|------|-------------|
+| `cursor-test` | Run Cursor in isolated environments (safe for proxy testing) |
+| `cursor-backup` | Snapshot configuration before risky operations |
+| `cursor-versions` | CLI to download and manage local versions |
+| `cursor-sandbox` | Full environment isolation |
+
+See [tools/cursor-isolation/README.md](tools/cursor-isolation/README.md) for details.
 
 ### Cursor Studio — Native Rust Application
 
@@ -57,9 +70,9 @@ A complete rewrite from Python/Tkinter to **Rust/egui**:
 
 ### Multi-Version Management
 
-- **48 versions** available (2.1.x, 2.0.x, 1.7.x, 1.6.x)
+- **64+ versions** available (2.3.x, 2.2.x, 2.1.x, 2.0.x, 1.7.x)
 - **Isolated configs** — each version has its own `~/.cursor-VERSION/`
-- **Run concurrently** — 2.0.77 and 1.7.54 side-by-side
+- **Run concurrently** — 2.3.10 and 2.0.77 side-by-side
 - **Shared auth** — keep login synced across versions (optional)
 
 ---
@@ -68,14 +81,14 @@ A complete rewrite from Python/Tkinter to **Rust/egui**:
 
 | Package | Description |
 |---------|-------------|
-| `cursor` | Latest stable Cursor IDE (2.0.77) |
+| `cursor` | Latest stable Cursor IDE (2.3.10) |
 | `cursor-studio` | GUI: Version manager + Chat library |
 | `cursor-studio-cli` | CLI interface for automation |
-| `cursor-2_0_77` | Specific version |
+| `cursor-2_3_10` | Latest 2.3.x version |
+| `cursor-2_0_77` | Last version with custom modes |
 | `cursor-1_7_54` | Classic version |
-| `cursor-1_6_45` | Legacy version |
 
-**All 48 versions**: See [cursor-versions.nix](cursor-versions.nix)
+**All 64+ versions**: See [cursor-versions.nix](cursor-versions.nix)
 
 ---
 

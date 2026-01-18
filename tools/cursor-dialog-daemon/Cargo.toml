@@ -1,0 +1,76 @@
+[package]
+name = "cursor-dialog-daemon"
+version = "0.3.0"
+edition = "2021"
+description = "D-Bus daemon for Cursor agent interactive dialogs"
+authors = ["e421"]
+license = "MIT"
+
+[dependencies]
+# D-Bus bindings (async-first, modern)
+zbus = { version = "4.4", default-features = false, features = ["tokio"] }
+
+# Async runtime (minimal features needed)
+tokio = { version = "1.41", features = ["rt-multi-thread", "sync", "macros", "time"] }
+
+# GUI framework (native look, cross-platform fallback)
+egui = "0.29"
+eframe = { version = "0.29", default-features = false, features = ["default_fonts", "glow"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI for testing
+clap = { version = "4.5", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# UUID for dialog IDs
+uuid = { version = "1.11", features = ["v4", "serde"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# For native dialogs as fallback
+rfd = "0.15"  # Rust File Dialogs - cross-platform native dialogs
+
+# Regex for input validation
+regex = "1.11"
+
+[[bin]]
+name = "cursor-dialog-daemon"
+path = "src/main.rs"
+
+[[bin]]
+name = "cursor-dialog-cli"
+path = "src/cli.rs"
+
+# Fast release builds (good enough optimization, ~3x faster compile)
+[profile.release]
+lto = "thin"        # Thin LTO is much faster than full LTO
+codegen-units = 4   # More parallel codegen (default 16, optimal 1)
+strip = true        # Remove symbols
+opt-level = 3       # Max optimization
+
+# Slower but smallest/fastest binary (for final releases)
+[profile.release-max]
+inherits = "release"
+lto = true
+codegen-units = 1
+
+# Dev profile with some optimization (for testing)
+[profile.dev]
+opt-level = 1       # Basic optimization for usable dev builds
+debug = 1           # Limited debug info
+
+# Dependencies always optimized (even in dev)
+[profile.dev.package."*"]
+opt-level = 2
+

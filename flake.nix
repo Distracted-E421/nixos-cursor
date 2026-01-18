@@ -397,6 +397,19 @@
           
           # Cursor Proxy - Transparent proxy for AI traffic interception
           cursor-proxy = pkgs.callPackage ./tools/proxy-test/cursor-proxy { };
+
+          # ═══════════════════════════════════════════════════════════════════
+          # INTERACTIVE DIALOG DAEMON: D-Bus service for agent feedback
+          # ═══════════════════════════════════════════════════════════════════
+          # Allows AI agents to request user input without burning API requests.
+          # Features: Multiple choice, text input, confirmation, slider, toasts
+          
+          cursor-dialog-daemon = pkgs.callPackage ./tools/cursor-dialog-daemon { };
+          
+          # CLI for sending dialog requests (used by agents)
+          cursor-dialog-cli = pkgs.writeShellScriptBin "cursor-dialog-cli" ''
+            exec ${self.packages.${system}.cursor-dialog-daemon}/bin/cursor-dialog-cli "$@"
+          '';
         }
         # Darwin-specific extras
         // lib.optionalAttrs isDarwin {
@@ -444,6 +457,10 @@
           
           # Backward compatibility
           cursor-versions = mkApp pkgs.cursor-versions "cursor-versions";
+
+          # Interactive Dialog Daemon & CLI
+          cursor-dialog-daemon = mkApp pkgs.cursor-dialog-daemon "cursor-dialog-daemon";
+          cursor-dialog-cli = mkApp pkgs.cursor-dialog-cli "cursor-dialog-cli";
 
           # 2.3.x Latest Era (1 version)
           cursor-2_3_10 = mkApp pkgs.cursor-2_3_10 "cursor-2.3.10";

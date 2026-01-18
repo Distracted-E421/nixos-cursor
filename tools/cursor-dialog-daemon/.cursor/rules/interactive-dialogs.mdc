@@ -1,0 +1,181 @@
+# Interactive Dialog System for Cursor Agents
+
+This rule enables AI agents to request user input through interactive dialogs without burning API requests.
+
+## Overview
+
+The `cursor-dialog-cli` tool allows you to:
+- Show multiple choice dialogs
+- Collect text input
+- Ask yes/no confirmations
+- Use sliders for numeric values
+- Show non-blocking toast notifications
+
+## When to Use
+
+Use interactive dialogs when you need:
+- User preference on approach (before starting work)
+- Clarification on ambiguous requests
+- Confirmation before destructive operations
+- Progress updates (toasts)
+- Selection from multiple options
+
+## Commands
+
+### Multiple Choice
+```bash
+cursor-dialog-cli -t 60 choice \
+  --title "Dialog Title" \
+  --prompt "Question to ask the user?" \
+  --options '[{"value":"opt1","label":"Option 1","description":"Description"},{"value":"opt2","label":"Option 2"}]'
+```
+
+For multiple selection, add `--multi`:
+```bash
+cursor-dialog-cli -t 60 choice --multi \
+  --title "Select Features" \
+  --prompt "Which features should I implement?" \
+  --options '[{"value":"a","label":"Feature A"},{"value":"b","label":"Feature B"},{"value":"c","label":"Feature C"}]'
+```
+
+### Text Input
+```bash
+cursor-dialog-cli -t 60 text \
+  --title "Input Required" \
+  --prompt "Enter the project name:" \
+  --placeholder "my-project"
+```
+
+For multiline input:
+```bash
+cursor-dialog-cli -t 120 text --multiline \
+  --title "Description" \
+  --prompt "Describe the feature in detail:"
+```
+
+### Confirmation (Yes/No)
+```bash
+cursor-dialog-cli -t 30 confirm \
+  --title "Confirm Action" \
+  --prompt "Delete 15 files from the cache?" \
+  --yes "Delete" --no "Cancel"
+```
+
+### Slider (Numeric Input)
+```bash
+cursor-dialog-cli -t 45 slider \
+  --title "Detail Level" \
+  --prompt "How detailed should the summary be?" \
+  --min 1 --max 10 --step 1 --default 5
+```
+
+### Toast Notifications (Non-blocking)
+```bash
+# Success notification
+cursor-dialog-cli toast -m "Build completed!" -l success -d 3000
+
+# Warning
+cursor-dialog-cli toast -m "Context at 80% capacity" -l warning -d 5000
+
+# Error
+cursor-dialog-cli toast -m "Failed to connect" -l error -d 8000
+
+# Info (default)
+cursor-dialog-cli toast -m "Processing..." -l info -d 4000
+```
+
+## Response Format
+
+All dialogs return JSON:
+
+```json
+{
+  "id": "uuid",
+  "selection": "selected_value",
+  "comment": "Optional user comment with additional context",
+  "cancelled": false,
+  "timestamp": 1234567890
+}
+```
+
+### Key Fields
+- `selection`: The user's choice (string, array, boolean, or number depending on dialog type)
+- `comment`: Optional text the user added for context (IMPORTANT - read this!)
+- `cancelled`: `true` if user dismissed without selecting
+- `timestamp`: Unix timestamp of response
+
+## Best Practices
+
+### 1. Always Check the Comment Field
+Users can add context via the comment field on any dialog. Always read it:
+```bash
+response=$(cursor-dialog-cli -t 60 choice --title "Approach" --prompt "..." --options '...')
+comment=$(echo "$response" | jq -r '.comment // empty')
+if [ -n "$comment" ]; then
+  echo "User added context: $comment"
+fi
+```
+
+### 2. Use Appropriate Timeouts
+- Quick decisions: 30-45 seconds
+- Choices requiring thought: 60-90 seconds
+- Text input: 90-120 seconds
+- Timer can be paused by user
+
+### 3. Provide Descriptive Options
+```json
+[
+  {"value": "quick", "label": "⚡ Quick Mode", "description": "Fast but less thorough"},
+  {"value": "thorough", "label": "🔍 Thorough Mode", "description": "Slower but comprehensive"}
+]
+```
+
+### 4. Use Toasts for Status Updates
+Instead of cluttering output:
+```bash
+cursor-dialog-cli toast -m "Analyzing codebase..." -l info -d 3000
+# ... do work ...
+cursor-dialog-cli toast -m "Found 15 files to update" -l success -d 4000
+```
+
+### 5. Handle Cancellation
+```bash
+response=$(cursor-dialog-cli -t 60 confirm --title "Proceed?" --prompt "...")
+if [ "$(echo "$response" | jq -r '.cancelled')" = "true" ]; then
+  echo "User cancelled - aborting"
+  exit 0
+fi
+```
+
+## Examples
+
+### Pre-Task Planning
+```bash
+cursor-dialog-cli -t 60 choice \
+  --title "Implementation Approach" \
+  --prompt "How should I implement this feature?\n\n• Option A: Quick implementation\n• Option B: With tests\n• Option C: Full documentation" \
+  --options '[{"value":"quick","label":"Quick"},{"value":"tested","label":"With Tests"},{"value":"documented","label":"Full Docs"}]'
+```
+
+### Gathering Requirements
+```bash
+cursor-dialog-cli -t 90 text --multiline \
+  --title "Feature Requirements" \
+  --prompt "Describe the feature you want me to build:" \
+  --placeholder "I want a feature that..."
+```
+
+### Progress Feedback
+```bash
+cursor-dialog-cli toast -m "Starting build..." -l info -d 2000
+# ... build ...
+cursor-dialog-cli toast -m "✓ Build successful!" -l success -d 4000
+```
+
+## Technical Notes
+
+- Daemon must be running: `cursor-studio dialog start`
+- Dialogs appear in a separate window (always on top)
+- Timer pauses automatically when comment field is expanded
+- Multiple toasts can stack (max 5)
+- Responses are synchronous (CLI waits for user input)

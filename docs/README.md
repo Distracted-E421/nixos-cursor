@@ -11,6 +11,8 @@
 | [DATA_TRACKING.md](DATA_TRACKING.md) | Git-based Cursor data tracking feature |
 | [MCP_GITHUB_SETUP.md](MCP_GITHUB_SETUP.md) | Setting up GitHub MCP server |
 | [SECRETS_MANAGEMENT.md](SECRETS_MANAGEMENT.md) | Managing API tokens and secrets |
+| [PROJECT_MAP.md](PROJECT_MAP.md) | Visual map of project architecture and components |
+| [INJECTION_SYSTEM_TECHNICAL.md](INJECTION_SYSTEM_TECHNICAL.md) | Technical details of the proxy injection system |
 
 ## Internal Documentation
 

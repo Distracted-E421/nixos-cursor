@@ -12,8 +12,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROXY_BIN="${SCRIPT_DIR}/cursor-proxy/target/release/cursor-proxy"
+DIALOG_DAEMON_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-daemon"
+DIALOG_CLI_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-cli"
 PROXY_DIR="${HOME}/.cursor-proxy"
 CONFIG_DIR="${HOME}/.config/cursor-studio"
+DIALOG_CONFIG="${CONFIG_DIR}/dialog-daemon.conf"
+CURSOR_RULES_DIR="${HOME}/.cursor/rules"
 
 # Colors
 RED='\033[0;31m'
@@ -111,6 +115,193 @@ disable_proxy() {
     "$PROXY_BIN" disable
 }
 
+# ==================== Dialog Daemon Management ====================
+
+# Check if dialog daemon binary exists
+check_dialog_daemon() {
+    if [[ ! -f "$DIALOG_DAEMON_BIN" ]]; then
+        log_error "Dialog daemon binary not found at $DIALOG_DAEMON_BIN"
+        log_info "Building dialog daemon..."
+        (cd "${SCRIPT_DIR}/cursor-dialog-daemon" && cargo build --release)
+    fi
+}
+
+# Check if dialog daemon is running
+is_dialog_daemon_running() {
+    pgrep -f "cursor-dialog-daemon" > /dev/null 2>&1
+}
+
+# Start dialog daemon
+start_dialog_daemon() {
+    check_dialog_daemon
+    
+    if is_dialog_daemon_running; then
+        log_info "Dialog daemon already running"
+        return 0
+    fi
+    
+    log_info "Starting dialog daemon..."
+    nohup "$DIALOG_DAEMON_BIN" > "${CONFIG_DIR}/dialog-daemon.log" 2>&1 &
+    sleep 1
+    
+    if is_dialog_daemon_running; then
+        log_success "Dialog daemon started"
+        
+        # Verify with ping
+        if "$DIALOG_CLI_BIN" ping 2>/dev/null | grep -q "pong"; then
+            log_success "Dialog daemon responding"
+        fi
+    else
+        log_error "Failed to start dialog daemon"
+        return 1
+    fi
+}
+
+# Stop dialog daemon
+stop_dialog_daemon() {
+    if is_dialog_daemon_running; then
+        log_info "Stopping dialog daemon..."
+        pkill -f "cursor-dialog-daemon" || true
+        sleep 1
+        log_success "Dialog daemon stopped"
+    else
+        log_info "Dialog daemon not running"
+    fi
+}
+
+# Enable dialog feature (install rules + start daemon)
+enable_dialog_feature() {
+    check_dialog_daemon
+    mkdir -p "$CURSOR_RULES_DIR"
+    
+    # Copy the interactive dialog rules
+    local rules_source="${SCRIPT_DIR}/cursor-dialog-daemon/.cursor/rules/interactive-dialogs.mdc"
+    local rules_dest="${CURSOR_RULES_DIR}/interactive-dialogs.mdc"
+    
+    if [[ -f "$rules_source" ]]; then
+        cp "$rules_source" "$rules_dest"
+        log_success "Installed dialog rules to $rules_dest"
+    else
+        log_warn "Dialog rules not found at $rules_source"
+        log_info "Creating basic rules..."
+        cat > "$rules_dest" << 'RULES_EOF'
+# Interactive Dialog System
+
+When the user asks for input or you need clarification, use the `cursor-dialog-cli` tool:
+
+## Choice Dialog
+```bash
+cursor-dialog-cli -t 60 choice \
+  --title "Title" \
+  --prompt "Question?" \
+  --options '[{"value":"a","label":"Option A"},{"value":"b","label":"Option B"}]'
+```
+
+## Text Input
+```bash
+cursor-dialog-cli -t 60 text \
+  --title "Input" \
+  --prompt "Enter value:" \
+  --placeholder "hint"
+```
+
+## Confirmation
+```bash
+cursor-dialog-cli -t 60 confirm \
+  --title "Confirm" \
+  --prompt "Are you sure?"
+```
+
+The response is JSON with `selection`, `comment`, and `cancelled` fields.
+RULES_EOF
+        log_success "Created basic dialog rules"
+    fi
+    
+    # Save enabled state
+    echo "DIALOG_ENABLED=true" > "$DIALOG_CONFIG"
+    
+    # Start daemon
+    start_dialog_daemon
+    
+    log_success "Dialog feature enabled"
+    log_info "Restart Cursor for rules to take effect"
+}
+
+# Disable dialog feature (remove rules + stop daemon)
+disable_dialog_feature() {
+    # Stop daemon
+    stop_dialog_daemon
+    
+    # Remove rules
+    local rules_dest="${CURSOR_RULES_DIR}/interactive-dialogs.mdc"
+    if [[ -f "$rules_dest" ]]; then
+        rm -f "$rules_dest"
+        log_info "Removed dialog rules"
+    fi
+    
+    # Save disabled state
+    echo "DIALOG_ENABLED=false" > "$DIALOG_CONFIG"
+    
+    log_success "Dialog feature disabled"
+}
+
+# Show dialog daemon status
+dialog_status() {
+    check_dialog_daemon
+    
+    echo ""
+    log_info "=== Dialog Daemon Status ==="
+    echo ""
+    
+    # Check if enabled
+    if [[ -f "$DIALOG_CONFIG" ]] && grep -q "DIALOG_ENABLED=true" "$DIALOG_CONFIG" 2>/dev/null; then
+        echo -e "  Feature:  ${GREEN}enabled${NC}"
+    else
+        echo -e "  Feature:  ${YELLOW}disabled${NC}"
+    fi
+    
+    # Check if running
+    if is_dialog_daemon_running; then
+        echo -e "  Daemon:   ${GREEN}running${NC}"
+        
+        # Try ping
+        if "$DIALOG_CLI_BIN" ping 2>/dev/null | grep -q "pong"; then
+            echo -e "  D-Bus:    ${GREEN}connected${NC}"
+        else
+            echo -e "  D-Bus:    ${YELLOW}not responding${NC}"
+        fi
+    else
+        echo -e "  Daemon:   ${RED}stopped${NC}"
+        echo -e "  D-Bus:    ${RED}unavailable${NC}"
+    fi
+    
+    # Check rules
+    local rules_dest="${CURSOR_RULES_DIR}/interactive-dialogs.mdc"
+    if [[ -f "$rules_dest" ]]; then
+        echo -e "  Rules:    ${GREEN}installed${NC} ($rules_dest)"
+    else
+        echo -e "  Rules:    ${YELLOW}not installed${NC}"
+    fi
+    
+    echo ""
+}
+
+# Test dialog (show a quick test dialog)
+dialog_test() {
+    check_dialog_daemon
+    
+    if ! is_dialog_daemon_running; then
+        log_error "Dialog daemon not running. Start with: cursor-studio dialog start"
+        return 1
+    fi
+    
+    log_info "Showing test dialog..."
+    "$DIALOG_CLI_BIN" -t 30 choice \
+        --title "Dialog Test" \
+        --prompt "This is a test dialog from cursor-studio.\n\nFeatures:\n✓ Multiple choice\n✓ Timer with pause\n✓ Comment field\n\nIs everything working?" \
+        --options '[{"value":"yes","label":"✓ Works great!"},{"value":"partial","label":"⚠ Partially working"},{"value":"no","label":"✗ Something is broken"}]'
+}
+
 # Launch Cursor with proxy support
 launch_cursor_with_proxy() {
     local ca_cert="${PROXY_DIR}/ca-cert.pem"
@@ -188,14 +379,16 @@ launch_cursor() {
 # Show help
 show_help() {
     cat << EOF
-cursor-studio - Enhanced Cursor IDE launcher with proxy support
+cursor-studio - Enhanced Cursor IDE launcher with proxy and dialog support
 
 USAGE:
     cursor-studio [OPTIONS] [-- CURSOR_ARGS...]
     cursor-studio proxy <COMMAND>
+    cursor-studio dialog <COMMAND>
 
 OPTIONS:
     --proxy, -p       Launch Cursor with proxy enabled
+    --dialog, -d      Start dialog daemon before launch
     --help, -h        Show this help message
 
 PROXY COMMANDS:
@@ -209,6 +402,14 @@ PROXY COMMANDS:
     cursor-studio proxy cleanup       Clean up proxy resources
     cursor-studio proxy iptables      Manage iptables rules
 
+DIALOG COMMANDS:
+    cursor-studio dialog enable       Enable dialog feature (start daemon + install rules)
+    cursor-studio dialog disable      Disable dialog feature (stop daemon + remove rules)
+    cursor-studio dialog start        Start dialog daemon
+    cursor-studio dialog stop         Stop dialog daemon
+    cursor-studio dialog status       Show dialog daemon status
+    cursor-studio dialog test         Show a test dialog
+
 EXAMPLES:
     # Normal Cursor launch
     cursor-studio
@@ -216,32 +417,57 @@ EXAMPLES:
     # Launch with proxy
     cursor-studio --proxy
 
-    # Initialize proxy first time
-    cursor-studio proxy init
+    # Enable interactive dialogs (one-time setup)
+    cursor-studio dialog enable
 
-    # Start proxy with transparent mode (requires sudo)
-    sudo cursor-studio proxy start --transparent
+    # Launch with dialog support
+    cursor-studio --dialog
 
-    # Check proxy status
-    cursor-studio proxy status
+    # Check dialog status
+    cursor-studio dialog status
 
-    # Clean up everything
-    cursor-studio proxy cleanup --all
+    # Test dialog system
+    cursor-studio dialog test
 
-For more information, see: ${SCRIPT_DIR}/cursor-proxy/ARCHITECTURE.md
+For more information, see:
+  - Proxy: ${SCRIPT_DIR}/cursor-proxy/ARCHITECTURE.md
+  - Dialogs: ${SCRIPT_DIR}/cursor-dialog-daemon/README.md
 EOF
+}
+
+# Launch Cursor with dialog daemon
+launch_cursor_with_dialog() {
+    # Check if feature is enabled, if not just ensure daemon runs
+    if [[ -f "$DIALOG_CONFIG" ]] && grep -q "DIALOG_ENABLED=true" "$DIALOG_CONFIG" 2>/dev/null; then
+        log_info "Dialog feature enabled"
+    else
+        log_warn "Dialog feature not enabled. Enable with: cursor-studio dialog enable"
+    fi
+    
+    # Start daemon if not running
+    if ! is_dialog_daemon_running; then
+        start_dialog_daemon || log_warn "Could not start dialog daemon"
+    fi
+    
+    # Launch Cursor
+    launch_cursor "$@"
 }
 
 # Main entry point
 main() {
-    # Ensure proxy directory exists
+    # Ensure directories exist
     mkdir -p "$PROXY_DIR"
     mkdir -p "$CONFIG_DIR"
+    mkdir -p "$CURSOR_RULES_DIR"
     
     case "${1:-}" in
         --proxy|-p)
             shift
             launch_cursor_with_proxy "$@"
+            ;;
+        --dialog|-d)
+            shift
+            launch_cursor_with_dialog "$@"
             ;;
         proxy)
             shift
@@ -258,10 +484,28 @@ main() {
                 *)          show_help; exit 1 ;;
             esac
             ;;
+        dialog)
+            shift
+            case "${1:-}" in
+                enable)     shift; enable_dialog_feature "$@" ;;
+                disable)    shift; disable_dialog_feature "$@" ;;
+                start)      shift; start_dialog_daemon "$@" ;;
+                stop)       shift; stop_dialog_daemon "$@" ;;
+                status)     shift; dialog_status "$@" ;;
+                test)       shift; dialog_test "$@" ;;
+                *)          show_help; exit 1 ;;
+            esac
+            ;;
         --help|-h)
             show_help
             ;;
         *)
+            # Auto-start dialog daemon if enabled
+            if [[ -f "$DIALOG_CONFIG" ]] && grep -q "DIALOG_ENABLED=true" "$DIALOG_CONFIG" 2>/dev/null; then
+                if ! is_dialog_daemon_running; then
+                    start_dialog_daemon || true
+                fi
+            fi
             launch_cursor "$@"
             ;;
     esac

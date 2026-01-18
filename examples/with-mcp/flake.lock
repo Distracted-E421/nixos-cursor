@@ -1,20 +1,5 @@
 {
   "nodes": {
-    "cursor-nixos": {
-      "inputs": {
-        "mcp-servers-nix": "mcp-servers-nix",
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "path": "../../",
-        "type": "path"
-      },
-      "original": {
-        "path": "../../",
-        "type": "path"
-      },
-      "parent": []
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -38,7 +23,7 @@
     "mcp-servers-nix": {
       "inputs": {
         "nixpkgs": [
-          "cursor-nixos",
+          "nixos-cursor",
           "nixpkgs"
         ]
       },
@@ -53,6 +38,25 @@
       "original": {
         "owner": "natsukium",
         "repo": "mcp-servers-nix",
+        "type": "github"
+      }
+    },
+    "nixos-cursor": {
+      "inputs": {
+        "mcp-servers-nix": "mcp-servers-nix",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1765851650,
+        "narHash": "sha256-wWrgUOAWvaCU4MQYEERG/h4r89gM0o06zKqv1CK9UDM=",
+        "owner": "Distracted-E421",
+        "repo": "nixos-cursor",
+        "rev": "2ed4682562cebddd69744bbbdc6298f86e7149fc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Distracted-E421",
+        "repo": "nixos-cursor",
         "type": "github"
       }
     },
@@ -90,8 +94,8 @@
     },
     "root": {
       "inputs": {
-        "cursor-nixos": "cursor-nixos",
         "home-manager": "home-manager",
+        "nixos-cursor": "nixos-cursor",
         "nixpkgs": "nixpkgs_2"
       }
     }

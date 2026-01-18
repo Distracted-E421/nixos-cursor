@@ -84,3 +84,5 @@ priv/static/assets/
 # Dialyzer PLT files
 *.plt
 *.plt.hash
+nohup.out
+*.log

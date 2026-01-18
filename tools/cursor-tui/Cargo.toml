@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "cursor-core",
+    "cursor-tui",
+    "cursor-bot",
+]
+resolver = "2"
+

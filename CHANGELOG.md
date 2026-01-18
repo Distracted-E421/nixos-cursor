@@ -1,329 +1,70 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to cursor-studio will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [v0.3.0] - 2026-01-18
 
-## [Unreleased]
+### 🎉 New Features
 
-## [0.2.1] - 2025-12-15
+#### Interactive Dialog System
+A brand new way for AI agents to communicate with users without burning API requests!
 
-### Added
+- **Multiple Choice Dialogs** - Single or multi-select with descriptions
+- **Text Input** - Single line or multiline with optional validation
+- **Confirmation** - Yes/No with customizable labels
+- **Slider** - Numeric input with min/max/step
+- **Toast Notifications** - Non-blocking status updates (success, warning, error, info)
 
-- **@Docs Indexing Troubleshooting Guide** (docs/troubleshooting/DOCS_INDEXING_ISSUE.md):
-  - Comprehensive documentation explaining that @docs indexing failures are a **Cursor server-side bug**
-  - Not related to NixOS, cursor-studio, or local configuration
-  - Affects all platforms (Windows, macOS, Linux) and all Cursor versions from 0.43.x+
-  - Includes workarounds and links to 50+ forum reports
-  - References official Cursor team acknowledgment of the issue
+#### Comment Field on All Dialogs
+Every dialog now has an optional comment field where you can add context or nuance that predefined options can't capture. The AI agent will receive this additional feedback.
 
-- **cursor-docs Service** (services/cursor-docs/):
-  - New Elixir/OTP-based local documentation indexing service
-  - Alternative to Cursor's unreliable server-side @docs system
-  - **Key features:**
-    - Playwright-based scraping (full JavaScript rendering)
-    - SurrealDB storage with full-text search
-    - MCP protocol integration for Cursor
-    - Fault-tolerant OTP supervision tree
-    - Rate limiting and retry logic
-  - **Target quality:** 80% of Cursor's best-case quality at 100% coverage
-  - **MCP Tools:**
-    - `cursor_docs_add` - Add documentation URL
-    - `cursor_docs_search` - Search indexed docs
-    - `cursor_docs_list` - List all sources
-    - `cursor_docs_status` - Check scraping status
-    - `cursor_docs_remove` - Remove documentation
+#### Timer with Pause/Resume
+Dialogs can have a timeout, but you can now pause/resume the timer if you need more time to think.
 
-### Documentation
+#### Notification Sidebar
+- Click the 🔔 button to see notification history
+- Notifications persist for later review
+- Semi-transparent sidebar doesn't fully block content
+- Mark all as read when opening
 
-- New `docs/troubleshooting/` directory for common issues
-- Clear explanation that docs indexing is NOT a nixos-cursor bug
-- Links to Cursor forum threads and official team responses
+#### Sound Alerts
+Toast notifications now play appropriate system sounds based on severity level.
 
----
+#### Window Attention
+Blocking dialogs now request window focus and flash in the taskbar to get your attention.
 
-## [0.2.0] - 2025-12-05
+### ⚡ Performance
 
-### Added
+- **27% faster build times** (3m 31s → 2m 35s)
+- Optimized dependency features
+- Thin LTO for faster linking
 
-- **Data Pipeline Control Research** (docs/internal/DATA_PIPELINE_CONTROL_ROADMAP.md):
-  - Comprehensive documentation of Cursor's internal database structure
-  - Discovered 25,105+ messages stored as JSON blobs in `cursorDiskKV` table
-  - Mapped key patterns: `bubbleId`, `checkpointId`, `codeBlockDiff`, `composerData`
-  - Identified `docsReferences`, `webReferences`, `toolResults` fields in message structure
-  - Speculative roadmap for v0.3.0/v0.4.0 data pipeline control features
+### 🔧 cursor-studio Integration
 
-- **Conversation Sync POC** (scripts/python/cursor_sync_poc.py):
-  - Working proof-of-concept for syncing Cursor conversations to external SQLite
-  - Syncs messages, conversations, and tool calls from all workspace databases
-  - Commands: `sync`, `watch` (continuous), `stats`, `export`
-  - Tested successfully: 25,179 messages, 67 conversations synced
+New dialog commands in cursor-studio:
+```bash
+cursor-studio dialog enable   # Enable feature + start daemon
+cursor-studio dialog disable  # Disable feature + stop daemon
+cursor-studio dialog start    # Start daemon
+cursor-studio dialog stop     # Stop daemon
+cursor-studio dialog status   # Show status
+cursor-studio dialog test     # Show test dialog
+```
 
-### Research Findings
+### 📝 Note from the Developer
 
-- Cursor stores conversations in `~/.config/Cursor/User/globalStorage/state.vscdb`
-- Workspace-specific data in `~/.config/Cursor/User/workspaceStorage/{hash}/state.vscdb`
-- Messages are JSON blobs with rich metadata including thinking blocks, tool results
-- Docs system appears server-side (no local cache found) - MCP-based alternative planned
+Sorry for the delay! It's been over a month since v0.2.0. This release focused on building a robust foundation for agent interaction.
 
-## [0.2.0] - 2025-12-05
-
-> 🎉 **First stable release of Cursor Studio** - A complete rewrite from Python/Tkinter to Rust/egui
-
-### Highlights
-
-- **Native Rust Application** - Fast, single binary, no runtime dependencies
-- **VS Code-like Interface** - Familiar layout with activity bar, sidebars, tabs
-- **Security Features** - Sensitive data detection, NPM malicious package scanning
-- **Full Bookmark System** - Persistent bookmarks that survive reimports
-- **48 Cursor Versions** - Multi-version management with isolated configs
-- **Modular Build System** - Fast iteration with `--lite` builds (~2 min)
-
-### Added
-
-- **Security Panel**:
-  - Dynamic audit log showing actual scan results and import status
-  - Feature checklist showing implemented vs planned features
-  - NPM package security scanner with embedded blocklist
-  - Sensitive data detection (API keys, passwords, secrets)
-
-- **Sync Infrastructure** (Experimental):
-  - P2P sync via libp2p (mDNS discovery, Noise encryption)
-  - Server sync mode with REST API (axum)
-  - SurrealDB integration for sync-capable storage
-  - Device ID persistence and management
-
-- **Build System**:
-  - Modular feature flags (full, p2p-sync, server-sync, minimal)
-  - Fast `--lite` builds without sync features (~2 min)
-  - Aggressive parallelization (16 cores, mold linker)
-  - `rebuild.nu` script for optimized local builds
-
-- **CI/CD**:
-  - Full GitHub Actions pipeline with Nix builds
-  - Home Manager module validation
-  - NPM security scanning workflow
-  - Linux-only restriction for egui (Wayland/X11)
-
-### Fixed
-
-- libclang path for surrealdb-librocksdb-sys bindgen
-- Home Manager module evaluation (functions are lambdas)
-- NPM artifact naming with scoped packages
-- ajv date-time format validation
-- Multiple clippy warnings for clean CI
-
-### Notes
-
-- P2P/Server sync features are implemented but marked experimental
-- macOS builds require manual cargo build (Nix packaging Linux-only)
-- See cursor-studio-egui/ROADMAP.md for planned features
+**Coming soon:** We have a larger feature in the pipeline - full system prompt injection and custom mode functionality via the proxy system. This is taking longer than expected to get right, but it will restore and enhance the pre-2.0.77 capabilities. Expect it in v0.4.0 or v0.5.0.
 
 ---
 
-## [0.2.0-rc2] - 2025-11-29
+## [v0.2.0] - 2024-12-XX
 
-### Added
+- Initial cursor-studio launcher
+- Proxy infrastructure groundwork
+- Basic proxy commands
 
-- **Jump-to-Message Functionality**:
-  - Click bookmark "→" button to scroll to message
-  - Click security finding "→" to jump to sensitive data
-  - Highlight animation for jumped-to messages
-  - Works across conversation tabs
+## [v0.1.0] - 2024-11-XX
 
-- **NPM Package Security Scanner**:
-  - Embedded blocklist of known malicious packages
-  - Shai-Hulud 2025 attack patterns
-  - Historical compromised packages (event-stream, flatmap-stream, etc.)
-  - Typosquatting package detection
-  - CVE tracking for blocked packages
-  - Directory scanning for package.json files
-  - Category breakdown (historical, typosquatting, etc.)
-
-- **Security Panel Enhancements**:
-  - Sensitive data scan results with jump-to buttons
-  - NPM Package Security section
-  - Blocklist database stats (version, last updated, totals)
-  - Scan path input for npm scanning
-  - Results display with file paths and package details
-
-- **Export to Markdown**:
-  - 📤 button in conversation toolbar
-  - Includes tool calls with JSON formatting
-  - Thinking blocks in collapsible `<details>` tags
-  - Auto-creates `~/Documents/cursor-studio-exports/`
-  - Filename sanitization
-
-- **In-Conversation Search**:
-  - 🔍 search box in conversation toolbar
-  - Searches content, thinking blocks, and tool calls
-  - Live search (triggers after 2 characters)
-  - ◀/▶ navigation between results
-  - Result counter (X/Y matches)
-  - Jump to matching messages
-
-## [0.2.0-rc1] - 2025-11-28
-
-### Added
-
-- **Cursor Studio (egui)**: New VS Code-like unified application
-  - Activity bar with sidebar toggles
-  - Dual sidebars (Version Manager left, Chat Library right)
-  - Tabbed interface for conversations
-  - VS Code theme parser and converter
-  - Modern toggle switches and dropdowns
-  - Animated import spinner
-  
-- **Chat Message Improvements**:
-  - Tool call rendering with status icons (✓/⏳/✗)
-  - Thinking blocks (custom collapsible, theme-aware)
-  - Code block syntax highlighting
-  - Markdown rendering (headings, bold, inline code, bullets)
-  - **Right-aligned user messages** (bubble style with accent background)
-  - Left-aligned AI responses
-  - Bookmark buttons on every message
-  
-- **Bookmark System** (Fully functional):
-  - Persistent bookmarks that survive cache clears
-  - Per-message bookmarks with labels, notes, colors (🔖 gold default)
-  - Bookmark panel toggle in conversation header
-  - Jump to bookmarked messages
-  - Auto-reattach bookmarks after reimport by sequence number
-  
-- **Display Preferences UI**:
-  - Configurable alignment per content type (◀ left / ▶ right / ◆ center)
-  - Live preview in Settings → Display section
-  - Supports: User Messages, AI Responses, Thinking Blocks, Tool Calls
-  - Persisted to database
-  
-- **Data Model Enhancements**:
-  - Content type detection (text, code, terminal, markdown, mixed)
-  - Request segments for grouping user turns
-  - Files edited tracking
-  
-- **Unicode Font Support**:
-  - Automatic font loading from system and Nix paths
-  - JetBrains Mono, DejaVu, Noto fonts
-  - NIX_PROFILES environment variable support
-  - Fonts bundled in Nix flake (dejavu, noto, jetbrains-mono)
-
-- **Live Display Preferences**:
-  - Message alignment updates immediately when changed in Settings
-  - Center alignment option with styled frame
-  - Each alignment type has distinct visual style
-
-- **Import Progress Warning**:
-  - Two-click import (first click shows warning)
-  - Clear warning about UI freeze for large histories
-  - Status bar feedback during import
-
-- **Analytics Dashboard** (Status Bar):
-  - Real-time message type breakdown
-  - Shows: chats, user messages, AI responses, tool calls, thinking blocks, code blocks, bookmarks
-  - Updates automatically after import
-
-- **Async Background Import**:
-  - Import runs in separate thread (doesn't freeze UI)
-  - Progress bar in status bar (X/Y databases, percentage)
-  - Spinner animation during import
-  - Two-click confirmation (warning then proceed)
-
-- **UI Appearance Customization**:
-  - Font scale slider (80%-150%)
-  - Message spacing slider (4px-32px)
-  - Status bar font size slider (8px-16px)
-  - All settings in Settings → Appearance
-
-- **Feature Roadmap** (`ROADMAP.md`):
-  - Comprehensive tracking of completed/planned features
-  - Known issues documented
-  - Future goals outlined
-
-- **Clear & Reimport**:
-  - New "🔄 Clear & Reimport" button in Dashboard
-  - Clears all cached conversations
-  - Preserves bookmarks (stored by message sequence)
-  - Reattaches bookmarks to reimported messages
-  - Shows success/failure count for bookmark reattachment
-
-- **Resource Allocation Settings** (Settings → Resources):
-  - CPU Threads slider (1 to max available cores)
-  - RAM Limit slider (512MB - 16GB)
-  - VRAM Limit slider (256MB - 32GB for future GPU features)
-  - Storage Limit slider (1GB - 100GB)
-  - Note: Limits are stored for future AI/caching features
-
-- **Tool Call Preview Enhancement**:
-  - Increased args preview from 3 to 5 fields
-  - Increased character limit from 50 to 100 chars
-  - Shows more useful context for tool calls
-
-### Fixed
-
-- Unicode character handling - safe truncation at character boundaries
-- Thinking block styling (replaced default egui CollapsingHeader with custom toggle)
-- Tab selection in editor area
-- Build performance with mold linker
-- Borrow checker issues in UI rendering (action queuing pattern)
-- Bookmark buttons now visible (⭐ instead of ☆, larger size, hover cursor)
-
-## [0.1.2] - 2025-11-27
-
-### Fixed
-
-- **cursor-manager**: Fixed PEP8 linting errors (E303, E501) that caused build failures
-  - Removed extra blank line before `analyze_disk` method
-  - Split long line in `clean_orphans` messagebox call
-  - The `writePython3Bin` builder enforces PEP8, so these style issues were causing Home Manager activation failures
-
-## [0.1.1] - 2025-11-26
-
-### Added
-
-- **Disk Management UI**: Added disk usage analysis and cleanup to Cursor Manager GUI
-  - Cache cleaning (removes Cache, CachedData, GPUCache, etc.)
-  - Orphan directory cleanup (removes unused `~/.cursor-VERSION/` directories)
-  - Real-time disk usage display
-- **Garbage Collection Module**: New `gc.nix` module for Cursor-specific cleanup
-- **Nushell GC Helper**: `gc-helper.nu` script for automated disk space management
-
-### Changed
-
-- Home Manager module now supports `overwriteBackup` option to prevent backup conflicts
-
-## [0.1.0] - 2025-11-25
-
-### Added
-
-- Initial release with 48 Cursor versions available
-- **Multi-Version Manager GUI** (`cursor-manager`)
-  - Era-based version selection (2.0.x, 1.7.x, 1.6.x)
-  - Settings sync between versions
-  - Optional globalStorage sharing for auth/docs
-- **Home Manager Module** with MCP server integration
-  - Filesystem MCP server
-  - Memory MCP server
-  - NixOS MCP server (package/option search)
-  - GitHub MCP server (with secrets support)
-  - Playwright MCP server (browser automation)
-- **Automated Updates**
-  - Daily update checks with desktop notifications
-  - `cursor-update` command for one-click updates
-  - `cursor-check-update` for manual checks
-- **Version Packages**
-  - 17 versions from 2.0.x Custom Modes Era
-  - 19 versions from 1.7.x Classic Era
-  - 1 version from 1.6.x Legacy Era
-  - Isolated user data directories per version
-- **Documentation**
-  - Comprehensive README with quick start guide
-  - User data persistence guide
-  - Secrets management documentation
-  - Example configurations (basic, with-sops, with-agenix, with-mcp)
-
-[0.2.1]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.2...v0.2.0
-[0.1.2]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/Distracted-E421/nixos-cursor/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/Distracted-E421/nixos-cursor/releases/tag/v0.1.0
+- Project initialization

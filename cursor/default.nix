@@ -284,6 +284,7 @@ in
             --set CURSOR_NIX_UPDATE "$out/libexec/${shareDirName}/nix-update" \
             --add-flags "--ozone-platform-hint=auto" \
             --add-flags "--enable-features=UseOzonePlatform,WaylandWindowDecorations,VaapiVideoDecoder,WebRTCPipeWireCapturer" \
+            --add-flags "--no-sandbox" \
             --add-flags "--disable-gpu-sandbox" \
             --add-flags "--enable-gpu-rasterization" \
             --add-flags "--enable-zero-copy" \

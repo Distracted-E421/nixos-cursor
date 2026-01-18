@@ -847,7 +847,7 @@ async fn handle_connection(
     let h2_result = server::Builder::new()
         .initial_window_size(65535)
         .initial_connection_window_size(65535 * 16)
-        .max_frame_size(16777215)  // 16MB - match what upstream accepts
+        .max_frame_size(16384)  // 16KB - safe HTTP/2 default
         .max_concurrent_streams(128)
         .handshake(tls_stream).await;
     
@@ -864,7 +864,12 @@ async fn handle_connection(
     
     // Create h2 client connection to upstream with default settings
     // Don't customize - let h2 crate use safe defaults to avoid frame size issues
-    let (h2_client, h2_conn) = client::handshake(upstream_tls).await
+    let (h2_client, h2_conn) = client::Builder::new()
+        .initial_window_size(65536)
+        .initial_connection_window_size(1024 * 1024)
+        .initial_max_send_buffer_size(1024 * 1024)
+        .max_frame_size(16384)
+        .handshake(upstream_tls).await
         .with_context(|| "HTTP/2 client handshake failed")?;
     
     debug!("[{}] HTTP/2 client handshake complete", conn_id);
@@ -883,7 +888,10 @@ async fn handle_connection(
     // Wait for SETTINGS exchange to complete before forwarding requests
     // The upstream needs ~50ms to process our SETTINGS and send theirs
     // Without this, fast requests (like NetworkService/IsConnected) fail with FRAME_SIZE_ERROR
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+
+    // Re-check connection is ready after settings exchange
+    let h2_client = h2_client.ready().await?;
     
     // Process incoming streams from client
     loop {

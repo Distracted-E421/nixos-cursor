@@ -10,9 +10,12 @@
 | Project | Language | Status | Purpose |
 |---------|----------|--------|---------|
 | **cursor-studio-egui** | Rust | ✅ Active | GUI companion app for Cursor |
+| **tools/cursor-proxy** | Rust | ✅ Active | Traffic injection & analysis proxy |
 | **services/cursor-docs** | Elixir | ✅ Active | Local documentation indexer |
 | **cursor** | Nix | ✅ Active | Cursor AppImage packaging for NixOS |
 | **cursor-studio** (legacy) | Rust | 📦 Archived | Original GPUI experiment (moved to `archive/cursor-studio-gpui-legacy/`) |
+
+> 🗺️ **Visual Map**: See [PROJECT_MAP.md](docs/PROJECT_MAP.md) for a visual architecture diagram.
 
 ---
 
@@ -35,6 +38,7 @@
 | **security.rs** | 1 file | NPM/sensitive data scanning | ✅ Working |
 
 ### Key Features
+
 - ✅ VS Code-like layout
 - ✅ Conversation browser with bookmarks
 - ✅ Async imports
@@ -45,10 +49,37 @@
 - 🚧 cursor-docs integration (read-only)
 
 ### Built-in Modes
+
 1. **Agent** - Full access, autonomous
 2. **Code Review** - Read-only, no file writes
 3. **Maxim** - Obsidian-specific agent rules
 4. **Planning** - Think before acting
+
+---
+
+## 📡 tools/cursor-proxy (Rust)
+
+**Location**: `tools/cursor-proxy/`
+**Status**: Active Development
+**Stack**: Tokio, Hyper, Prost (Protobuf)
+
+### Modules
+
+| Module | Purpose | Status |
+|--------|---------|--------|
+| **injection.rs** | Request modification & system prompt injection | ✅ Working |
+| **proxy.rs** | HTTP/2 CONNECT handling & TLS MITM | ✅ Working |
+| **capture.rs** | Traffic capturing for analysis | ✅ Working |
+| **config.rs** | Runtime configuration management | ✅ Working |
+
+### Key Features
+
+- ✅ Transparent HTTP/2 Proxy
+- ✅ Connect/Protobuf Protocol Parsing
+- ✅ System Prompt Injection
+- ✅ Context File Injection
+- ✅ Header Modification
+- 🚧 Response modification (in progress)
 
 ---
 
@@ -70,12 +101,14 @@
 | **mcp/** | 1 file | MCP server | ❌ Placeholder |
 
 ### Crawling Strategies
+
 1. **SinglePage** - Default single-page docs
 2. **Frameset** - Javadoc classic framesets
 3. **Sitemap** - XML sitemap discovery
 4. **LinkFollow** - BFS link crawling
 
 ### CLI Commands
+
 ```bash
 mix cursor_docs.setup    # Initialize database
 mix cursor_docs.add      # Add documentation source
@@ -165,7 +198,8 @@ mix cursor_docs.quarantine # Manage quarantined content
 ### P0: Background Crawler with Live Updates
 
 **Problem**: `mix cursor_docs.add` blocks while crawling
-**Solution**: 
+**Solution**:
+
 1. Add async task supervisor in Elixir
 2. CLI shows live progress via Phoenix LiveView or simple polling
 3. Continue accepting new commands while crawling
@@ -208,11 +242,13 @@ User typing in Cursor IDE
 ```
 
 **Approach A**: File-based injection (works today)
+
 - cursor-studio writes to `.ai-workspace/injected-context.md`
 - User includes `@injected-context.md` in chat
 - cursor-studio updates file, AI sees on next read
 
 **Approach B**: Cursor extension (requires investigation)
+
 - Check if Cursor exposes extension API for context injection
 - Would allow true mid-stream injection
 
@@ -309,4 +345,3 @@ cursor/                    ~500 lines Nix
 3. **Test file-based injection** for mid-stream context
 4. **Archive legacy cursor-studio** (non-egui version)
 5. **Update main README** with current project structure
-

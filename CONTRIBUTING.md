@@ -61,6 +61,29 @@ CURSOR_FLAKE_URI=. nix run .#cursor-manager --impure
 nix build .#cursor-1_7_54
 ```
 
+## 🛡️ Safety & Isolation
+
+When developing features that interact with Cursor's API or configuration:
+
+1. **Use Isolated Environments**:
+   Never test experimental features on your main Cursor instance.
+   ```bash
+   # Run in isolated test environment
+   ./tools/cursor-isolation/cursor-test --env dev-feature
+   ```
+
+2. **Backup Before Experiments**:
+   Always snapshot your configuration before running risky code.
+   ```bash
+   ./tools/cursor-isolation/cursor-backup save pre-experiment
+   ```
+
+3. **Multi-Version Testing**:
+   Verify changes across different Cursor eras (2.3.x, 2.0.x, 1.7.x).
+   ```bash
+   ./tools/cursor-isolation/cursor-versions run 2.0.77
+   ```
+
 ## 📦 Adding New Cursor Versions
 
 To add a new Cursor version:

@@ -88,6 +88,35 @@ More aggressive isolation using modified HOME:
 ./cursor-sandbox --reset --name experimental
 ```
 
+### `cursor-share-data` - Data Sharing (Advanced)
+
+Share specific data (like auth tokens) between your main Cursor and isolated instances.
+
+```bash
+# Link globalStorage (SHARES everything - risky!)
+./cursor-share-data link v2.0.77
+
+# Unlink and restore independence (safe revert)
+./cursor-share-data unlink v2.0.77
+
+# Copy ONLY auth token (safest way to log in)
+./cursor-share-data copy-auth proxy-dev
+
+# Check status
+./cursor-share-data status v2.0.77
+```
+
+**Warning:** Linking `globalStorage` means your isolated instance can affect your main Cursor settings and conversations. Use `copy-auth` for a safer alternative that just copies the login token.
+
+### `sync-versions` - Update Version List
+
+Helper to find new Cursor versions from community tracking.
+
+```bash
+# Show latest available versions
+./sync-versions
+```
+
 ## 📋 Recovery Procedures
 
 ### Scenario 1: Cursor crashes on startup

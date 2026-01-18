@@ -1,24 +1,28 @@
 # Feasibility: Headless Cursor & TUI Interface
 
-**Status**: Experimental Research
+**Status**: Active Development (See `../designs/CURSOR_TUI_ARCHITECTURE.md`)
 **Objective**: Decouple the Agent logic from the Electron UI to enable high-performance automated testing and Agent-Swarm capabilities.
 
 ## The Premise
 
 We have reverse-engineered the transport layer:
-*   **Protocol**: Connect (gRPC-Web variant)
-*   **Transport**: HTTP/2 over TLS
-*   **Serialization**: Protobuf
-*   **Auth**: `x-cursor-checksum` + Session Tokens
+
+* **Protocol**: Connect (gRPC-Web variant)
+* **Transport**: HTTP/2 over TLS
+* **Serialization**: Protobuf
+* **Auth**: `x-cursor-checksum` + Session Tokens
 
 If we can construct a valid request packet manually, we can bypass the Cursor Application entirely.
 
-## Architecture: `cursor-cli`
+## Architecture: `cursor-tui` (Previously `cursor-cli`)
 
-A Rust binary that acts as a headless client.
+A Rust workspace with:
+* `cursor-core`: Shared library for Protocol, Auth, and Transport.
+* `cursor-tui`: Ratatui-based interface.
+* `cursor-bot`: Headless automation agent.
 
 ```
-[cursor-cli]
+[cursor-tui]
     │
     ├── Authenticator
     │   ├── Loads tokens from ~/.config/Cursor/User/state.vscdb
@@ -28,40 +32,46 @@ A Rust binary that acts as a headless client.
     │   ├── Constructs StreamUnifiedChatRequest
     │   └── Encodes to Protobuf -> Length-Prefixed -> Gzip
     │
-    └── NetworkClient (h2)
+    └── NetworkClient (tonic)
         ├── Connects to api2.cursor.sh:443
         ├── Sends Headers + Frames
         └── Decodes Response Stream to Stdout
 ```
 
-## Potential Use Cases
+## Status Update (Jan 2026)
 
-### 1. Automated Regression Testing (The "Swarm")
-Run 50 parallel instances of `cursor-cli` against your local proxy to test injection strategies.
-*   *Input:* `tests/prompts/*.txt`
-*   *Output:* `tests/results/*.json`
-*   *Verification:* Automated parsing of the response to check if injection worked.
+We have successfully implemented:
+1.  **Transport**: TLS + gRPC via `tonic` works.
+2.  **Auth**: Token extraction from `state.vscdb` works.
+3.  **Connection**: We can hit `api2.cursor.sh`.
 
-### 2. The "Agent's Agent"
-An autonomous agent that uses `cursor-cli` as a tool.
-*   "Hey Gorky, check the Cursor API for me."
-*   Gorky spawns `cursor-cli`, sends the prompt, and parses the output.
+**The Blocker**: 
+The server returns `PermissionDenied` with message "Outdated Client Error" if `x-cursor-checksum` is missing or invalid. This confirms that checksum validation is enforced and critical.
 
 ## Technical Challenges
 
-1.  **Checksum Reversal**: We currently rely on *forwarding* the checksum from a real client. To run headless, we must either:
-    *   Reverse-engineer the checksum generation algorithm (Hard JS obfuscation).
-    *   **Or** Capture a valid checksum/token pair from a real session and "replay" it (Validity window unknown).
-2.  **Auth Refresh**: Handling 401s and token refresh flows without the Electron IPC.
+1. **Checksum Reversal**: We currently rely on *forwarding* the checksum from a real client. To run headless, we must either:
+    * Reverse-engineer the checksum generation algorithm (Hard JS obfuscation).
+    * **Or** Capture a valid checksum/token pair from a real session and "replay" it (The "Harvester" Strategy).
+2. **Auth Refresh**: Handling 401s and token refresh flows without the Electron IPC.
 
 ## Roadmap
 
-1.  **Replay Attack Proof-of-Concept**:
-    *   Capture a raw `.bin` body from the Proxy.
-    *   Write a script to POST that exact body to `api2.cursor.sh` with captured headers.
-    *   If successful -> Headless is possible via Replay.
-2.  **Dynamic Construction**:
-    *   Replace the text field in the Protobuf and send.
-    *   If `x-cursor-checksum` is bound to the *body content*, this will fail (Red Flag).
-    *   *Note:* Our injection tests suggest checksum IS bound to content? No, we successfully injected content while forwarding the original checksum. **This implies the checksum validates the Headers/Auth, NOT the full Body integrity.** This is a massive win for Headless feasibility.
+1. **The Harvester (REQUIRED)**:
+    * Run `tools/cursor-proxy` to intercept local Cursor traffic.
+    * Capture `x-cursor-checksum` and `x-cursor-client-version` from a valid request.
+    * Store for replay.
+2. **Replay Attack**:
+    * Use harvested headers in `cursor-tui`.
+    * Verify if checksum is bound to body content (if so, we are strictly limited to replay).
+    * *Note:* Our injection tests suggest checksum IS NOT strictly bound to full body content (as we injected context successfully). This suggests a window of opportunity.
 
+## Potential Use Cases
+
+### 1. Automated Regression Testing (The "Swarm")
+
+Run 50 parallel instances of `cursor-bot` against your local proxy to test injection strategies.
+
+### 2. The "Agent's Agent"
+
+An autonomous agent that uses `cursor-bot` as a tool.
