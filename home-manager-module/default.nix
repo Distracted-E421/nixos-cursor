@@ -17,6 +17,9 @@ with lib;
 let
   cfg = config.programs.cursor;
 
+  # Dialog daemon package (either from pkgs overlay or built from source)
+  dialogDaemonPkg = cfg.mcp.dialog.package;
+
   updateCheckService = {
     Unit = {
       Description = "Check for Cursor updates";
@@ -456,15 +459,66 @@ in
           '';
         };
       };
+
+      dialog = {
+        enable = mkEnableOption "Interactive dialog daemon for AI agent feedback";
+
+        package = mkOption {
+          type = types.package;
+          default = pkgs.cursor-dialog-daemon or (throw "cursor-dialog-daemon not available. Add nixos-cursor overlay or use packages.cursor-dialog-daemon from the flake.");
+          defaultText = literalExpression "pkgs.cursor-dialog-daemon";
+          description = ''
+            The cursor-dialog-daemon package providing both the daemon and CLI.
+            This package is exported from the nixos-cursor flake.
+          '';
+        };
+
+        autoStart = mkOption {
+          type = types.bool;
+          default = true;
+          description = ''
+            Automatically start the dialog daemon when the graphical session starts.
+            When enabled, a systemd user service is created.
+
+            If false, you must manually start the daemon with:
+              systemctl --user start cursor-dialog-daemon
+            or:
+              cursor-dialog-daemon &
+          '';
+        };
+
+        installRules = mkOption {
+          type = types.bool;
+          default = true;
+          description = ''
+            Install the interactive-dialogs.mdc cursor rules file.
+            This teaches AI agents how to use the dialog system.
+
+            The rules file is installed to ~/.cursor/rules/interactive-dialogs.mdc
+          '';
+        };
+
+        addToPath = mkOption {
+          type = types.bool;
+          default = true;
+          description = ''
+            Add cursor-dialog-cli to PATH.
+
+            This makes the `cursor-dialog-cli` command available globally,
+            which is required for AI agents to invoke dialogs from shell commands.
+          '';
+        };
+      };
     };
   };
 
   config = mkIf cfg.enable {
-    # Install Cursor package and optional browser
+    # Install Cursor package and optional browser/dialog CLI
     home.packages = [
       cfg.package
     ]
-    ++ optionals cfg.mcp.playwright.enable [ cfg.mcp.playwright.browserPackage ];
+    ++ optionals cfg.mcp.playwright.enable [ cfg.mcp.playwright.browserPackage ]
+    ++ optionals (cfg.mcp.dialog.enable && cfg.mcp.dialog.addToPath) [ dialogDaemonPkg ];
 
     # Set flake directory for update command
     home.sessionVariables = mkIf (cfg.flakeDir != null) {
@@ -480,6 +534,30 @@ in
       }
     );
 
+    # Dialog daemon systemd user service
+    systemd.user.services.cursor-dialog-daemon = mkIf (cfg.mcp.dialog.enable && cfg.mcp.dialog.autoStart) {
+      Unit = {
+        Description = "Cursor Dialog Daemon for AI Agent Feedback";
+        Documentation = "https://github.com/e421/nixos-cursor";
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${dialogDaemonPkg}/bin/cursor-dialog-daemon";
+        Restart = "on-failure";
+        RestartSec = "5s";
+        # Environment for egui/wayland
+        Environment = [
+          "DISPLAY=:0"
+          "WAYLAND_DISPLAY=wayland-0"
+        ];
+      };
+      Install = {
+        WantedBy = [ "graphical-session.target" ];
+      };
+    };
+
     # Generate MCP configuration file
     home.file.".cursor/mcp.json" = mkIf cfg.mcp.enable {
       text = builtins.toJSON mcpConfig;
@@ -490,6 +568,155 @@ in
         ${pkgs.procps}/bin/pkill -f 'mcp-nixos' || true
         ${pkgs.procps}/bin/pkill -f 'npx.*mcp' || true
         echo "MCP configuration updated. MCP servers will restart automatically."
+      '';
+    };
+
+    # Install interactive dialog rules for AI agents
+    home.file.".cursor/rules/interactive-dialogs.mdc" = mkIf (cfg.mcp.dialog.enable && cfg.mcp.dialog.installRules) {
+      text = ''
+        ---
+        alwaysApply: true
+        ---
+
+        # Interactive Dialog System for AI Agents
+
+        **Status**: Active
+        **Dependencies**: `cursor-dialog-daemon` running as systemd user service
+
+        ## Overview
+
+        This system enables AI agents to request interactive user input mid-task without burning API requests.
+
+        ## Quick Reference
+
+        ### Check if Daemon is Running
+
+        ```bash
+        cursor-dialog-cli ping
+        # Expected: "pong"
+
+        # Or check systemd status
+        systemctl --user status cursor-dialog-daemon
+        ```
+
+        ### Multiple Choice Dialog
+
+        ```bash
+        result=$(cursor-dialog-cli -t 60 choice \
+          --title "Summary Detail Level" \
+          --prompt "How detailed should the task summary be?" \
+          --options '[
+            {"value":"minimal","label":"Minimal","description":"Just the changes made"},
+            {"value":"standard","label":"Standard","description":"Changes + brief reasoning"},
+            {"value":"verbose","label":"Verbose","description":"Full analysis and alternatives considered"}
+          ]' \
+          --default "standard")
+
+        selection=$(echo "$result" | jq -r '.selection')
+        cancelled=$(echo "$result" | jq -r '.cancelled')
+        ```
+
+        ### Text Input Dialog
+
+        ```bash
+        result=$(cursor-dialog-cli -t 60 text \
+          --title "Component Name" \
+          --prompt "Enter a name for the new component:" \
+          --placeholder "MyComponent")
+
+        name=$(echo "$result" | jq -r '.selection')
+        ```
+
+        ### Confirmation Dialog
+
+        ```bash
+        result=$(cursor-dialog-cli -t 30 confirm \
+          --title "Apply Changes" \
+          --prompt "Apply 15 file modifications to the codebase?" \
+          --yes "Apply Changes" \
+          --no "Review First")
+
+        if [ "$(echo "$result" | jq -r '.selection')" = "true" ]; then
+          # Proceed with changes
+        fi
+        ```
+
+        ### Slider Dialog
+
+        ```bash
+        result=$(cursor-dialog-cli -t 45 slider \
+          --title "Context Budget" \
+          --prompt "Maximum tokens for injected context:" \
+          --min 1000 --max 50000 --step 1000 --default 10000 \
+          --unit " tokens")
+
+        tokens=$(echo "$result" | jq -r '.selection')
+        ```
+
+        ### Toast Notifications (Non-blocking)
+
+        ```bash
+        cursor-dialog-cli toast -m "Build complete!" -l success -d 3000
+        cursor-dialog-cli toast -m "Warning: low memory" -l warning -d 5000
+        cursor-dialog-cli toast -m "Error occurred" -l error -d 8000
+        ```
+
+        ## Response Format
+
+        All dialogs return JSON:
+
+        ```json
+        {
+          "id": "uuid",
+          "selection": "standard",
+          "comment": "Optional user context",
+          "cancelled": false,
+          "timestamp": 1705512345
+        }
+        ```
+
+        ## Best Practices
+
+        1. **Always provide a default** - Don't block on required input
+        2. **Keep prompts concise** - User should understand in <5 seconds
+        3. **Limit options** - 2-5 choices max
+        4. **Set reasonable timeouts** - 30s for simple, 60s for complex
+        5. **Handle cancellation gracefully** - Never fail on cancelled dialog
+        6. **Check the comment field** - Users may add helpful context
+
+        ## Error Handling
+
+        If the daemon isn't running:
+
+        ```bash
+        if ! cursor-dialog-cli ping 2>/dev/null; then
+          echo "Dialog daemon not running, using defaults"
+          # Fall back to sensible defaults
+        fi
+        ```
+
+        ## Service Management
+
+        ```bash
+        # Start daemon
+        systemctl --user start cursor-dialog-daemon
+
+        # Stop daemon
+        systemctl --user stop cursor-dialog-daemon
+
+        # Check status
+        systemctl --user status cursor-dialog-daemon
+
+        # View logs
+        journalctl --user -u cursor-dialog-daemon -f
+        ```
+      '';
+
+      # Restart dialog daemon when rules change to pick up any format changes
+      onChange = ''
+        if ${pkgs.systemd}/bin/systemctl --user is-active cursor-dialog-daemon >/dev/null 2>&1; then
+          echo "Dialog rules updated."
+        fi
       '';
     };
 

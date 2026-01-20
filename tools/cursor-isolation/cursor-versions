@@ -140,8 +140,52 @@ cmd_run() {
     local data_dir="$HOME/.cursor-test-envs/v${version}"
     mkdir -p "$data_dir"
     
-    echo "Running Cursor $version (isolated at $data_dir)"
-    exec "$appimage" --user-data-dir="$data_dir" "$@"
+    # Parse workspace/folder argument if it's a path (not a flag)
+    local folder=""
+    local extra_args=()
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --folder|-f)
+                folder="$2"
+                shift 2
+                ;;
+            --new-window|-n)
+                extra_args+=("--new-window")
+                shift
+                ;;
+            -*)
+                extra_args+=("$1")
+                shift
+                ;;
+            *)
+                # If no --folder specified and this looks like a path, use it as folder
+                if [[ -z "$folder" && -e "$1" ]]; then
+                    folder="$1"
+                else
+                    extra_args+=("$1")
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Build launch command
+    local launch_msg="Running Cursor $version (isolated at $data_dir)"
+    local args=(--user-data-dir="$data_dir")
+    
+    if [[ -n "$folder" ]]; then
+        # Resolve to absolute path
+        folder=$(cd "$folder" 2>/dev/null && pwd || echo "$folder")
+        args+=(--folder "$folder")
+        launch_msg="$launch_msg → $folder"
+    fi
+    
+    # Add any extra args
+    args+=("${extra_args[@]}")
+    
+    echo "$launch_msg"
+    exec "$appimage" "${args[@]}"
 }
 
 cmd_default() {
@@ -210,14 +254,20 @@ case "${1:-help}" in
         echo "cursor-versions: Manage multiple Cursor AppImage versions"
         echo ""
         echo "Commands:"
-        echo "  list              List installed versions"
-        echo "  download <ver>    Download specific version"
-        echo "  run <ver> [args]  Run specific version (isolated)"
-        echo "  default <ver>     Set default version"
-        echo "  latest            Show latest available version"
+        echo "  list                          List installed versions"
+        echo "  download <ver>                Download specific version"
+        echo "  run <ver> [folder] [args]     Run specific version with optional workspace"
+        echo "  default <ver>                 Set default version"
+        echo "  latest                        Show latest available version"
+        echo ""
+        echo "Run Options:"
+        echo "  --folder, -f <path>   Open specific workspace/folder"
+        echo "  --new-window, -n      Open in new window"
         echo ""
         echo "Examples:"
         echo "  cursor-versions download 2.2.36"
-        echo "  cursor-versions run 2.2.36 ~/myproject"
+        echo "  cursor-versions run 2.2.36 ~/myproject           # Open workspace"
+        echo "  cursor-versions run 2.2.36 -f ~/nixos-cursor     # Explicit folder"
+        echo "  cursor-versions run 2.0.77 ~/project -n          # New window"
         ;;
 esac

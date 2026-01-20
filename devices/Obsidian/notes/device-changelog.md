@@ -1,3 +1,30 @@
+## 2026-01-19 16:30:00 - [FIX]
+
+**Description**: Fixed dialog daemon inconsistent toggling and systemd integration
+
+**Files**: 
+- home-manager-module/default.nix (added mcp.dialog options with systemd service)
+- tools/cursor-studio (improved systemd user service support, Nix package detection)
+- tools/cursor-dialog-daemon/README.md (updated installation docs)
+- .cursor/rules/interactive-dialogs.mdc (updated with systemd commands)
+
+**Notes**:
+- **Home Manager Integration**: Added `programs.cursor.mcp.dialog.enable` option
+  - Creates systemd user service that starts on login
+  - Installs cursor rules automatically
+  - Adds `cursor-dialog-cli` to PATH
+  - Options: `autoStart`, `installRules`, `addToPath`
+- **cursor-studio Improvements**:
+  - Now prefers Nix-built package (properly wrapped with Wayland libs)
+  - Creates systemd user service instead of `nohup` for lifecycle management
+  - Auto-enables systemd service on `dialog enable`
+  - Detects Home Manager managed services to avoid conflicts
+  - Updated status output shows autostart state and service manager
+- **Root Cause**: The old `nohup` approach didn't survive reboots and the cargo-built
+  binary lacked proper library wrapping for Wayland/egui GUI mode
+
+---
+
 ## 2026-01-18 02:00:00 - [UPDATE]
 
 **Description**: Comprehensive documentation update for v0.3.x release

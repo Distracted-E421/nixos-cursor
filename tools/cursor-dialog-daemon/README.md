@@ -14,7 +14,47 @@ A D-Bus daemon that provides interactive dialogs for Cursor AI agents, enabling 
 
 ## Installation
 
-### Via cursor-studio (Recommended)
+### Via Home Manager (NixOS - Recommended)
+
+Add to your `home.nix`:
+
+```nix
+{
+  programs.cursor = {
+    enable = true;
+    mcp = {
+      enable = true;
+      dialog = {
+        enable = true;      # Enable the dialog daemon
+        autoStart = true;   # Start on login (default)
+        installRules = true; # Install AI agent rules (default)
+        addToPath = true;   # Add cursor-dialog-cli to PATH (default)
+      };
+    };
+  };
+}
+```
+
+This will:
+- Install `cursor-dialog-daemon` and `cursor-dialog-cli`
+- Create a systemd user service that starts on login
+- Install the cursor rules for AI agents
+- Add `cursor-dialog-cli` to your PATH
+
+After rebuilding, the daemon starts automatically on login:
+
+```bash
+# Check status
+systemctl --user status cursor-dialog-daemon
+
+# View logs
+journalctl --user -u cursor-dialog-daemon -f
+
+# Test
+cursor-dialog-cli ping
+```
+
+### Via cursor-studio (Non-NixOS)
 
 ```bash
 # Enable the dialog feature (one-time setup)
@@ -22,8 +62,9 @@ cursor-studio dialog enable
 
 # This will:
 # - Build the daemon if needed
-# - Start the daemon
+# - Create a systemd user service (autostart on login)
 # - Install Cursor rules for AI agents
+# - Start the daemon
 ```
 
 ### Manual Build

@@ -137,15 +137,35 @@ A native **Rust/egui** application for managing Cursor:
 | 🎨 **Themes** | Full VS Code theme support |
 | 🔄 **Sync** | P2P and server sync infrastructure (experimental) |
 | 🏠 **Home Manager** | Declarative configuration via Nix |
+| 📁 **Workspaces** | Track workspaces across versions (NEW!) |
+| 🔍 **Vector Search** | Semantic search over chat history (NEW!) |
+
+### CLI with Workspace Support
 
 ```bash
 # Run the GUI
 nix run github:Distracted-E421/nixos-cursor#cursor-studio
 
-# Or use the CLI
+# Launch with workspace (NEW!)
+nix run github:Distracted-E421/nixos-cursor#cs -- launch 2.1.34 --folder ~/myproject
+nix run github:Distracted-E421/nixos-cursor#cs -- launch current -f /path/to/workspace -n
+
+# Version management
 nix run github:Distracted-E421/nixos-cursor#cs -- list
 nix run github:Distracted-E421/nixos-cursor#cs -- download 2.0.77
 ```
+
+### Workspace Tracking
+
+Cursor Studio now tracks which workspaces you've opened with which versions:
+
+- 📁 **Workspace Registry** - Remember all your project folders
+- 🕐 **Version History** - Track which Cursor versions opened each workspace
+- 💬 **Conversation Linking** - Associate chats with projects
+- 📊 **Git Stats** - Branch, uncommitted changes, commit history
+- 🏷️ **Tags & Colors** - Organize with custom labels
+
+See [WORKSPACE_TRACKING_DESIGN.md](cursor-studio-egui/WORKSPACE_TRACKING_DESIGN.md) for details.
 
 ---
 

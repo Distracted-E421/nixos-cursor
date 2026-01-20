@@ -125,6 +125,14 @@ pub enum Commands {
         /// Version to launch (default: current)
         #[arg(default_value = "current")]
         version: String,
+        
+        /// Workspace/folder to open (can be relative or absolute path)
+        #[arg(short, long)]
+        folder: Option<String>,
+        
+        /// Open in new window even if Cursor is already running
+        #[arg(short, long)]
+        new_window: bool,
     },
 
     /// Show cache and storage info
@@ -228,7 +236,7 @@ fn main() -> Result<()> {
             dry_run,
             cache_only,
         } => cmd_clean(older_than, dry_run, cache_only, &mut approval),
-        Commands::Launch { version } => cmd_launch(&version),
+        Commands::Launch { version, folder, new_window } => cmd_launch(&version, folder.as_deref(), new_window),
         Commands::Cache => cmd_cache(),
         Commands::Hash { target, verify } => cmd_hash(&target, verify),
         Commands::VerifyHashes {
@@ -712,8 +720,8 @@ fn cmd_clean(
     Ok(())
 }
 
-/// Launch Cursor
-fn cmd_launch(version: &str) -> Result<()> {
+/// Launch Cursor with optional workspace support
+fn cmd_launch(version: &str, folder: Option<&str>, new_window: bool) -> Result<()> {
     let version_to_launch = if version == "current" {
         // Find first installed version
         let versions = get_available_versions();
@@ -727,7 +735,24 @@ fn cmd_launch(version: &str) -> Result<()> {
 
     match version_to_launch {
         Some(v) => {
-            println!("{} Launching Cursor v{}...", ARROW, style(&v).cyan());
+            // Resolve folder path if provided
+            let resolved_folder = folder.map(|f| {
+                let path = std::path::Path::new(f);
+                if path.is_absolute() {
+                    path.to_path_buf()
+                } else {
+                    std::env::current_dir()
+                        .map(|cwd| cwd.join(path))
+                        .unwrap_or_else(|_| path.to_path_buf())
+                }
+            });
+
+            // Build launch message
+            let folder_msg = resolved_folder
+                .as_ref()
+                .map(|p| format!(" → {}", p.display()))
+                .unwrap_or_default();
+            println!("{} Launching Cursor v{}{}...", ARROW, style(&v).cyan(), folder_msg);
 
             // Try to find and launch
             if let Some(home) = dirs::home_dir() {
@@ -736,23 +761,46 @@ fn cmd_launch(version: &str) -> Result<()> {
                     .join(format!(".cursor-studio/versions/cursor-{}", v))
                     .join(format!("Cursor-{}.AppImage", v));
 
-                if install_path.exists() {
-                    match std::process::Command::new(&install_path).spawn() {
-                        Ok(_) => {
-                            println!("{} Launched successfully", CHECK);
-                        }
-                        Err(e) => {
-                            println!("{} Failed to launch: {}", CROSS, e);
-                        }
-                    }
+                // Build command arguments
+                let mut args: Vec<String> = Vec::new();
+                
+                // Add folder if specified
+                if let Some(ref folder_path) = resolved_folder {
+                    args.push("--folder".to_string());
+                    args.push(folder_path.to_string_lossy().to_string());
+                }
+                
+                // Add new window flag if specified
+                if new_window {
+                    args.push("--new-window".to_string());
+                }
+                
+                // User data dir for version isolation
+                let user_data_dir = home.join(format!(".cursor-{}", v));
+                args.push("--user-data-dir".to_string());
+                args.push(user_data_dir.to_string_lossy().to_string());
+
+                let launch_result = if install_path.exists() {
+                    std::process::Command::new(&install_path)
+                        .args(&args)
+                        .spawn()
                 } else {
                     // Try system cursor command
-                    match std::process::Command::new("cursor").spawn() {
-                        Ok(_) => {
-                            println!("{} Launched system Cursor", CHECK);
+                    std::process::Command::new("cursor")
+                        .args(&args)
+                        .spawn()
+                };
+
+                match launch_result {
+                    Ok(_) => {
+                        println!("{} Launched successfully", CHECK);
+                        if let Some(ref folder_path) = resolved_folder {
+                            println!("  {} Opened workspace: {}", INFO, style(folder_path.display()).dim());
                         }
-                        Err(e) => {
-                            println!("{} Failed to launch: {}", CROSS, e);
+                    }
+                    Err(e) => {
+                        println!("{} Failed to launch: {}", CROSS, e);
+                        if !install_path.exists() {
                             println!(
                                 "  Try installing first: {} cursor-studio-cli install {}",
                                 style("$").dim(),

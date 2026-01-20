@@ -10,7 +10,9 @@ mod modes;
 mod security;
 mod sync;
 mod theme;
+mod vector;
 mod versions;
+mod workspace;
 
 use approval::{ApprovalManager, ApprovalMode, ApprovalOperation, ApprovalResult};
 // ApprovalMode is used in Settings panel for download confirmation style
@@ -301,6 +303,7 @@ fn configure_fonts(ctx: &egui::Context) {
 #[derive(PartialEq, Clone, Copy)]
 enum SidebarMode {
     Manager,
+    Workspaces, // NEW: Workspace tracking panel
     Search,
     Settings,
 }
@@ -508,6 +511,21 @@ struct CursorStudio {
     
     // Custom Modes panel (replaces Cursor 2.1+ removed custom modes)
     modes_panel: modes::ModesPanel,
+    
+    // Workspace tracking system
+    workspace_tracker: Option<workspace::WorkspaceTracker>,
+    vector_store: Option<vector::VectorStore>,
+    cursor_cli: workspace::CursorCli,
+    
+    // Workspace UI state
+    show_workspace_picker: bool,
+    workspace_folder_input: String,
+    selected_workspace_id: Option<String>,
+    workspace_filter_query: String,
+    show_workspace_detail: bool,
+    workspace_search_query: String,
+    workspace_rename_input: String,
+    editing_workspace_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -738,6 +756,69 @@ impl CursorStudio {
             modes_panel: modes::ModesPanel::new(
                 std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
             ),
+            
+            // Workspace tracking system - initialize on first use
+            workspace_tracker: Self::init_workspace_tracker(),
+            vector_store: Self::init_vector_store(),
+            cursor_cli: workspace::CursorCli::new(),
+            
+            // Workspace UI state
+            show_workspace_picker: false,
+            workspace_folder_input: String::new(),
+            selected_workspace_id: None,
+            workspace_filter_query: String::new(),
+            show_workspace_detail: false,
+            workspace_search_query: String::new(),
+            workspace_rename_input: String::new(),
+            editing_workspace_name: None,
+        }
+    }
+    
+    /// Initialize workspace tracker database
+    fn init_workspace_tracker() -> Option<workspace::WorkspaceTracker> {
+        let db_path = dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("cursor-studio")
+            .join("workspaces.db");
+        
+        // Create directory if needed
+        if let Some(parent) = db_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        match workspace::WorkspaceTracker::new(&db_path) {
+            Ok(tracker) => {
+                log::info!("Workspace tracker initialized at {:?}", db_path);
+                Some(tracker)
+            }
+            Err(e) => {
+                log::error!("Failed to initialize workspace tracker: {}", e);
+                None
+            }
+        }
+    }
+    
+    /// Initialize vector store for chat search
+    fn init_vector_store() -> Option<vector::VectorStore> {
+        let db_path = dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("cursor-studio")
+            .join("vectors.db");
+        
+        // Create directory if needed
+        if let Some(parent) = db_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        match vector::VectorStore::open(&db_path) {
+            Ok(store) => {
+                log::info!("Vector store initialized at {:?}", db_path);
+                Some(store)
+            }
+            Err(e) => {
+                log::error!("Failed to initialize vector store: {}", e);
+                None
+            }
         }
     }
 
@@ -1020,6 +1101,67 @@ impl CursorStudio {
         }
 
         self.set_status("✓ Refreshed all data");
+    }
+
+    /// Index conversations into the vector store for semantic search
+    fn index_conversations_for_search(&mut self) -> usize {
+        let vector_store = match self.vector_store.as_mut() {
+            Some(store) => store,
+            None => return 0,
+        };
+
+        let mut total_indexed = 0;
+
+        // Index each conversation
+        for conv in &self.conversations {
+            // Get messages for this conversation
+            let messages = match self.db.get_messages(&conv.id) {
+                Ok(msgs) => msgs,
+                Err(_) => continue,
+            };
+
+            // Convert to the format expected by vector store
+            let message_tuples: Vec<(String, String, String)> = messages
+                .iter()
+                .map(|m| {
+                    let role = match m.role {
+                        MessageRole::User => "user",
+                        MessageRole::Assistant => "assistant",
+                        MessageRole::ToolCall => "tool_call",
+                        MessageRole::ToolResult => "tool_result",
+                    };
+                    (m.id.clone(), role.to_string(), m.content.clone())
+                })
+                .collect();
+
+            // Determine workspace ID (try to extract from source version)
+            let workspace_id = if conv.source_version.starts_with("workspace:") {
+                Some(conv.source_version.clone())
+            } else if conv.source_version.contains(":workspace:") {
+                // Format: "version:workspace:hash"
+                Some(conv.source_version.clone())
+            } else {
+                None
+            };
+
+            // Index the conversation
+            match vector_store.index_conversation(
+                &conv.id,
+                &conv.title,
+                &message_tuples,
+                workspace_id.as_deref(),
+            ) {
+                Ok(count) => {
+                    total_indexed += count;
+                }
+                Err(e) => {
+                    log::warn!("Failed to index conversation {}: {}", conv.id, e);
+                }
+            }
+        }
+
+        log::info!("Indexed {} chunks from {} conversations", total_indexed, self.conversations.len());
+        total_indexed
     }
 
     // ==================== BOOKMARK METHODS ====================
@@ -1457,13 +1599,29 @@ impl CursorStudio {
 
             let mut db_paths: Vec<(std::path::PathBuf, String)> = Vec::new();
 
-            // Main Cursor database
+            // Main Cursor database (global storage)
             let main_db = home.join(".config/Cursor/User/globalStorage/state.vscdb");
             if main_db.exists() {
                 db_paths.push((main_db, "default".to_string()));
             }
 
-            // Versioned Cursor databases
+            // Main Cursor workspace databases (CRITICAL: these contain per-project chats!)
+            let workspace_dir = home.join(".config/Cursor/User/workspaceStorage");
+            if workspace_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&workspace_dir) {
+                    for entry in entries.flatten() {
+                        let workspace_db = entry.path().join("state.vscdb");
+                        if workspace_db.exists() {
+                            // Use workspace hash as version identifier
+                            let workspace_id = entry.file_name().to_string_lossy().to_string();
+                            let version = format!("workspace:{}", workspace_id);
+                            db_paths.push((workspace_db, version));
+                        }
+                    }
+                }
+            }
+
+            // Versioned Cursor databases (for isolated installations)
             if let Ok(entries) = std::fs::read_dir(&home) {
                 for entry in entries.flatten() {
                     let name = entry.file_name().to_string_lossy().to_string();
@@ -1472,9 +1630,26 @@ impl CursorStudio {
                             if ft.is_dir() {
                                 let version =
                                     name.strip_prefix(".cursor-").unwrap_or(&name).to_string();
+                                
+                                // Global storage for this version
                                 let db_path = entry.path().join("User/globalStorage/state.vscdb");
                                 if db_path.exists() {
-                                    db_paths.push((db_path, version));
+                                    db_paths.push((db_path, version.clone()));
+                                }
+                                
+                                // Workspace storage for this version (per-project chats)
+                                let versioned_workspace_dir = entry.path().join("User/workspaceStorage");
+                                if versioned_workspace_dir.exists() {
+                                    if let Ok(ws_entries) = std::fs::read_dir(&versioned_workspace_dir) {
+                                        for ws_entry in ws_entries.flatten() {
+                                            let workspace_db = ws_entry.path().join("state.vscdb");
+                                            if workspace_db.exists() {
+                                                let workspace_id = ws_entry.file_name().to_string_lossy().to_string();
+                                                let full_version = format!("{}:workspace:{}", version, workspace_id);
+                                                db_paths.push((workspace_db, full_version));
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1639,13 +1814,37 @@ impl CursorStudio {
     }
 
     fn launch_cursor(&mut self) {
-        let version = &self.launch_version;
+        // If workspace picker is requested, show it first
+        if self.show_workspace_picker {
+            // Workspace picker is shown in the UI, actual launch happens via launch_cursor_with_workspace
+            return;
+        }
+        
+        // Launch without workspace (legacy behavior)
+        self.launch_cursor_with_workspace(None);
+    }
+    
+    /// Launch Cursor with an optional workspace path
+    fn launch_cursor_with_workspace(&mut self, workspace_path: Option<&std::path::Path>) {
+        let version = &self.launch_version.clone();
         let display_name = Self::version_display_name(version);
+        
+        // Record workspace open if we have a path
+        if let (Some(path), Some(ref mut tracker)) = (workspace_path, self.workspace_tracker.as_mut()) {
+            if let Ok(ws) = tracker.register_workspace(path) {
+                let _ = tracker.record_version_open(&ws.id, version);
+                log::info!("Recorded workspace open: {} with version {}", ws.name, version);
+            }
+        }
 
         // Determine the command to run based on version
         let result = if version == "default" {
             // Launch main Cursor installation
-            Command::new("cursor").spawn()
+            let mut cmd = Command::new("cursor");
+            if let Some(path) = workspace_path {
+                cmd.arg(path);
+            }
+            cmd.spawn()
         } else {
             // Try to find version-specific installation
             if let Some(home) = dirs::home_dir() {
@@ -1672,31 +1871,52 @@ impl CursorStudio {
 
                 if studio_path.exists() {
                     log::info!("Launching from cursor-studio: {:?}", studio_path);
-                    Command::new(&studio_path)
-                        .arg("--user-data-dir")
-                        .arg(home.join(format!(".cursor-{}", version)))
-                        .spawn()
+                    let mut cmd = Command::new(&studio_path);
+                    cmd.arg("--user-data-dir")
+                        .arg(home.join(format!(".cursor-{}", version)));
+                    if let Some(path) = workspace_path {
+                        cmd.arg(path);
+                    }
+                    cmd.spawn()
                 } else if which::which(&nix_binary).is_ok() {
                     log::info!("Launching Nix binary: {}", nix_binary);
-                    Command::new(&nix_binary).spawn()
+                    let mut cmd = Command::new(&nix_binary);
+                    if let Some(path) = workspace_path {
+                        cmd.arg(path);
+                    }
+                    cmd.spawn()
                 } else if versioned_path.exists() {
                     log::info!("Launching from versioned path: {:?}", versioned_path);
-                    Command::new(&versioned_path).spawn()
+                    let mut cmd = Command::new(&versioned_path);
+                    if let Some(path) = workspace_path {
+                        cmd.arg(path);
+                    }
+                    cmd.spawn()
                 } else if appimage_path.exists() {
                     log::info!("Launching from AppImage: {:?}", appimage_path);
-                    Command::new(&appimage_path)
-                        .arg("--user-data-dir")
-                        .arg(home.join(format!(".cursor-{}", version)))
-                        .spawn()
+                    let mut cmd = Command::new(&appimage_path);
+                    cmd.arg("--user-data-dir")
+                        .arg(home.join(format!(".cursor-{}", version)));
+                    if let Some(path) = workspace_path {
+                        cmd.arg(path);
+                    }
+                    cmd.spawn()
                 } else {
                     // Fall back to main cursor with env var hint
                     log::warn!("No installation found for v{}, falling back to main cursor", version);
-                    Command::new("cursor")
-                        .env("CURSOR_VERSION", version)
-                        .spawn()
+                    let mut cmd = Command::new("cursor");
+                    cmd.env("CURSOR_VERSION", version);
+                    if let Some(path) = workspace_path {
+                        cmd.arg(path);
+                    }
+                    cmd.spawn()
                 }
             } else {
-                Command::new("cursor").spawn()
+                let mut cmd = Command::new("cursor");
+                if let Some(path) = workspace_path {
+                    cmd.arg(path);
+                }
+                cmd.spawn()
             }
         };
 
@@ -2208,6 +2428,7 @@ impl eframe::App for CursorStudio {
 
                     match self.left_mode {
                         SidebarMode::Manager => self.show_manager_panel(ui, theme),
+                        SidebarMode::Workspaces => self.show_workspaces_panel(ui, theme),
                         SidebarMode::Search => self.show_search_panel(ui, theme),
                         SidebarMode::Settings => self.show_settings_panel(ui, theme),
                     }
@@ -2412,6 +2633,9 @@ impl CursorStudio {
             ui.add_space(12.0);
 
             self.activity_button(ui, "📁", "Versions", SidebarMode::Manager, theme);
+            ui.add_space(4.0);
+
+            self.activity_button(ui, "📂", "Workspaces", SidebarMode::Workspaces, theme);
             ui.add_space(4.0);
 
             self.activity_button(ui, "🔎", "Search", SidebarMode::Search, theme);
@@ -3032,6 +3256,773 @@ impl CursorStudio {
                 }
             });
             ui.add_space(8.0);
+        });
+    }
+
+    /// Workspace tracking panel - manage project folders
+    fn show_workspaces_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        // Get workspace stats for header
+        let (total_workspaces, total_versions_used, pinned_count) = if let Some(ref tracker) = self.workspace_tracker {
+            let all = tracker.get_all();
+            let versions: std::collections::HashSet<&str> = all.iter()
+                .flat_map(|ws| ws.versions.iter().map(|v| v.version.as_str()))
+                .collect();
+            let pinned = all.iter().filter(|ws| ws.pinned).count();
+            (all.len(), versions.len(), pinned)
+        } else {
+            (0, 0, 0)
+        };
+
+        ui.vertical(|ui| {
+            // Header with stats
+            ui.add_space(12.0);
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+                ui.label(
+                    RichText::new("WORKSPACES")
+                        .size(11.0)
+                        .color(theme.fg_dim)
+                        .strong(),
+                );
+                
+                // Stats badges
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new(format!("{}", total_workspaces))
+                        .size(10.0)
+                        .color(theme.accent)
+                        .background_color(theme.input_bg)
+                );
+                if pinned_count > 0 {
+                    ui.label(
+                        RichText::new(format!("📌{}", pinned_count))
+                            .size(9.0)
+                            .color(theme.fg_dim)
+                    );
+                }
+                
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add_space(16.0);
+                    
+                    // Toggle detail view
+                    let detail_icon = if self.show_workspace_detail { "◀" } else { "▶" };
+                    if ui.add(
+                        egui::Button::new(RichText::new(detail_icon).size(12.0).color(theme.fg_dim))
+                            .frame(false)
+                    ).on_hover_text("Toggle detail panel").clicked() {
+                        self.show_workspace_detail = !self.show_workspace_detail;
+                    }
+                    
+                    if ui.add(
+                        egui::Button::new(RichText::new("📂").size(14.0))
+                            .frame(false)
+                    ).on_hover_text("Browse for folder").clicked() {
+                        // Open native folder picker
+                        if let Some(path) = rfd::FileDialog::new()
+                            .set_title("Select Workspace Folder")
+                            .pick_folder()
+                        {
+                            self.workspace_folder_input = path.to_string_lossy().to_string();
+                            // Auto-register the workspace
+                            if let Some(ref mut tracker) = self.workspace_tracker {
+                                match tracker.register_workspace(&path) {
+                                    Ok(ws) => {
+                                        self.selected_workspace_id = Some(ws.id.clone());
+                                        self.show_workspace_detail = true;
+                                        self.set_status(&format!("✓ Added workspace: {}", ws.name));
+                                    }
+                                    Err(e) => {
+                                        self.set_status(&format!("✗ Failed to add workspace: {}", e));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            ui.add_space(8.0);
+
+            // Quick add input
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
+                let response = ui.add(
+                    egui::TextEdit::singleline(&mut self.workspace_folder_input)
+                        .hint_text("Path or drag folder...")
+                        .desired_width(ui.available_width() - 60.0)
+                        .margin(egui::Margin::symmetric(8.0, 6.0)),
+                );
+                
+                if ui.add(
+                    egui::Button::new(RichText::new("+").size(14.0).color(theme.accent))
+                        .min_size(Vec2::new(28.0, 28.0))
+                ).on_hover_text("Add workspace").clicked() && !self.workspace_folder_input.is_empty() {
+                    let path = std::path::PathBuf::from(&self.workspace_folder_input);
+                    if path.exists() && path.is_dir() {
+                        if let Some(ref mut tracker) = self.workspace_tracker {
+                            match tracker.register_workspace(&path) {
+                                Ok(ws) => {
+                                    self.selected_workspace_id = Some(ws.id.clone());
+                                    self.show_workspace_detail = true;
+                                    self.set_status(&format!("✓ Added workspace: {}", ws.name));
+                                    self.workspace_folder_input.clear();
+                                }
+                                Err(e) => {
+                                    self.set_status(&format!("✗ Failed: {}", e));
+                                }
+                            }
+                        }
+                    } else {
+                        self.set_status("✗ Path does not exist or is not a directory");
+                    }
+                }
+                
+                // Handle dropped files
+                if response.hovered() {
+                    ui.ctx().input(|i| {
+                        if !i.raw.dropped_files.is_empty() {
+                            if let Some(path) = i.raw.dropped_files[0].path.as_ref() {
+                                if path.is_dir() {
+                                    self.workspace_folder_input = path.to_string_lossy().to_string();
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            ui.add_space(4.0);
+
+            // Filter
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.workspace_filter_query)
+                        .hint_text("🔍 Filter...")
+                        .desired_width(ui.available_width() - 24.0)
+                        .margin(egui::Margin::symmetric(8.0, 4.0)),
+                );
+            });
+            ui.add_space(4.0);
+
+            ui.separator();
+
+            // Main content area - split between list and detail
+            let available_height = ui.available_height() - 80.0; // Reserve space for bottom bar
+            
+            if self.show_workspace_detail && self.selected_workspace_id.is_some() {
+                // Split view: list on left, detail on right
+                ui.horizontal(|ui| {
+                    // Workspace list (narrower)
+                    ui.allocate_ui(Vec2::new(ui.available_width() * 0.45, available_height), |ui| {
+                        self.show_workspace_list(ui, theme);
+                    });
+                    
+                    ui.separator();
+                    
+                    // Detail panel
+                    ui.allocate_ui(Vec2::new(ui.available_width(), available_height), |ui| {
+                        self.show_workspace_detail_panel(ui, theme);
+                    });
+                });
+            } else {
+                // Full list view
+                ui.allocate_ui(Vec2::new(ui.available_width(), available_height), |ui| {
+                    self.show_workspace_list(ui, theme);
+                });
+            }
+
+            // Bottom action bar
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(12.0);
+                    
+                    // Launch selected workspace
+                    let has_selection = self.selected_workspace_id.is_some();
+                    if styled_button_accent(
+                        ui, 
+                        "▶ Launch", 
+                        Vec2::new(80.0, 28.0),
+                        theme
+                    ).clicked() && has_selection {
+                        if let Some(ref ws_id) = self.selected_workspace_id.clone() {
+                            if let Some(ref tracker) = self.workspace_tracker {
+                                if let Some(ws) = tracker.get(ws_id) {
+                                    let path = ws.path.clone();
+                                    if let Some(ref mut tracker) = self.workspace_tracker {
+                                        let _ = tracker.record_version_open(ws_id, &self.launch_version);
+                                    }
+                                    self.launch_cursor_with_workspace(Some(&path));
+                                }
+                            }
+                        }
+                    }
+                    
+                    ui.add_space(4.0);
+                    
+                    // Version selector
+                    let version_label = if self.launch_version == "default" {
+                        "Main".to_string()
+                    } else {
+                        format!("v{}", self.launch_version)
+                    };
+                    
+                    if ui.add(
+                        egui::Button::new(
+                            RichText::new(format!("{} ▾", version_label))
+                                .size(11.0)
+                                .color(theme.fg)
+                        )
+                        .min_size(Vec2::new(65.0, 28.0))
+                    ).clicked() {
+                        self.show_launch_picker = !self.show_launch_picker;
+                    }
+                    
+                    ui.add_space(4.0);
+                    
+                    // Quick actions for selected workspace
+                    if has_selection {
+                        if ui.add(
+                            egui::Button::new(RichText::new("📋").size(14.0))
+                                .frame(false)
+                        ).on_hover_text("Copy path").clicked() {
+                            if let Some(ref ws_id) = self.selected_workspace_id {
+                                if let Some(ref tracker) = self.workspace_tracker {
+                                    if let Some(ws) = tracker.get(ws_id) {
+                                        ui.ctx().copy_text(ws.path.to_string_lossy().to_string());
+                                        self.set_status("✓ Path copied to clipboard");
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if ui.add(
+                            egui::Button::new(RichText::new("🔄").size(14.0))
+                                .frame(false)
+                        ).on_hover_text("Refresh git stats").clicked() {
+                            if let Some(ref ws_id) = self.selected_workspace_id.clone() {
+                                if let Some(ref mut tracker) = self.workspace_tracker {
+                                    let _ = tracker.refresh_git_stats(&ws_id);
+                                    self.set_status("✓ Git stats refreshed");
+                                }
+                            }
+                        }
+                        
+                        if ui.add(
+                            egui::Button::new(RichText::new("📁").size(14.0))
+                                .frame(false)
+                        ).on_hover_text("Open in file manager").clicked() {
+                            if let Some(ref ws_id) = self.selected_workspace_id {
+                                if let Some(ref tracker) = self.workspace_tracker {
+                                    if let Some(ws) = tracker.get(ws_id) {
+                                        let _ = open::that(&ws.path);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Version picker dropdown
+                if self.show_launch_picker {
+                    ui.add_space(4.0);
+                    egui::Frame::none()
+                        .fill(theme.input_bg)
+                        .rounding(Rounding::same(6.0))
+                        .stroke(Stroke::new(1.0, theme.border))
+                        .inner_margin(egui::Margin::same(6.0))
+                        .show(ui, |ui| {
+                            egui::ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
+                                let versions = self.versions.clone();
+                                let mut selected: Option<String> = None;
+
+                                for version in &versions {
+                                    let is_current = version.version == self.launch_version;
+                                    let label = Self::version_display_name(&version.version);
+
+                                    let bg = if is_current {
+                                        theme.selection
+                                    } else {
+                                        Color32::TRANSPARENT
+                                    };
+
+                                    egui::Frame::none()
+                                        .fill(bg)
+                                        .rounding(Rounding::same(4.0))
+                                        .inner_margin(egui::Margin::symmetric(8.0, 3.0))
+                                        .show(ui, |ui| {
+                                            let btn = ui.add(
+                                                egui::Button::new(
+                                                    RichText::new(&label)
+                                                        .color(if is_current { theme.accent } else { theme.fg })
+                                                        .size(10.0),
+                                                )
+                                                .frame(false)
+                                                .min_size(Vec2::new(ui.available_width() - 16.0, 18.0)),
+                                            );
+
+                                            if btn.clicked() {
+                                                selected = Some(version.version.clone());
+                                            }
+                                        });
+                                }
+
+                                if let Some(ver) = selected {
+                                    self.set_launch_version(&ver);
+                                }
+                            });
+                        });
+                }
+                
+                ui.add_space(8.0);
+            });
+        });
+    }
+    
+    /// Show the workspace list
+    fn show_workspace_list(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        // Workspace list
+        let workspaces: Vec<workspace::Workspace> = if let Some(ref tracker) = self.workspace_tracker {
+            tracker.get_all()
+                .into_iter()
+                .filter(|ws| {
+                    if self.workspace_filter_query.is_empty() {
+                        true
+                    } else {
+                        let q = self.workspace_filter_query.to_lowercase();
+                        ws.name.to_lowercase().contains(&q) 
+                            || ws.path.to_string_lossy().to_lowercase().contains(&q)
+                            || ws.tags.iter().any(|t| t.to_lowercase().contains(&q))
+                    }
+                })
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        if workspaces.is_empty() {
+            ui.vertical_centered(|ui| {
+                ui.add_space(40.0);
+                ui.label(RichText::new("📂").size(32.0).color(theme.fg_dim));
+                ui.add_space(8.0);
+                ui.label(RichText::new("No workspaces yet").color(theme.fg_dim));
+                ui.label(RichText::new("Click 📂 or paste a path above").size(11.0).color(theme.fg_dim));
+            });
+        } else {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                let mut launch_workspace: Option<(String, std::path::PathBuf)> = None;
+                let mut toggle_pin: Option<String> = None;
+                let mut delete_workspace: Option<String> = None;
+                let mut select_workspace: Option<String> = None;
+
+                for ws in &workspaces {
+                    let is_selected = self.selected_workspace_id.as_ref() == Some(&ws.id);
+                    
+                    let bg = if is_selected {
+                        theme.selection
+                    } else {
+                        Color32::TRANSPARENT
+                    };
+
+                    let response = egui::Frame::none()
+                        .fill(bg)
+                        .rounding(Rounding::same(6.0))
+                        .inner_margin(egui::Margin::symmetric(6.0, 4.0))
+                        .outer_margin(egui::Margin::symmetric(4.0, 1.0))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                // Pin indicator
+                                let pin_icon = if ws.pinned { "📌" } else { "📁" };
+                                let pin_btn = ui.add(
+                                    egui::Button::new(RichText::new(pin_icon).size(12.0))
+                                        .frame(false)
+                                );
+                                if pin_btn.clicked() {
+                                    toggle_pin = Some(ws.id.clone());
+                                }
+                                if pin_btn.hovered() {
+                                    ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+                                }
+
+                                ui.vertical(|ui| {
+                                    // Name
+                                    let name_response = ui.add(
+                                        egui::Label::new(
+                                            RichText::new(&ws.name)
+                                                .size(11.0)
+                                                .color(if is_selected { theme.accent } else { theme.fg })
+                                                .strong()
+                                        ).sense(egui::Sense::click())
+                                    );
+                                    
+                                    if name_response.clicked() {
+                                        select_workspace = Some(ws.id.clone());
+                                    }
+                                    if name_response.double_clicked() {
+                                        launch_workspace = Some((ws.id.clone(), ws.path.clone()));
+                                    }
+
+                                    // Compact stats
+                                    ui.horizontal(|ui| {
+                                        if let Some(last_ver) = ws.versions.first() {
+                                            ui.label(
+                                                RichText::new(format!("v{}", last_ver.version))
+                                                    .size(8.0)
+                                                    .color(theme.accent)
+                                            );
+                                        }
+                                        if let Some(ref git) = ws.git_stats {
+                                            ui.label(
+                                                RichText::new(format!("⎇{}", git.branch))
+                                                    .size(8.0)
+                                                    .color(theme.fg_dim)
+                                            );
+                                            if git.uncommitted_changes > 0 {
+                                                ui.label(
+                                                    RichText::new(format!("•{}", git.uncommitted_changes))
+                                                        .size(8.0)
+                                                        .color(theme.warning)
+                                                );
+                                            }
+                                        }
+                                    });
+                                });
+
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if is_selected {
+                                        if ui.add(
+                                            egui::Button::new(RichText::new("×").size(12.0).color(theme.fg_dim))
+                                                .frame(false)
+                                        ).on_hover_text("Remove").clicked() {
+                                            delete_workspace = Some(ws.id.clone());
+                                        }
+                                    }
+                                    
+                                    if ui.add(
+                                        egui::Button::new(RichText::new("▶").size(10.0).color(theme.accent))
+                                            .frame(false)
+                                    ).on_hover_text("Launch").clicked() {
+                                        launch_workspace = Some((ws.id.clone(), ws.path.clone()));
+                                    }
+                                });
+                            });
+                        });
+                    
+                    // Make entire row clickable
+                    if response.response.interact(egui::Sense::click()).clicked() {
+                        select_workspace = Some(ws.id.clone());
+                    }
+                }
+
+                // Handle actions
+                if let Some(ws_id) = select_workspace {
+                    self.selected_workspace_id = Some(ws_id);
+                }
+
+                if let Some((ws_id, path)) = launch_workspace {
+                    if let Some(ref mut tracker) = self.workspace_tracker {
+                        let _ = tracker.record_version_open(&ws_id, &self.launch_version);
+                    }
+                    self.launch_cursor_with_workspace(Some(&path));
+                }
+
+                if let Some(ws_id) = toggle_pin {
+                    if let Some(ref mut tracker) = self.workspace_tracker {
+                        let _ = tracker.toggle_pinned(&ws_id);
+                    }
+                }
+
+                if let Some(ws_id) = delete_workspace {
+                    if let Some(ref mut tracker) = self.workspace_tracker {
+                        let _ = tracker.delete(&ws_id);
+                    }
+                    if self.selected_workspace_id.as_ref() == Some(&ws_id) {
+                        self.selected_workspace_id = None;
+                    }
+                    self.set_status("✓ Workspace removed");
+                }
+            });
+        }
+    }
+    
+    /// Show detailed workspace information panel
+    fn show_workspace_detail_panel(&mut self, ui: &mut egui::Ui, theme: Theme) {
+        let ws = if let Some(ref ws_id) = self.selected_workspace_id {
+            if let Some(ref tracker) = self.workspace_tracker {
+                tracker.get(ws_id).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let Some(ws) = ws else {
+            ui.vertical_centered(|ui| {
+                ui.add_space(40.0);
+                ui.label(RichText::new("Select a workspace").color(theme.fg_dim));
+            });
+            return;
+        };
+
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.add_space(8.0);
+            
+            // Header with name (editable)
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                
+                if self.editing_workspace_name.as_ref() == Some(&ws.id) {
+                    // Edit mode
+                    let response = ui.add(
+                        egui::TextEdit::singleline(&mut self.workspace_rename_input)
+                            .desired_width(120.0)
+                            .margin(egui::Margin::symmetric(4.0, 2.0)),
+                    );
+                    
+                    if response.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        if !self.workspace_rename_input.is_empty() {
+                            if let Some(ref mut tracker) = self.workspace_tracker {
+                                let _ = tracker.set_name(&ws.id, &self.workspace_rename_input);
+                            }
+                        }
+                        self.editing_workspace_name = None;
+                    }
+                    
+                    if ui.add(egui::Button::new("✓").frame(false)).clicked() {
+                        if !self.workspace_rename_input.is_empty() {
+                            if let Some(ref mut tracker) = self.workspace_tracker {
+                                let _ = tracker.set_name(&ws.id, &self.workspace_rename_input);
+                            }
+                        }
+                        self.editing_workspace_name = None;
+                    }
+                } else {
+                    // Display mode
+                    ui.label(RichText::new(&ws.name).size(14.0).color(theme.fg).strong());
+                    
+                    if ui.add(
+                        egui::Button::new(RichText::new("✏").size(10.0).color(theme.fg_dim))
+                            .frame(false)
+                    ).on_hover_text("Rename").clicked() {
+                        self.workspace_rename_input = ws.name.clone();
+                        self.editing_workspace_name = Some(ws.id.clone());
+                    }
+                }
+            });
+            
+            ui.add_space(4.0);
+            
+            // Path
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.label(RichText::new(ws.path.to_string_lossy().to_string()).size(10.0).color(theme.fg_dim));
+            });
+            
+            ui.add_space(12.0);
+            ui.separator();
+            ui.add_space(8.0);
+            
+            // Stats section
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.label(RichText::new("STATISTICS").size(9.0).color(theme.fg_dim).strong());
+            });
+            ui.add_space(4.0);
+            
+            egui::Grid::new("workspace_stats")
+                .num_columns(2)
+                .spacing([8.0, 4.0])
+                .show(ui, |ui| {
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("Times opened:").size(10.0).color(theme.fg_dim));
+                    ui.label(RichText::new(format!("{}", ws.open_count)).size(10.0).color(theme.fg));
+                    ui.end_row();
+                    
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("First opened:").size(10.0).color(theme.fg_dim));
+                    ui.label(RichText::new(ws.created_at.format("%Y-%m-%d").to_string()).size(10.0).color(theme.fg));
+                    ui.end_row();
+                    
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("Last opened:").size(10.0).color(theme.fg_dim));
+                    ui.label(RichText::new(ws.last_opened_at.format("%Y-%m-%d %H:%M").to_string()).size(10.0).color(theme.fg));
+                    ui.end_row();
+                });
+            
+            // Git section
+            if let Some(ref git) = ws.git_stats {
+                ui.add_space(12.0);
+                ui.separator();
+                ui.add_space(8.0);
+                
+                ui.horizontal(|ui| {
+                    ui.add_space(8.0);
+                    ui.label(RichText::new("GIT").size(9.0).color(theme.fg_dim).strong());
+                });
+                ui.add_space(4.0);
+                
+                egui::Grid::new("git_stats")
+                    .num_columns(2)
+                    .spacing([8.0, 4.0])
+                    .show(ui, |ui| {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new("Branch:").size(10.0).color(theme.fg_dim));
+                        ui.label(RichText::new(&git.branch).size(10.0).color(theme.accent));
+                        ui.end_row();
+                        
+                        ui.add_space(8.0);
+                        ui.label(RichText::new("Uncommitted:").size(10.0).color(theme.fg_dim));
+                        let color = if git.uncommitted_changes > 0 { theme.warning } else { theme.fg };
+                        ui.label(RichText::new(format!("{} files", git.uncommitted_changes)).size(10.0).color(color));
+                        ui.end_row();
+                        
+                        if let Some(count) = git.commit_count {
+                            ui.add_space(8.0);
+                            ui.label(RichText::new("Commits:").size(10.0).color(theme.fg_dim));
+                            ui.label(RichText::new(format!("{}", count)).size(10.0).color(theme.fg));
+                            ui.end_row();
+                        }
+                        
+                        if let Some(count) = git.total_files {
+                            ui.add_space(8.0);
+                            ui.label(RichText::new("Files:").size(10.0).color(theme.fg_dim));
+                            ui.label(RichText::new(format!("{}", count)).size(10.0).color(theme.fg));
+                            ui.end_row();
+                        }
+                    });
+                
+                if let Some(ref msg) = git.last_commit_message {
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new("Last commit:").size(10.0).color(theme.fg_dim));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.add_space(8.0);
+                        let truncated = if msg.len() > 50 {
+                            format!("{}...", &msg[..47])
+                        } else {
+                            msg.clone()
+                        };
+                        ui.label(RichText::new(truncated).size(9.0).color(theme.fg).italics());
+                    });
+                }
+            }
+            
+            // Versions section
+            if !ws.versions.is_empty() {
+                ui.add_space(12.0);
+                ui.separator();
+                ui.add_space(8.0);
+                
+                ui.horizontal(|ui| {
+                    ui.add_space(8.0);
+                    ui.label(RichText::new(format!("VERSIONS ({})", ws.versions.len())).size(9.0).color(theme.fg_dim).strong());
+                });
+                ui.add_space(4.0);
+                
+                for ver in ws.versions.iter().take(5) {
+                    ui.horizontal(|ui| {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new(format!("v{}", ver.version)).size(10.0).color(theme.accent));
+                        ui.label(RichText::new(format!("×{}", ver.open_count)).size(9.0).color(theme.fg_dim));
+                        ui.label(RichText::new(ver.last_opened.format("%m/%d").to_string()).size(9.0).color(theme.fg_dim));
+                    });
+                }
+                
+                if ws.versions.len() > 5 {
+                    ui.horizontal(|ui| {
+                        ui.add_space(8.0);
+                        ui.label(RichText::new(format!("... and {} more", ws.versions.len() - 5)).size(9.0).color(theme.fg_dim));
+                    });
+                }
+            }
+            
+            // Tags section
+            ui.add_space(12.0);
+            ui.separator();
+            ui.add_space(8.0);
+            
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.label(RichText::new("TAGS").size(9.0).color(theme.fg_dim).strong());
+            });
+            ui.add_space(4.0);
+            
+            ui.horizontal_wrapped(|ui| {
+                ui.add_space(8.0);
+                
+                for tag in &ws.tags {
+                    egui::Frame::none()
+                        .fill(theme.input_bg)
+                        .rounding(Rounding::same(4.0))
+                        .inner_margin(egui::Margin::symmetric(6.0, 2.0))
+                        .show(ui, |ui| {
+                            ui.label(RichText::new(tag).size(9.0).color(theme.fg));
+                        });
+                }
+                
+                if ws.tags.is_empty() {
+                    ui.label(RichText::new("No tags").size(9.0).color(theme.fg_dim).italics());
+                }
+            });
+            
+            // Search in workspace conversations
+            ui.add_space(12.0);
+            ui.separator();
+            ui.add_space(8.0);
+            
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.label(RichText::new("SEARCH CONVERSATIONS").size(9.0).color(theme.fg_dim).strong());
+            });
+            ui.add_space(4.0);
+            
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.workspace_search_query)
+                        .hint_text("Search in this workspace...")
+                        .desired_width(ui.available_width() - 16.0)
+                        .margin(egui::Margin::symmetric(6.0, 4.0)),
+                );
+            });
+            
+            // Show search results if there's a query
+            if !self.workspace_search_query.is_empty() {
+                ui.add_space(4.0);
+                
+                if let Some(ref store) = self.vector_store {
+                    let results = store.search_workspace(&ws.id, &self.workspace_search_query, 5);
+                    
+                    if results.is_empty() {
+                        ui.horizontal(|ui| {
+                            ui.add_space(8.0);
+                            ui.label(RichText::new("No results found").size(9.0).color(theme.fg_dim).italics());
+                        });
+                    } else {
+                        for result in results {
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                let preview = if result.chunk.text.len() > 60 {
+                                    format!("{}...", &result.chunk.text[..57])
+                                } else {
+                                    result.chunk.text.clone()
+                                };
+                                ui.label(RichText::new(preview).size(9.0).color(theme.fg));
+                            });
+                            ui.horizontal(|ui| {
+                                ui.add_space(8.0);
+                                ui.label(RichText::new(format!("Score: {:.2}", result.score)).size(8.0).color(theme.fg_dim));
+                            });
+                            ui.add_space(2.0);
+                        }
+                    }
+                }
+            }
+            
+            ui.add_space(16.0);
         });
     }
 
@@ -6680,6 +7671,9 @@ impl CursorStudio {
                         self.import_in_progress = false;
                         self.import_receiver = None;
                         self.refresh_all(); // Full refresh including bookmarks
+                        
+                        // Index conversations into vector store for semantic search
+                        let indexed = self.index_conversations_for_search();
 
                         // Reattach bookmarks and restore favorites if this was a clear & reimport
                         if self.import_needs_bookmark_reattach {
@@ -6705,19 +7699,19 @@ impl CursorStudio {
                             }
 
                             self.set_status(&format!(
-                                "✓ Imported {} chats, {} favorites, {} bookmarks restored",
-                                imported, favorites_restored, reattached
+                                "✓ Imported {} chats, {} favorites, {} bookmarks restored, {} indexed",
+                                imported, favorites_restored, reattached, indexed
                             ));
                             return;
                         }
 
                         if imported > 0 {
                             self.set_status(&format!(
-                                "✓ Imported {} new chats ({} already existed)",
-                                imported, skipped
+                                "✓ Imported {} new chats ({} existed, {} indexed)",
+                                imported, skipped, indexed
                             ));
                         } else if skipped > 0 {
-                            self.set_status(&format!("All {} chats already imported", skipped));
+                            self.set_status(&format!("All {} chats already imported ({} indexed)", skipped, indexed));
                         } else {
                             self.set_status("No Cursor chats found to import");
                         }

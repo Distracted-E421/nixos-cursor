@@ -12,8 +12,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROXY_BIN="${SCRIPT_DIR}/cursor-proxy/target/release/cursor-proxy"
-DIALOG_DAEMON_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-daemon"
-DIALOG_CLI_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-cli"
+
+# Try to find Nix-built dialog daemon first (properly wrapped with libraries)
+# Fall back to cargo-built version if Nix isn't available
+NIX_DIALOG_PKG=""
+if command -v nix >/dev/null 2>&1; then
+    NIX_DIALOG_PKG=$(nix build "${SCRIPT_DIR}/.."#cursor-dialog-daemon --no-link --print-out-paths 2>/dev/null || true)
+fi
+
+if [[ -n "$NIX_DIALOG_PKG" && -x "${NIX_DIALOG_PKG}/bin/cursor-dialog-daemon" ]]; then
+    DIALOG_DAEMON_BIN="${NIX_DIALOG_PKG}/bin/cursor-dialog-daemon"
+    DIALOG_CLI_BIN="${NIX_DIALOG_PKG}/bin/cursor-dialog-cli"
+else
+    DIALOG_DAEMON_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-daemon"
+    DIALOG_CLI_BIN="${SCRIPT_DIR}/cursor-dialog-daemon/target/release/cursor-dialog-cli"
+fi
+
 PROXY_DIR="${HOME}/.cursor-proxy"
 CONFIG_DIR="${HOME}/.config/cursor-studio"
 DIALOG_CONFIG="${CONFIG_DIR}/dialog-daemon.conf"
@@ -126,12 +140,64 @@ check_dialog_daemon() {
     fi
 }
 
-# Check if dialog daemon is running
-is_dialog_daemon_running() {
-    pgrep -f "cursor-dialog-daemon" > /dev/null 2>&1
+# Check if systemd user service is available
+has_systemd_service() {
+    systemctl --user cat cursor-dialog-daemon >/dev/null 2>&1
 }
 
-# Start dialog daemon
+# Check if service is managed by Home Manager (in /nix/store)
+is_home_manager_service() {
+    local service_path
+    service_path=$(systemctl --user show cursor-dialog-daemon -p FragmentPath 2>/dev/null | cut -d= -f2)
+    [[ "$service_path" == /nix/store/* ]]
+}
+
+# Check if dialog daemon is running (systemd or process)
+is_dialog_daemon_running() {
+    if has_systemd_service; then
+        systemctl --user is-active cursor-dialog-daemon >/dev/null 2>&1
+    else
+        pgrep -f "cursor-dialog-daemon" > /dev/null 2>&1
+    fi
+}
+
+# Create a transient systemd user service for non-NixOS users
+create_user_service() {
+    local service_dir="${HOME}/.config/systemd/user"
+    local service_file="${service_dir}/cursor-dialog-daemon.service"
+    
+    mkdir -p "$service_dir"
+    
+    # Note: The binary path is resolved at service creation time.
+    # If using Nix-built binary, it has proper library wrapping.
+    # If using cargo-built binary, users may need to ensure wayland libs are available.
+    cat > "$service_file" << EOF
+[Unit]
+Description=Cursor Dialog Daemon for AI Agent Feedback
+Documentation=https://github.com/e421/nixos-cursor
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=${DIALOG_DAEMON_BIN}
+Restart=on-failure
+RestartSec=5s
+# These are typically set by graphical-session.target but we set them explicitly
+Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-0
+# XDG runtime dir for Wayland socket
+Environment=XDG_RUNTIME_DIR=%t
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+    
+    systemctl --user daemon-reload
+    log_success "Created systemd user service (using: ${DIALOG_DAEMON_BIN})"
+}
+
+# Start dialog daemon (prefer systemd if available)
 start_dialog_daemon() {
     check_dialog_daemon
     
@@ -140,8 +206,22 @@ start_dialog_daemon() {
         return 0
     fi
     
-    log_info "Starting dialog daemon..."
-    nohup "$DIALOG_DAEMON_BIN" > "${CONFIG_DIR}/dialog-daemon.log" 2>&1 &
+    # Try systemd first
+    if has_systemd_service; then
+        log_info "Starting dialog daemon via systemd..."
+        systemctl --user start cursor-dialog-daemon
+    elif command -v systemctl >/dev/null 2>&1; then
+        # Create and use systemd service for better lifecycle management
+        log_info "Creating systemd user service..."
+        create_user_service
+        log_info "Starting dialog daemon via systemd..."
+        systemctl --user start cursor-dialog-daemon
+    else
+        # Fallback to nohup for non-systemd systems
+        log_info "Starting dialog daemon (no systemd)..."
+        nohup "$DIALOG_DAEMON_BIN" > "${CONFIG_DIR}/dialog-daemon.log" 2>&1 &
+    fi
+    
     sleep 1
     
     if is_dialog_daemon_running; then
@@ -153,13 +233,18 @@ start_dialog_daemon() {
         fi
     else
         log_error "Failed to start dialog daemon"
+        log_info "Check logs: journalctl --user -u cursor-dialog-daemon"
         return 1
     fi
 }
 
 # Stop dialog daemon
 stop_dialog_daemon() {
-    if is_dialog_daemon_running; then
+    if has_systemd_service && systemctl --user is-active cursor-dialog-daemon >/dev/null 2>&1; then
+        log_info "Stopping dialog daemon via systemd..."
+        systemctl --user stop cursor-dialog-daemon
+        log_success "Dialog daemon stopped"
+    elif is_dialog_daemon_running; then
         log_info "Stopping dialog daemon..."
         pkill -f "cursor-dialog-daemon" || true
         sleep 1
@@ -169,7 +254,7 @@ stop_dialog_daemon() {
     fi
 }
 
-# Enable dialog feature (install rules + start daemon)
+# Enable dialog feature (install rules + start daemon + enable systemd autostart)
 enable_dialog_feature() {
     check_dialog_daemon
     mkdir -p "$CURSOR_RULES_DIR"
@@ -220,17 +305,39 @@ RULES_EOF
     # Save enabled state
     echo "DIALOG_ENABLED=true" > "$DIALOG_CONFIG"
     
+    # Create and enable systemd service (if systemd is available)
+    if command -v systemctl >/dev/null 2>&1; then
+        if is_home_manager_service; then
+            # Service is managed by Home Manager, don't overwrite
+            log_info "Service managed by Home Manager - skipping service creation"
+        else
+            # Always recreate the service file to ensure it points to the correct binary
+            # (might have been updated between cargo-built and nix-built)
+            create_user_service
+        fi
+        systemctl --user enable cursor-dialog-daemon 2>/dev/null || true
+        log_success "Enabled systemd autostart"
+    fi
+    
     # Start daemon
     start_dialog_daemon
     
     log_success "Dialog feature enabled"
-    log_info "Restart Cursor for rules to take effect"
+    echo ""
+    log_info "The daemon will now start automatically on login."
+    log_info "Restart Cursor for rules to take effect."
 }
 
-# Disable dialog feature (remove rules + stop daemon)
+# Disable dialog feature (remove rules + stop daemon + disable systemd autostart)
 disable_dialog_feature() {
     # Stop daemon
     stop_dialog_daemon
+    
+    # Disable systemd autostart (if using systemd)
+    if command -v systemctl >/dev/null 2>&1 && has_systemd_service; then
+        systemctl --user disable cursor-dialog-daemon 2>/dev/null || true
+        log_info "Disabled systemd autostart"
+    fi
     
     # Remove rules
     local rules_dest="${CURSOR_RULES_DIR}/interactive-dialogs.mdc"
@@ -260,9 +367,35 @@ dialog_status() {
         echo -e "  Feature:  ${YELLOW}disabled${NC}"
     fi
     
+    # Check systemd service
+    if command -v systemctl >/dev/null 2>&1; then
+        if has_systemd_service; then
+            local mgmt_type="systemd"
+            if is_home_manager_service; then
+                mgmt_type="Home Manager"
+            fi
+            if systemctl --user is-enabled cursor-dialog-daemon >/dev/null 2>&1; then
+                echo -e "  Autostart: ${GREEN}enabled${NC} (${mgmt_type})"
+            else
+                echo -e "  Autostart: ${YELLOW}disabled${NC} (${mgmt_type})"
+            fi
+        else
+            echo -e "  Autostart: ${YELLOW}not configured${NC}"
+        fi
+    else
+        echo -e "  Autostart: ${YELLOW}no systemd${NC}"
+    fi
+    
     # Check if running
     if is_dialog_daemon_running; then
         echo -e "  Daemon:   ${GREEN}running${NC}"
+        
+        # Show how it's running
+        if has_systemd_service && systemctl --user is-active cursor-dialog-daemon >/dev/null 2>&1; then
+            echo -e "  Manager:  ${BLUE}systemd${NC}"
+        else
+            echo -e "  Manager:  ${YELLOW}manual/nohup${NC}"
+        fi
         
         # Try ping
         if "$DIALOG_CLI_BIN" ping 2>/dev/null | grep -q "pong"; then
@@ -283,7 +416,21 @@ dialog_status() {
         echo -e "  Rules:    ${YELLOW}not installed${NC}"
     fi
     
+    # Check if CLI is in PATH
+    if command -v cursor-dialog-cli >/dev/null 2>&1; then
+        echo -e "  CLI:      ${GREEN}in PATH${NC} ($(which cursor-dialog-cli))"
+    else
+        echo -e "  CLI:      ${YELLOW}not in PATH${NC}"
+        echo -e "            Use: $DIALOG_CLI_BIN"
+    fi
+    
     echo ""
+    
+    # Help text
+    if ! is_dialog_daemon_running; then
+        log_info "To start: cursor-studio dialog start"
+        log_info "To enable (with autostart): cursor-studio dialog enable"
+    fi
 }
 
 # Test dialog (show a quick test dialog)

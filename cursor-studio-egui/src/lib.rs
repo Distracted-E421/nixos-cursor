@@ -1,6 +1,7 @@
 //! Cursor Studio - Open Source Cursor IDE Manager
 //!
-//! Provides version management, chat library, security scanning, and sync.
+//! Provides version management, chat library, security scanning, sync,
+//! workspace tracking, and vector search for context retrieval.
 
 pub mod approval;
 pub mod chat;
@@ -10,8 +11,10 @@ pub mod security;
 pub mod sync;
 pub mod theme;
 pub mod theme_loader;
+pub mod vector;
 pub mod version_registry;
 pub mod versions;
+pub mod workspace;
 
 // Re-export commonly used types
 pub use approval::{ApprovalManager, ApprovalMode, ApprovalOperation, ApprovalResult};
@@ -27,4 +30,12 @@ pub use versions::{
     get_available_versions, get_cache_dir, get_latest_stable, get_version_info, install_version,
     is_version_installed, verify_hash, verify_hash_detailed, AvailableVersion, DownloadEvent,
     DownloadProgress, DownloadState, HashVerificationResult,
+};
+pub use workspace::{
+    CursorCli, GitStats, LaunchRequest, Workspace, WorkspaceConversation, WorkspaceTracker,
+    WorkspaceVersion,
+};
+pub use vector::{
+    EmbeddingSource, SearchResult, TextChunk, VectorStore, VectorStoreStats,
+    EMBEDDING_DIM, MAX_VECTORS,
 };
