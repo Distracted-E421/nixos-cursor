@@ -428,4 +428,3 @@ await page.click('#submit');  // No confirmation
 
 *Last Updated: 2026-01-20*
 *Author: AI Agent (supervised)*
-
