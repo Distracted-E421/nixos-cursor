@@ -182,11 +182,35 @@
           # Main cursor package (2.0.77 - targeted stable)
           inherit (cursorVersions) cursor;
 
-          # Version-specific packages for running multiple instances (70 total)
-          # Latest Era - 2.3.x (1 version)
-          inherit (cursorVersions) cursor-2_3_10;
+          # Version-specific packages for running multiple instances (89 total)
+          # Latest Era - 2.4.x (5 versions)
+          inherit (cursorVersions)
+            cursor-2_4_21
+            cursor-2_4_20
+            cursor-2_4_18
+            cursor-2_4_14
+            cursor-2_4_7
+            ;
 
-          # Latest Era - 2.2.x (11 versions)
+          # 2.3.x Era (14 versions)
+          inherit (cursorVersions)
+            cursor-2_3_41
+            cursor-2_3_40
+            cursor-2_3_39
+            cursor-2_3_35
+            cursor-2_3_34
+            cursor-2_3_33
+            cursor-2_3_29
+            cursor-2_3_26
+            cursor-2_3_23
+            cursor-2_3_21
+            cursor-2_3_20
+            cursor-2_3_15
+            cursor-2_3_14
+            cursor-2_3_10
+            ;
+
+          # 2.2.x Era (11 versions)
           inherit (cursorVersions)
             cursor-2_2_27
             cursor-2_2_23
