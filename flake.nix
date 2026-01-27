@@ -53,7 +53,26 @@
 
       # All version names (shared across platforms)
       allVersions = [
-        # 2.3.x Latest Era (1 version)
+        # 2.4.x Latest Era (5 versions)
+        "cursor-2_4_21"
+        "cursor-2_4_20"
+        "cursor-2_4_18"
+        "cursor-2_4_14"
+        "cursor-2_4_7"
+        # 2.3.x Era (13 versions)
+        "cursor-2_3_41"
+        "cursor-2_3_40"
+        "cursor-2_3_39"
+        "cursor-2_3_35"
+        "cursor-2_3_34"
+        "cursor-2_3_33"
+        "cursor-2_3_29"
+        "cursor-2_3_26"
+        "cursor-2_3_23"
+        "cursor-2_3_21"
+        "cursor-2_3_20"
+        "cursor-2_3_15"
+        "cursor-2_3_14"
         "cursor-2_3_10"
         # 2.2.x Latest Era (11 versions)
         "cursor-2_2_27"

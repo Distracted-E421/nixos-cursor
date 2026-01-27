@@ -369,11 +369,28 @@ run_in_namespace() {
     
     log "Running in namespace as user '$real_user': $*"
     
-    # Run command as original user with proper environment
+    # Detect X/Wayland display settings from calling environment
+    local display_env=""
+    local xauthority_file=""
+    
+    # Try to find XAUTHORITY file
+    if [[ -n "${XAUTHORITY:-}" ]]; then
+        xauthority_file="$XAUTHORITY"
+    elif [[ -f "${real_home}/.Xauthority" ]]; then
+        xauthority_file="${real_home}/.Xauthority"
+    elif [[ -n "$(ls /run/user/$(id -u "$real_user")/xauth_* 2>/dev/null | head -1)" ]]; then
+        xauthority_file="$(ls /run/user/$(id -u "$real_user")/xauth_* 2>/dev/null | head -1)"
+    fi
+    
+    # Run command as original user with proper environment including display
     ip netns exec "$NAMESPACE" sudo -u "$real_user" \
         HOME="$real_home" \
         USER="$real_user" \
-        NODE_EXTRA_CA_CERTS="${real_home}/.cursor-proxy/ca-cert.pem" \
+        DISPLAY="${DISPLAY:-:0}" \
+        XAUTHORITY="${xauthority_file:-${real_home}/.Xauthority}" \
+        XDG_RUNTIME_DIR="/run/user/$(id -u "$real_user")" \
+        WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}" \
+        NODE_EXTRA_CA_CERTS="${real_home}/.cursor-proxy/combined-ca-bundle.pem" \
         "$@"
 }
 

@@ -698,6 +698,47 @@ async fn save_captured_stream(stream: &CapturedStream, dir: &PathBuf, conn_id: u
     }
 }
 
+/// Check if an IP is likely an api2.cursor.sh server (AWS IPs)
+/// api2.cursor.sh resolves to AWS IPs in these ranges
+fn is_api2_ip(addr: &std::net::SocketAddr) -> bool {
+    match addr.ip() {
+        std::net::IpAddr::V4(ip) => {
+            let octets = ip.octets();
+            // AWS IP ranges used by api2.cursor.sh:
+            // 34.x, 35.x, 44.x, 52.x, 54.x, 18.x, 98.x, 100.x
+            matches!(octets[0], 34 | 35 | 44 | 52 | 54 | 18 | 98 | 100 | 3)
+        }
+        _ => false
+    }
+}
+
+/// Simple TCP passthrough for non-intercepted connections
+async fn tcp_passthrough(
+    mut client_stream: TcpStream,
+    original_dst: std::net::SocketAddr,
+    conn_id: u64,
+) -> Result<()> {
+    let mut upstream = TcpStream::connect(original_dst).await
+        .with_context(|| format!("Failed to connect to {}", original_dst))?;
+    
+    let (mut client_read, mut client_write) = client_stream.split();
+    let (mut upstream_read, mut upstream_write) = upstream.split();
+    
+    let client_to_upstream = tokio::io::copy(&mut client_read, &mut upstream_write);
+    let upstream_to_client = tokio::io::copy(&mut upstream_read, &mut client_write);
+    
+    tokio::select! {
+        res = client_to_upstream => {
+            debug!("[{}] Client->Upstream passthrough ended: {:?}", conn_id, res);
+        }
+        res = upstream_to_client => {
+            debug!("[{}] Upstream->Client passthrough ended: {:?}", conn_id, res);
+        }
+    }
+    
+    Ok(())
+}
+
 /// Handle an incoming connection with full HTTP/2 parsing
 async fn handle_connection(
     stream: TcpStream,
@@ -744,6 +785,15 @@ async fn handle_connection(
         "[{}] New connection from {} -> {}",
         conn_id, peer_addr, original_dst
     );
+    
+    // Check if this is a target domain (api2.cursor.sh)
+    // If not, do transparent TCP passthrough
+    if !is_api2_ip(&original_dst) {
+        info!("[{}] 🔀 Non-API2 traffic, doing TCP passthrough to {}", conn_id, original_dst);
+        return tcp_passthrough(stream, original_dst, conn_id).await;
+    }
+    
+    info!("[{}] 🎯 API2 traffic detected, intercepting", conn_id);
     
     // Generate dynamic certificate for this domain
     let (certs, key) = state.generate_cert_for_domain(&domain)
