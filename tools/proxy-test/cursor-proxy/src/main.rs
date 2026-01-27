@@ -33,6 +33,7 @@ use tokio_rustls::{TlsAcceptor, TlsConnector};
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 use std::convert::TryInto; // Ensure TryInto is available
+use notify::{Watcher, RecursiveMode, Config as NotifyConfig};
 
 /// Cursor AI Transparent Proxy
 #[derive(Parser)]
@@ -82,6 +83,10 @@ enum Commands {
         /// Context files to inject (can be specified multiple times)
         #[arg(long = "inject-context")]
         inject_context: Vec<PathBuf>,
+        
+        /// Watch injection config file for changes (hot reload)
+        #[arg(long)]
+        watch_config: bool,
     },
 
     /// Generate CA certificate for TLS interception
@@ -867,7 +872,7 @@ async fn handle_connection(
     let (h2_client, h2_conn) = client::Builder::new()
         .initial_window_size(65536)
         .initial_connection_window_size(1024 * 1024)
-        .initial_max_send_buffer_size(1024 * 1024)
+        .max_send_buffer_size(1024 * 1024)
         .max_frame_size(16384)
         .handshake(upstream_tls).await
         .with_context(|| "HTTP/2 client handshake failed")?;
@@ -1024,6 +1029,95 @@ fn build_injection_config(
     }
 }
 
+/// Spawn a file watcher for hot reloading injection config
+fn spawn_config_watcher(
+    config_path: PathBuf,
+    injection_engine: Arc<InjectionEngine>,
+) -> Result<()> {
+    let expanded_path = shellexpand::tilde(&config_path.to_string_lossy()).to_string();
+    let path = std::path::Path::new(&expanded_path).to_path_buf();
+    
+    if !path.exists() {
+        warn!("Config file does not exist yet: {:?}", path);
+        warn!("Will watch for creation...");
+    }
+    
+    let engine = injection_engine.clone();
+    let watch_path = path.clone();
+    
+    // Spawn blocking watcher in a dedicated thread
+    std::thread::spawn(move || {
+        let (tx, rx) = std::sync::mpsc::channel();
+        
+        let mut watcher = match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            if let Ok(event) = res {
+                let _ = tx.send(event);
+            }
+        }) {
+            Ok(w) => w,
+            Err(e) => {
+                error!("Failed to create file watcher: {}", e);
+                return;
+            }
+        };
+        
+        // Watch the parent directory to catch file creation
+        let watch_dir = watch_path.parent().unwrap_or(std::path::Path::new("."));
+        if let Err(e) = watcher.watch(watch_dir, RecursiveMode::NonRecursive) {
+            error!("Failed to watch directory {:?}: {}", watch_dir, e);
+            return;
+        }
+        
+        info!("📂 Watching config file for changes: {:?}", watch_path);
+        
+        // Use tokio runtime for async operations
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        
+        loop {
+            match rx.recv() {
+                Ok(event) => {
+                    // Check if this event affects our config file
+                    let affects_config = event.paths.iter().any(|p| {
+                        p.file_name() == watch_path.file_name()
+                    });
+                    
+                    if affects_config {
+                        match event.kind {
+                            notify::EventKind::Modify(_) | 
+                            notify::EventKind::Create(_) => {
+                                info!("🔄 Config file changed, reloading...");
+                                
+                                // Small delay to ensure file is fully written
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                
+                                match injection::load_config(&watch_path) {
+                                    Ok(new_config) => {
+                                        rt.block_on(engine.update_config(new_config));
+                                        info!("✅ Injection config reloaded successfully");
+                                    }
+                                    Err(e) => {
+                                        warn!("⚠️  Failed to reload config: {}", e);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("File watcher error: {}", e);
+                    break;
+                }
+            }
+        }
+    });
+    
+    Ok(())
+}
+
 /// Start the proxy server
 async fn start_proxy(
     port: u16,
@@ -1035,6 +1129,7 @@ async fn start_proxy(
     inject_prompt: Option<String>,
     inject_config: Option<PathBuf>,
     inject_context: Vec<PathBuf>,
+    watch_config: bool,
 ) -> Result<()> {
     let level = if verbose { Level::DEBUG } else { Level::INFO };
     let subscriber = FmtSubscriber::builder()
@@ -1051,6 +1146,7 @@ async fn start_proxy(
     info!("CA certificate loaded");
     
     // Build injection config
+    let config_path_for_watch = inject_config.clone();
     let injection_config = build_injection_config(inject, inject_prompt, inject_config, inject_context);
     if injection_config.enabled {
         info!("🔧 Injection ENABLED");
@@ -1066,6 +1162,17 @@ async fn start_proxy(
     }
     
     let injection_engine = Arc::new(InjectionEngine::new(injection_config));
+    
+    // Start config file watcher if requested
+    if watch_config {
+        if let Some(config_path) = config_path_for_watch {
+            spawn_config_watcher(config_path, Arc::clone(&injection_engine))?;
+        } else {
+            // Default watch path if none specified
+            let default_path = PathBuf::from("~/.cursor-proxy/active-mode.toml");
+            spawn_config_watcher(default_path, Arc::clone(&injection_engine))?;
+        }
+    }
     
     let state = Arc::new(ProxyState {
         streams: DashMap::new(),
@@ -1136,6 +1243,7 @@ async fn main() -> Result<()> {
             inject_prompt,
             inject_config,
             inject_context,
+            watch_config,
         } => {
             start_proxy(
                 port,
@@ -1147,6 +1255,7 @@ async fn main() -> Result<()> {
                 inject_prompt,
                 inject_config,
                 inject_context,
+                watch_config,
             ).await?;
         }
         Commands::GenerateCa { output } => {

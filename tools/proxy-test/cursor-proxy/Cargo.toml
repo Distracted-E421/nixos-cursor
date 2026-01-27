@@ -55,6 +55,7 @@ time = "0.3"
 libc = "0.2"
 chrono = "0.4"
 uuid = { version = "1.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+notify = { version = "6", default-features = false, features = ["macos_kqueue"] }  # File watching for hot reload
 
 [build-dependencies]
 prost-build = "0.13"
