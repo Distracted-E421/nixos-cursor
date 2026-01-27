@@ -1,0 +1,424 @@
+#!/usr/bin/env bash
+#
+# cursor-safe-kill - Safe Cursor process termination with protection checks
+#
+# This script prevents accidental termination of the main development Cursor session.
+# It checks multiple markers before allowing kill operations on Cursor processes.
+#
+# NEVER use pkill/kill on Cursor processes directly - always use this wrapper!
+#
+# Usage:
+#   cursor-safe-kill <pid>                    # Kill specific PID after safety checks
+#   cursor-safe-kill --pattern <pattern>      # Kill processes matching pattern (with checks)
+#   cursor-safe-kill --test-only              # Kill only test instances
+#   cursor-safe-kill --force <pid>            # DANGEROUS: Skip all checks (requires confirmation)
+#   cursor-safe-kill --list                   # List all Cursor processes with their types
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# Protection markers
+MAIN_SESSION_MARKER="CURSOR_SESSION_TYPE=main"
+TEST_SESSION_MARKER="CURSOR_SESSION_TYPE=test"
+MAIN_CGROUP_PATTERN="cursor-main.service"
+
+log()     { echo -e "${CYAN}[cursor-safe-kill]${NC} $*"; }
+success() { echo -e "${GREEN}[✓]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[!]${NC} $*" >&2; }
+error()   { echo -e "${RED}[✗]${NC} $*" >&2; }
+fatal()   { error "$*"; exit 1; }
+
+# Check if a PID is a protected main session
+is_main_session() {
+    local pid="$1"
+    
+    # Check 1: Environment variable marker
+    if [[ -r "/proc/$pid/environ" ]]; then
+        if tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -q "^${MAIN_SESSION_MARKER}$"; then
+            return 0  # Is main session
+        fi
+    fi
+    
+    # Check 2: Cgroup membership (systemd service)
+    if [[ -f "/proc/$pid/cgroup" ]]; then
+        if grep -q "$MAIN_CGROUP_PATTERN" "/proc/$pid/cgroup" 2>/dev/null; then
+            return 0  # Is main session
+        fi
+    fi
+    
+    # Check 3: Longest-running Cursor (heuristic fallback)
+    # The main session is typically the oldest Cursor process
+    local oldest_cursor_pid
+    oldest_cursor_pid=$(find_cursor_pids 2>/dev/null | while read p; do
+        if [[ -d "/proc/$p" ]]; then
+            stat -c '%Y %p' "/proc/$p" 2>/dev/null
+        fi
+    done | sort -n | head -1 | awk '{print $2}' | xargs -I{} basename {})
+    
+    if [[ "$pid" == "$oldest_cursor_pid" ]]; then
+        # Only use this heuristic if no explicit markers are set
+        local has_any_marker=false
+        for p in $(find_cursor_pids 2>/dev/null); do
+            if tr '\0' '\n' < "/proc/$p/environ" 2>/dev/null | grep -q "CURSOR_SESSION_TYPE="; then
+                has_any_marker=true
+                break
+            fi
+        done
+        if [[ "$has_any_marker" == "false" ]]; then
+            warn "No session markers found - using age heuristic (oldest = main)"
+            return 0  # Treat oldest as main if no markers exist
+        fi
+    fi
+    
+    return 1  # Not a main session
+}
+
+# Check if a PID is explicitly a test session
+is_test_session() {
+    local pid="$1"
+    
+    if [[ -r "/proc/$pid/environ" ]]; then
+        if tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep -q "^${TEST_SESSION_MARKER}$"; then
+            return 0  # Is test session
+        fi
+    fi
+    
+    # Check if in network namespace (test instances run in cursor-proxy-ns)
+    local ns_inode host_ns_inode
+    ns_inode=$(readlink "/proc/$pid/ns/net" 2>/dev/null || echo "")
+    host_ns_inode=$(readlink "/proc/1/ns/net" 2>/dev/null || echo "")
+    
+    if [[ -n "$ns_inode" && -n "$host_ns_inode" && "$ns_inode" != "$host_ns_inode" ]]; then
+        return 0  # In different network namespace = test instance
+    fi
+    
+    return 1  # Not explicitly a test session
+}
+
+# Get session type label for a PID
+get_session_type() {
+    local pid="$1"
+    
+    if is_main_session "$pid"; then
+        echo -e "${RED}MAIN (PROTECTED)${NC}"
+    elif is_test_session "$pid"; then
+        echo -e "${GREEN}TEST${NC}"
+    else
+        echo -e "${YELLOW}UNKNOWN${NC}"
+    fi
+}
+
+# Find all Cursor-related PIDs (including bwrap containers)
+find_cursor_pids() {
+    {
+        # Direct cursor processes
+        pgrep -f 'cursor' 2>/dev/null
+        # Bwrap containers running cursor AppImages
+        pgrep -f 'Cursor.*AppImage' 2>/dev/null
+        # Children of cursor test envs
+        pgrep -f '.cursor-test-envs' 2>/dev/null
+    } | sort -u
+}
+
+# Categorize a process for clear identification
+categorize_process() {
+    local pid="$1"
+    local cmdline
+    cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || echo "")
+    
+    # Check env vars FIRST - these are authoritative
+    local env_type=""
+    if [[ -r "/proc/$pid/environ" ]]; then
+        env_type=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep "^CURSOR_SESSION_TYPE=" | cut -d= -f2 || echo "")
+    fi
+    
+    # Environment markers are AUTHORITATIVE and take precedence
+    if [[ "$env_type" == "main" ]]; then
+        echo "MAIN"
+        return
+    elif [[ "$env_type" == "test" ]]; then
+        echo "TEST"
+        return
+    fi
+    
+    # Infrastructure processes (not Cursor sessions)
+    if [[ "$cmdline" == *"cursor-proxy"* ]]; then
+        echo "PROXY"
+    elif [[ "$cmdline" == *"cursor-dialog"* ]]; then
+        echo "DAEMON"
+    # Child helper processes
+    elif [[ "$cmdline" == *"--type=utility"* ]] || [[ "$cmdline" == *"--type=gpu"* ]] || [[ "$cmdline" == *"--type=zygote"* ]]; then
+        echo "CHILD"
+    # Cursor session without marker - POTENTIALLY YOUR MAIN SESSION!
+    elif [[ "$cmdline" == *"cursor --user-data-dir"* ]] || [[ "$cmdline" == *"bubblewrap"*"AppImage"* ]]; then
+        echo "CURSOR-SESSION"
+    else
+        echo "RELATED"
+    fi
+}
+
+# List all Cursor processes with their types
+list_processes() {
+    local main_count=0 test_count=0 unknown_count=0 child_count=0 daemon_count=0 proxy_count=0
+    local main_pids="" test_pids="" unknown_pids=""
+    
+    echo -e "\n${BOLD}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                    CURSOR PROCESS SAFETY REPORT                               ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════════╝${NC}\n"
+    
+    # Collect and categorize all processes
+    local all_pids
+    all_pids=$(find_cursor_pids | head -50)
+    
+    echo -e "${BOLD}PROCESS LIST:${NC}\n"
+    printf "%-8s %-15s %-12s %-10s %s\n" "PID" "CATEGORY" "CAN KILL?" "UPTIME" "DESCRIPTION"
+    printf "%-8s %-15s %-12s %-10s %s\n" "───" "────────" "─────────" "──────" "───────────"
+    
+    for pid in $all_pids; do
+        if [[ -d "/proc/$pid" ]]; then
+            local cmd category can_kill uptime_str
+            cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | cut -c1-45 || echo "unknown")
+            category=$(categorize_process "$pid")
+            
+            # Calculate uptime
+            uptime_str="?"
+            if [[ -f "/proc/$pid/stat" ]]; then
+                local start_time boot_time clk_tck
+                start_time=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null || echo "0")
+                boot_time=$(awk '/btime/ {print $2}' /proc/stat 2>/dev/null || echo "0")
+                clk_tck=$(getconf CLK_TCK 2>/dev/null || echo "100")
+                if [[ "$start_time" -gt 0 && "$boot_time" -gt 0 ]]; then
+                    local age=$(($(date +%s) - boot_time - start_time / clk_tck))
+                    if [[ $age -lt 60 ]]; then uptime_str="${age}s"
+                    elif [[ $age -lt 3600 ]]; then uptime_str="$((age / 60))m"
+                    else uptime_str="$((age / 3600))h$((age % 3600 / 60))m"; fi
+                fi
+            fi
+            
+            # Determine if safe to kill and format output
+            case "$category" in
+                MAIN)
+                    can_kill="${RED}🚫 BLOCKED${NC}"
+                    printf "%-8s ${RED}%-15s${NC} %-12b %-10s %s\n" "$pid" "MAIN SESSION" "$can_kill" "$uptime_str" "$cmd"
+                    main_count=$((main_count + 1)); main_pids+=" $pid"
+                    ;;
+                TEST|TEST-LIKELY)
+                    can_kill="${GREEN}✅ SAFE${NC}"
+                    printf "%-8s ${GREEN}%-15s${NC} %-12b %-10s %s\n" "$pid" "TEST INSTANCE" "$can_kill" "$uptime_str" "$cmd"
+                    test_count=$((test_count + 1)); test_pids+=" $pid"
+                    ;;
+                PROXY)
+                    can_kill="${YELLOW}⚠️  CAREFUL${NC}"
+                    printf "%-8s ${CYAN}%-15s${NC} %-12b %-10s %s\n" "$pid" "PROXY" "$can_kill" "$uptime_str" "$cmd"
+                    proxy_count=$((proxy_count + 1))
+                    ;;
+                DAEMON)
+                    can_kill="${YELLOW}⚠️  CAREFUL${NC}"
+                    printf "%-8s ${CYAN}%-15s${NC} %-12b %-10s %s\n" "$pid" "DAEMON" "$can_kill" "$uptime_str" "$cmd"
+                    daemon_count=$((daemon_count + 1))
+                    ;;
+                CHILD)
+                    child_count=$((child_count + 1))
+                    # Skip child processes in main listing for clarity
+                    ;;
+                CURSOR-SESSION)
+                    can_kill="${YELLOW}⚠️  UNKNOWN${NC}"
+                    printf "%-8s ${YELLOW}%-15s${NC} %-12b %-10s %s\n" "$pid" "UNTAGGED" "$can_kill" "$uptime_str" "$cmd"
+                    unknown_count=$((unknown_count + 1)); unknown_pids+=" $pid"
+                    ;;
+                *)
+                    child_count=$((child_count + 1))
+                    ;;
+            esac
+        fi
+    done
+    
+    # Summary section with clear guidance
+    echo ""
+    echo -e "${BOLD}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║                              SUMMARY & GUIDANCE                               ║${NC}"
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    if [[ $test_count -gt 0 ]]; then
+        echo -e "${BOLD}║${NC} ${GREEN}✅ SAFE TO KILL:${NC} $test_count test instance(s) -$test_pids"
+        echo -e "${BOLD}║${NC}    These are marked CURSOR_SESSION_TYPE=test and can be terminated safely."
+    fi
+    
+    if [[ $main_count -gt 0 ]]; then
+        echo -e "${BOLD}║${NC} ${RED}🚫 DO NOT KILL:${NC} $main_count main session(s) -$main_pids"
+        echo -e "${BOLD}║${NC}    These are marked CURSOR_SESSION_TYPE=main - killing terminates YOUR session!"
+    fi
+    
+    if [[ $unknown_count -gt 0 ]]; then
+        echo -e "${BOLD}║${NC} ${YELLOW}⚠️  UNTAGGED:${NC} $unknown_count session(s) without markers -$unknown_pids"
+        echo -e "${BOLD}║${NC}    ${BOLD}WARNING:${NC} These sessions have no CURSOR_SESSION_TYPE marker set."
+        echo -e "${BOLD}║${NC}    One of these is likely YOUR ACTIVE SESSION. Do NOT kill blindly!"
+        echo -e "${BOLD}║${NC}    Tip: The oldest untagged session is typically the main session."
+    fi
+    
+    if [[ $child_count -gt 0 ]]; then
+        echo -e "${BOLD}║${NC} ${CYAN}ℹ️  CHILD PROCESSES:${NC} $child_count helper processes (zygote, utility, gpu)"
+        echo -e "${BOLD}║${NC}    These are spawned by Cursor sessions and will die with their parent."
+    fi
+    
+    echo -e "${BOLD}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD}║${NC} ${BOLD}QUICK COMMANDS:${NC}"
+    echo -e "${BOLD}║${NC}   cursor-safe-kill --test-only    # Kill all TEST instances safely"
+    if [[ -n "$test_pids" ]]; then
+        local first_test
+        first_test=$(echo $test_pids | awk '{print $1}')
+        echo -e "${BOLD}║${NC}   cursor-safe-kill $first_test           # Kill specific test PID"
+    fi
+    echo -e "${BOLD}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+}
+
+# Safe kill with all checks
+safe_kill() {
+    local pid="$1"
+    local force="${2:-false}"
+    
+    # Verify it's a Cursor-related process (cursor, AppImage, or test env)
+    local cmdline
+    cmdline=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null || echo "")
+    if ! echo "$cmdline" | grep -qiE 'cursor|appimage|\.cursor-test-envs'; then
+        fatal "PID $pid is not a Cursor-related process"
+    fi
+    
+    # Check if main session
+    if is_main_session "$pid"; then
+        error "═══════════════════════════════════════════════════════════"
+        error "  🛑 BLOCKED: PID $pid is the MAIN Cursor session!"
+        error "═══════════════════════════════════════════════════════════"
+        error ""
+        error "This is your active development session. Killing it would:"
+        error "  • Lose your current conversation context"
+        error "  • Require restarting and re-explaining your task"
+        error "  • Waste API requests"
+        error ""
+        
+        if [[ "$force" == "true" ]]; then
+            warn "Force flag detected - requiring explicit confirmation..."
+            echo -en "${BOLD}Type 'KILL MAIN SESSION' to confirm: ${NC}"
+            read -r confirmation
+            if [[ "$confirmation" != "KILL MAIN SESSION" ]]; then
+                fatal "Confirmation failed - aborting"
+            fi
+            warn "Force-killing main session as requested..."
+        else
+            error "If you REALLY need to kill this, use: cursor-safe-kill --force $pid"
+            exit 1
+        fi
+    fi
+    
+    # Proceed with kill
+    if is_test_session "$pid"; then
+        success "PID $pid is a TEST instance - safe to kill"
+    else
+        warn "PID $pid has no explicit type marker - proceeding with caution"
+    fi
+    
+    log "Sending SIGTERM to PID $pid..."
+    kill -TERM "$pid" 2>/dev/null || true
+    
+    # Wait briefly and check
+    sleep 1
+    if [[ -d "/proc/$pid" ]]; then
+        warn "Process still running, sending SIGKILL..."
+        kill -KILL "$pid" 2>/dev/null || true
+    fi
+    
+    if [[ ! -d "/proc/$pid" ]]; then
+        success "Process $pid terminated"
+    else
+        error "Failed to terminate process $pid"
+        exit 1
+    fi
+}
+
+# Kill only test instances
+kill_test_only() {
+    local killed=0
+    
+    for pid in $(find_cursor_pids 2>/dev/null); do
+        if is_test_session "$pid"; then
+            log "Killing test instance PID $pid..."
+            safe_kill "$pid"
+            ((killed++))
+        fi
+    done
+    
+    if [[ $killed -eq 0 ]]; then
+        log "No test instances found"
+    else
+        success "Killed $killed test instance(s)"
+    fi
+}
+
+# Main
+usage() {
+    cat << EOF
+${BOLD}cursor-safe-kill${NC} - Safe Cursor process termination
+
+${BOLD}Usage:${NC}
+    cursor-safe-kill <pid>                Kill specific PID (with safety checks)
+    cursor-safe-kill --test-only          Kill only test instances
+    cursor-safe-kill --list               List all Cursor processes with types
+    cursor-safe-kill --force <pid>        Force kill (DANGEROUS - requires confirmation)
+
+${BOLD}Session Types:${NC}
+    MAIN (PROTECTED)  - Primary development session (will block kill)
+    TEST              - Test instances (safe to kill)
+    UNKNOWN           - No markers found (proceed with caution)
+
+${BOLD}Protection Markers:${NC}
+    Environment: CURSOR_SESSION_TYPE=main or CURSOR_SESSION_TYPE=test
+    Cgroup:      cursor-main.service (systemd user service)
+    Namespace:   Different network namespace = test instance
+
+${BOLD}Examples:${NC}
+    cursor-safe-kill --list               # See all processes first
+    cursor-safe-kill --test-only          # Clean up test instances
+    cursor-safe-kill 12345                # Kill specific PID (if not main)
+
+EOF
+}
+
+main() {
+    case "${1:-}" in
+        --list|-l)
+            list_processes
+            ;;
+        --test-only|-t)
+            kill_test_only
+            ;;
+        --force|-f)
+            [[ -z "${2:-}" ]] && fatal "Force requires a PID"
+            safe_kill "$2" true
+            ;;
+        --help|-h)
+            usage
+            ;;
+        "")
+            usage
+            exit 1
+            ;;
+        *)
+            # Assume it's a PID
+            if [[ "$1" =~ ^[0-9]+$ ]]; then
+                safe_kill "$1"
+            else
+                fatal "Unknown option or invalid PID: $1"
+            fi
+            ;;
+    esac
+}
+
+main "$@"
+

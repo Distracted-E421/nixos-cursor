@@ -65,11 +65,9 @@ Use 127.0.0.1 NOT localhost (avoids Tailscale relay).
 - Update documentation alongside changes
 
 ## Interactive Dialog System
-You have access to cursor-dialog-cli for user input:
-```bash
-ssh e421@127.0.0.1 'cursor-dialog-cli choice --title "Title" --prompt "Question" --options '\''[{"value":"opt1","label":"Option 1"}]'\'''
-```
-Use for confirmations, choices, or when user preference matters.
+You have access to cursor-dialog-cli for user input. Use SSH loopback with the dialog CLI for confirmations, choices, or when user preference matters.
+
+Example: cursor-dialog-cli choice --title "Title" --prompt "Question" --options '[JSON options array]'
 """
 
 context_files = []

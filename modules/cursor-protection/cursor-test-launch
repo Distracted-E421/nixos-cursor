@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#
+# cursor-test-launch - Launch a test Cursor instance with proper markers
+#
+# This script launches Cursor instances marked as TEST sessions,
+# making them safe to kill without affecting the main development session.
+#
+# Usage:
+#   cursor-test-launch [cursor-args...]
+#   cursor-test-launch --namespace [cursor-args...]    # Run in proxy namespace
+#   cursor-test-launch --version 2.0.77 [cursor-args...]
+#
+
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log()     { echo -e "${CYAN}[cursor-test-launch]${NC} $*"; }
+success() { echo -e "${GREEN}[✓]${NC} $*"; }
+warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
+
+USE_NAMESPACE=false
+CURSOR_VERSION=""
+CURSOR_ARGS=()
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --namespace|-n)
+            USE_NAMESPACE=true
+            shift
+            ;;
+        --version|-v)
+            CURSOR_VERSION="$2"
+            shift 2
+            ;;
+        --help|-h)
+            cat << EOF
+cursor-test-launch - Launch test Cursor instances safely
+
+Usage:
+    cursor-test-launch [options] [cursor-args...]
+
+Options:
+    --namespace, -n     Run in cursor-proxy-ns network namespace
+    --version, -v VER   Use specific Cursor version (e.g., 2.0.77)
+    --help, -h          Show this help
+
+Environment:
+    Sets CURSOR_SESSION_TYPE=test to mark as killable test instance
+
+Examples:
+    cursor-test-launch --folder /path/to/project
+    cursor-test-launch --namespace --folder /path/to/project
+    cursor-test-launch --version 2.0.77 --folder /path/to/project
+
+EOF
+            exit 0
+            ;;
+        *)
+            CURSOR_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Determine cursor binary
+CURSOR_BIN=""
+if [[ -n "$CURSOR_VERSION" ]]; then
+    # Look for versioned cursor in nix store
+    CURSOR_BIN=$(find /nix/store -maxdepth 1 -name "cursor-${CURSOR_VERSION}*" -type d 2>/dev/null | head -1)
+    if [[ -n "$CURSOR_BIN" ]]; then
+        CURSOR_BIN="$CURSOR_BIN/share/cursor/cursor"
+    fi
+fi
+
+if [[ -z "$CURSOR_BIN" || ! -x "$CURSOR_BIN" ]]; then
+    CURSOR_BIN=$(which cursor 2>/dev/null || echo "")
+fi
+
+if [[ -z "$CURSOR_BIN" || ! -x "$CURSOR_BIN" ]]; then
+    echo "Error: Could not find cursor binary" >&2
+    exit 1
+fi
+
+log "Using cursor: $CURSOR_BIN"
+log "Session type: TEST (safe to kill)"
+
+# Build environment
+export CURSOR_SESSION_TYPE=test
+export NODE_EXTRA_CA_CERTS="${HOME}/.cursor-proxy/combined-ca-bundle.pem"
+
+if [[ "$USE_NAMESPACE" == "true" ]]; then
+    log "Running in network namespace: cursor-proxy-ns"
+    
+    # Check namespace exists
+    if ! sudo ip netns list | grep -q "cursor-proxy-ns"; then
+        warn "Network namespace not found - creating..."
+        sudo /home/e421/nixos-cursor/tools/proxy-test/setup-network-namespace.sh setup
+    fi
+    
+    # Launch in namespace with display forwarding
+    exec sudo ip netns exec cursor-proxy-ns sudo -E -u "$USER" \
+        env CURSOR_SESSION_TYPE=test \
+            NODE_EXTRA_CA_CERTS="${HOME}/.cursor-proxy/combined-ca-bundle.pem" \
+            DISPLAY="${DISPLAY:-:0}" \
+            WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}" \
+            XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" \
+            XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}" \
+        "$CURSOR_BIN" "${CURSOR_ARGS[@]}"
+else
+    log "Running in host network"
+    exec "$CURSOR_BIN" "${CURSOR_ARGS[@]}"
+fi
+
