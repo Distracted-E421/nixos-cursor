@@ -5,19 +5,22 @@
 //! # Architecture
 //!
 //! - Main thread: Runs the egui GUI
-//! - Background tokio runtime: Handles D-Bus async operations
+//! - Background tokio runtime: Handles D-Bus async operations and web server
 //! - Sync channels bridge between async D-Bus and sync GUI
+//! - Web server provides PWA for remote access via Tailscale
 //!
 //! # Usage
 //!
 //! Start the daemon:
 //! ```bash
 //! cursor-dialog-daemon
+//! cursor-dialog-daemon --web-port 8080  # Enable web access
 //! ```
 
 mod dbus_interface;
 mod dialog;
 mod gui;
+mod web;
 
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
@@ -42,6 +45,10 @@ struct Args {
     /// Don't register with D-Bus (for GUI testing)
     #[arg(long)]
     no_dbus: bool,
+
+    /// Enable web server for remote access (PWA)
+    #[arg(long)]
+    web_port: Option<u16>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -98,6 +105,22 @@ fn main() -> anyhow::Result<()> {
             info!("D-Bus registration disabled");
         }
     });
+
+    // Start web server for remote access (PWA)
+    if let Some(port) = args.web_port {
+        let web_manager = manager.clone();
+        rt.spawn(async move {
+            match web::start_web_server(web_manager, port).await {
+                Ok(_updates_tx) => {
+                    info!("Web server started on port {}", port);
+                    info!("Remote access via Tailscale: http://obsidian:{}", port);
+                }
+                Err(e) => {
+                    error!("Failed to start web server: {}", e);
+                }
+            }
+        });
+    }
 
     // Bridge task: forward from async to sync channel
     rt.spawn(async move {

@@ -12,7 +12,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "cursor-dialog-daemon";
-  version = "0.3.0";
+  version = "0.4.0";
 
   src = ./.;
 

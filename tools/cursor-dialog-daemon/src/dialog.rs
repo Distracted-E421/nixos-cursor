@@ -367,6 +367,30 @@ pub struct ToastHistoryEntry {
     pub read: bool,
 }
 
+/// Global settings for the dialog system
+#[derive(Debug, Clone)]
+pub struct DialogSettings {
+    /// When true, ALL dialogs ignore timeouts until user responds
+    pub hold_mode: bool,
+    /// Base font scale (1.0 = default, 1.5 = 150%, etc.)
+    pub font_scale: f32,
+    /// Whether to play notification sounds
+    pub sounds_enabled: bool,
+    /// Whether to request window focus on new dialogs
+    pub focus_on_dialog: bool,
+}
+
+impl Default for DialogSettings {
+    fn default() -> Self {
+        Self {
+            hold_mode: false,
+            font_scale: 1.0,
+            sounds_enabled: true,
+            focus_on_dialog: true,
+        }
+    }
+}
+
 /// Manages dialog queue and rendering
 pub struct DialogManager {
     /// Currently active dialog (only one at a time)
@@ -385,6 +409,8 @@ pub struct DialogManager {
     pub toast_history: Vec<ToastHistoryEntry>,
     /// Maximum history entries
     pub max_history: usize,
+    /// Global settings
+    pub settings: DialogSettings,
 }
 
 impl Default for DialogManager {
@@ -404,7 +430,18 @@ impl DialogManager {
             last_comment_expanded: false,
             toast_history: Vec::new(),
             max_history: 50,
+            settings: DialogSettings::default(),
         }
+    }
+
+    /// Toggle global hold mode (no timeouts)
+    pub fn toggle_hold_mode(&mut self) {
+        self.settings.hold_mode = !self.settings.hold_mode;
+    }
+
+    /// Check if hold mode is active
+    pub fn is_hold_mode(&self) -> bool {
+        self.settings.hold_mode
     }
 
     /// Add a new dialog request
@@ -498,19 +535,74 @@ impl DialogManager {
         });
     }
 
+    /// Switch to a specific queued dialog by index, moving current to back of queue
+    /// Returns true if switch was successful
+    pub fn switch_to_queued(&mut self, queue_index: usize) -> bool {
+        if queue_index >= self.queue.len() {
+            return false;
+        }
+
+        // Remove the target from queue
+        let (target_req, target_tx) = self.queue.remove(queue_index);
+
+        // If there's an active dialog, put it at the back of the queue
+        if let Some(active) = self.active.take() {
+            // Save comment state
+            if self.remember_comment_expanded {
+                self.last_comment_expanded = active.state.comment_expanded;
+            }
+            
+            // Move current dialog back to queue, preserving its response channel
+            // We need to decompose the ActiveDialog to get the request and response_tx back
+            self.queue.push((active.request, active.response_tx));
+        }
+
+        // Make the target dialog active
+        let mut dialog = ActiveDialog::new(target_req, target_tx);
+        if self.remember_comment_expanded {
+            dialog.state.comment_expanded = self.last_comment_expanded;
+        }
+        self.active = Some(dialog);
+
+        true
+    }
+
+    /// Get number of dialogs in queue
+    pub fn queue_len(&self) -> usize {
+        self.queue.len()
+    }
+
+    /// Get queue item info for display
+    pub fn queue_display_info(&self) -> Vec<(String, String, String)> {
+        self.queue.iter().enumerate().map(|(idx, (req, _))| {
+            let type_label = match &req.dialog_type {
+                DialogType::Choice { .. } => "Choice",
+                DialogType::TextInput { .. } => "Text",
+                DialogType::Confirmation { .. } => "Confirm",
+                DialogType::Slider { .. } => "Slider",
+                DialogType::Progress { .. } => "Progress",
+                DialogType::FilePicker { .. } => "File",
+                DialogType::Toast { .. } => "Toast",
+            };
+            (req.id.clone(), req.title.clone(), type_label.to_string())
+        }).collect()
+    }
+
     /// Check and handle timeouts (dialogs and toasts)
     pub fn check_timeouts(&mut self) {
-        // Check dialog timeout
-        if let Some(active) = self.active.take() {
-            if active.is_timed_out() {
-                active.cancel();
-                self.next();
-            } else {
-                self.active = Some(active);
+        // Check dialog timeout (skip if global hold mode is active)
+        if !self.settings.hold_mode {
+            if let Some(active) = self.active.take() {
+                if active.is_timed_out() {
+                    active.cancel();
+                    self.next();
+                } else {
+                    self.active = Some(active);
+                }
             }
         }
 
-        // Check toast timeouts - remove expired ones
+        // Check toast timeouts - remove expired ones (toasts still timeout in hold mode)
         let expired = self.toasts.drain_filter_compat();
         for toast in expired {
             toast.dismiss();
