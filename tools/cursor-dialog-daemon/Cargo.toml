@@ -1,6 +1,6 @@
 [package]
 name = "cursor-dialog-daemon"
-version = "0.3.0"
+version = "0.5.0"
 edition = "2021"
 description = "D-Bus daemon for Cursor agent interactive dialogs"
 authors = ["e421"]
@@ -12,6 +12,11 @@ zbus = { version = "4.4", default-features = false, features = ["tokio"] }
 
 # Async runtime (minimal features needed)
 tokio = { version = "1.41", features = ["rt-multi-thread", "sync", "macros", "time"] }
+
+# Web server for remote access (PWA)
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+futures-util = "0.3"  # For stream handling in WebSockets
 
 # GUI framework (native look, cross-platform fallback)
 egui = "0.29"

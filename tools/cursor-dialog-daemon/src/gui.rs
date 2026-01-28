@@ -5,7 +5,7 @@
 use eframe::egui::{self, Color32, RichText, Rounding, Stroke, Vec2};
 use std::sync::Arc;
 use tokio::sync::{oneshot, RwLock};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::dialog::{ActiveDialog, ActiveToast, DialogManager, DialogRequest, DialogResponse, DialogStateVariant, DialogType, ToastHistoryEntry, ToastLevel};
 use crate::dbus_interface::ChoiceOption;
@@ -32,18 +32,33 @@ impl ToastDisplay {
     }
 }
 
+/// Display-only queue item data (for rendering tabs)
+#[derive(Debug, Clone)]
+struct QueueItemDisplay {
+    id: String,
+    title: String,
+    /// Brief description of dialog type
+    type_label: String,
+    /// Index in queue (0 = first waiting, etc.)
+    index: usize,
+}
+
 /// GUI Application state
 pub struct DialogApp {
     /// Dialog manager (shared with D-Bus interface)
     manager: Arc<RwLock<DialogManager>>,
     /// Channel to receive new dialog requests (sync version for GUI)
     dialog_rx: std::sync::mpsc::Receiver<(DialogRequest, oneshot::Sender<DialogResponse>)>,
+    /// Pending requests that couldn't be enqueued due to lock contention
+    pending_requests: Vec<(DialogRequest, oneshot::Sender<DialogResponse>)>,
     /// Whether we should close after completing current dialog
     close_on_complete: bool,
     /// Theme colors
     theme: Theme,
     /// Whether toast sidebar is expanded
     sidebar_expanded: bool,
+    /// Whether settings panel is expanded
+    settings_expanded: bool,
 }
 
 struct Theme {
@@ -84,9 +99,11 @@ impl DialogApp {
         Self {
             manager,
             dialog_rx,
+            pending_requests: Vec::new(),
             close_on_complete: false,
             theme: Theme::default(),
             sidebar_expanded: false,
+            settings_expanded: false,
         }
     }
 
@@ -124,6 +141,7 @@ impl DialogApp {
 impl eframe::App for DialogApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Check for new dialog requests (using sync channel)
+        // Use try_write() to avoid blocking if web server holds the lock
         while let Ok((request, response_tx)) = self.dialog_rx.try_recv() {
             info!("Received dialog request: {}", request.id);
             
@@ -133,10 +151,42 @@ impl eframe::App for DialogApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
                     egui::UserAttentionType::Critical
                 ));
+                // Flash the window more aggressively on KDE/Wayland
+                #[cfg(target_os = "linux")]
+                {
+                    // Request focus multiple times to ensure it works
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
             }
             
-            let mut manager = self.manager.blocking_write();
-            manager.enqueue(request, response_tx);
+            // Try to acquire lock without blocking - if lock is held, retry next frame
+            match self.manager.try_write() {
+                Ok(mut manager) => {
+                    manager.enqueue(request, response_tx);
+                }
+                Err(_) => {
+                    // Lock contention - put request back and retry next frame
+                    // This prevents GUI from blocking on web server operations
+                    warn!("Lock contention on dialog enqueue, will retry");
+                    // Re-queue using a pending buffer
+                    self.pending_requests.push((request, response_tx));
+                    ctx.request_repaint();
+                    break; // Stop processing more requests this frame
+                }
+            }
+        }
+        
+        // Process any pending requests from lock contention
+        if !self.pending_requests.is_empty() {
+            if let Ok(mut manager) = self.manager.try_write() {
+                for (request, response_tx) in self.pending_requests.drain(..) {
+                    info!("Processing delayed request: {}", request.id);
+                    manager.enqueue(request, response_tx);
+                }
+            } else {
+                // Still contended, try again next frame
+                ctx.request_repaint();
+            }
         }
 
         // Check for timeouts
@@ -145,7 +195,13 @@ impl eframe::App for DialogApp {
             manager.check_timeouts();
         }
 
-        // Set up custom styling
+        // Get settings state for styling
+        let (hold_mode, font_scale) = {
+            let manager = self.manager.blocking_read();
+            (manager.settings.hold_mode, manager.settings.font_scale)
+        };
+
+        // Set up custom styling - WITHOUT font scaling (scaling applied only to content)
         let mut style = (*ctx.style()).clone();
         style.visuals.dark_mode = true;
         style.visuals.override_text_color = Some(self.theme.fg_primary);
@@ -154,7 +210,11 @@ impl eframe::App for DialogApp {
         style.visuals.widgets.hovered.bg_fill = self.theme.accent;
         style.visuals.widgets.active.bg_fill = self.theme.accent_hover;
         style.visuals.selection.bg_fill = self.theme.accent.linear_multiply(0.5);
+        // NOTE: Font scaling is now applied ONLY to dialog content, not UI chrome
         ctx.set_style(style);
+
+        // Render the global toolbar at the top (at normal size)
+        self.render_toolbar(ctx, hold_mode, font_scale);
 
         // Render the active dialog
         let mut manager = self.manager.blocking_write();
@@ -192,11 +252,45 @@ impl eframe::App for DialogApp {
         }
 
         // We have an active dialog - render it
+        let global_hold_mode = manager.settings.hold_mode;
+        let content_font_scale = manager.settings.font_scale;
+        
+        // Get queue info for the bottom bar (extract before dropping lock for render_queue_bar)
+        let queue_items: Vec<QueueItemDisplay> = manager.queue_display_info()
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (id, title, type_label))| QueueItemDisplay {
+                id,
+                title,
+                type_label,
+                index: idx,
+            })
+            .collect();
+        let active_title = manager.active.as_ref().map(|a| a.request.title.clone()).unwrap_or_default();
+        
+        // Drop manager temporarily to allow render_queue_bar to access self
+        drop(manager);
+        
+        // Render the queue bar if there are queued items
+        let switch_to = if !queue_items.is_empty() {
+            self.render_queue_bar(ctx, &active_title, &queue_items)
+        } else {
+            None
+        };
+        
+        // Re-acquire manager for the rest of operations
+        let mut manager = self.manager.blocking_write();
+        
+        // Handle queue switch
+        if let Some(idx) = switch_to {
+            manager.switch_to_queued(idx);
+        }
+        
         let should_complete = egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(self.theme.bg_primary).inner_margin(20.0))
             .show(ctx, |ui| {
                 let active = manager.active.as_mut().unwrap();
-                self.render_dialog(ui, active)
+                self.render_dialog(ui, active, global_hold_mode, content_font_scale)
             })
             .inner;
 
@@ -228,6 +322,255 @@ impl eframe::App for DialogApp {
 }
 
 impl DialogApp {
+    /// Render the global toolbar with Hold Mode toggle and settings
+    fn render_toolbar(&mut self, ctx: &egui::Context, hold_mode: bool, font_scale: f32) {
+        egui::TopBottomPanel::top("toolbar")
+            .frame(egui::Frame::none()
+                .fill(if hold_mode { 
+                    Color32::from_rgb(22, 78, 99)  // cyan-900 when hold mode active
+                } else { 
+                    self.theme.bg_secondary 
+                })
+                .inner_margin(egui::Margin::symmetric(12.0, 6.0)))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    // Hold Mode Toggle - the main feature!
+                    let hold_btn_text = if hold_mode {
+                        "🔒 HOLD MODE ON"
+                    } else {
+                        "🔓 Hold Mode"
+                    };
+                    let hold_btn_color = if hold_mode {
+                        Color32::from_rgb(34, 211, 238)  // cyan-400
+                    } else {
+                        self.theme.fg_secondary
+                    };
+                    
+                    if ui.add(
+                        egui::Button::new(RichText::new(hold_btn_text).size(13.0).color(hold_btn_color).strong())
+                            .fill(if hold_mode {
+                                Color32::from_rgb(8, 145, 178)  // cyan-600
+                            } else {
+                                self.theme.bg_primary
+                            })
+                            .stroke(Stroke::new(1.0, if hold_mode { hold_btn_color } else { self.theme.border }))
+                            .rounding(Rounding::same(4.0))
+                    ).on_hover_text("When ON, dialogs wait indefinitely until you respond (no timeout)")
+                    .clicked() {
+                        let mut manager = self.manager.blocking_write();
+                        let was_hold_mode = manager.settings.hold_mode;
+                        manager.toggle_hold_mode();
+                        
+                        if manager.settings.hold_mode {
+                            // Entering hold mode - pause current dialog
+                            if let Some(ref mut active) = manager.active {
+                                if !active.is_paused() {
+                                    active.toggle_pause();
+                                }
+                            }
+                        } else if was_hold_mode {
+                            // Leaving hold mode - resume current dialog if it was auto-paused
+                            if let Some(ref mut active) = manager.active {
+                                if active.is_paused() {
+                                    active.toggle_pause();
+                                }
+                            }
+                        }
+                    }
+                    
+                    if hold_mode {
+                        ui.add_space(8.0);
+                        ui.label(
+                            RichText::new("Dialogs won't timeout")
+                                .size(11.0)
+                                .color(Color32::from_rgb(165, 243, 252))  // cyan-200
+                                .italics()
+                        );
+                    }
+                    
+                    // Right-aligned settings
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        // Settings gear button
+                        if ui.add(
+                            egui::Button::new(RichText::new("⚙").size(14.0))
+                                .fill(Color32::TRANSPARENT)
+                                .frame(false)
+                        ).on_hover_text("Settings (font size, sounds, etc.)")
+                        .clicked() {
+                            self.settings_expanded = !self.settings_expanded;
+                        }
+                        
+                        // Font scale indicator
+                        if font_scale != 1.0 {
+                            ui.label(
+                                RichText::new(format!("{}%", (font_scale * 100.0) as i32))
+                                    .size(10.0)
+                                    .color(self.theme.fg_secondary)
+                            );
+                        }
+                    });
+                });
+            });
+        
+        // Settings panel (collapsible)
+        if self.settings_expanded {
+            self.render_settings_panel(ctx, font_scale);
+        }
+    }
+    
+    /// Render the settings panel
+    fn render_settings_panel(&mut self, ctx: &egui::Context, current_scale: f32) {
+        egui::TopBottomPanel::top("settings_panel")
+            .frame(egui::Frame::none()
+                .fill(self.theme.bg_primary)
+                .stroke(Stroke::new(1.0, self.theme.border))
+                .inner_margin(12.0))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Settings").size(14.0).strong());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.add(
+                            egui::Button::new(RichText::new("×").size(14.0))
+                                .fill(Color32::TRANSPARENT)
+                                .frame(false)
+                        ).clicked() {
+                            self.settings_expanded = false;
+                        }
+                    });
+                });
+                ui.separator();
+                ui.add_space(4.0);
+                
+                // Font scale slider - conservative range, affects dialog content only
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Content Font:").size(12.0));
+                    ui.add_space(8.0);
+                    
+                    let mut scale = current_scale;
+                    if ui.add(
+                        egui::Slider::new(&mut scale, 0.85..=1.35)
+                            .step_by(0.05)
+                            .show_value(false)
+                    ).changed() {
+                        let mut manager = self.manager.blocking_write();
+                        manager.settings.font_scale = scale;
+                    }
+                    
+                    ui.label(RichText::new(format!("{}%", (current_scale * 100.0) as i32)).size(11.0));
+                    
+                    // Reset button - always visible and accessible
+                    if current_scale != 1.0 {
+                        if ui.add(
+                            egui::Button::new(RichText::new("Reset").size(10.0).color(self.theme.danger))
+                                .fill(self.theme.bg_secondary)
+                                .min_size(Vec2::new(40.0, 20.0))
+                        ).clicked() {
+                            let mut manager = self.manager.blocking_write();
+                            manager.settings.font_scale = 1.0;
+                        }
+                        ui.add_space(4.0);
+                    }
+                    
+                    // Quick presets
+                    for (label, value) in [("S", 0.9), ("M", 1.0), ("L", 1.15), ("XL", 1.25)] {
+                        if ui.add(
+                            egui::Button::new(RichText::new(label).size(10.0))
+                                .fill(if (current_scale - value as f32).abs() < 0.02 {
+                                    self.theme.accent
+                                } else {
+                                    self.theme.bg_secondary
+                                })
+                                .min_size(Vec2::new(24.0, 20.0))
+                        ).clicked() {
+                            let mut manager = self.manager.blocking_write();
+                            manager.settings.font_scale = value as f32;
+                        }
+                    }
+                });
+                
+                ui.add_space(4.0);
+                
+                // Sound toggle
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Sounds:").size(12.0));
+                    let mut sounds = {
+                        let manager = self.manager.blocking_read();
+                        manager.settings.sounds_enabled
+                    };
+                    if ui.checkbox(&mut sounds, "").changed() {
+                        let mut manager = self.manager.blocking_write();
+                        manager.settings.sounds_enabled = sounds;
+                    }
+                    ui.label(RichText::new(if sounds { "On" } else { "Off" }).size(11.0).color(self.theme.fg_secondary));
+                });
+            });
+    }
+
+    /// Render the queue tab bar at the bottom when there are queued dialogs
+    /// Returns the index of a queued dialog to switch to, if clicked
+    fn render_queue_bar(&mut self, ctx: &egui::Context, active_title: &str, queue: &[QueueItemDisplay]) -> Option<usize> {
+        let mut switch_to: Option<usize> = None;
+        
+        egui::TopBottomPanel::bottom("queue_bar")
+            .frame(egui::Frame::none()
+                .fill(self.theme.bg_secondary)
+                .stroke(Stroke::new(1.0, self.theme.border))
+                .inner_margin(egui::Margin::symmetric(8.0, 4.0)))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    // Active dialog indicator (always first "tab")
+                    ui.add(
+                        egui::Button::new(
+                            RichText::new(format!("▶ {}", truncate_str(active_title, 20)))
+                                .size(11.0)
+                                .color(Color32::WHITE)
+                                .strong()
+                        )
+                            .fill(self.theme.accent)
+                            .stroke(Stroke::new(1.0, self.theme.accent))
+                            .rounding(Rounding::same(4.0))
+                    ).on_hover_text("Currently active dialog");
+                    
+                    ui.add_space(4.0);
+                    ui.label(RichText::new("|").size(12.0).color(self.theme.border));
+                    ui.add_space(4.0);
+                    
+                    // Queued dialog tabs
+                    ui.label(
+                        RichText::new(format!("{} waiting:", queue.len()))
+                            .size(10.0)
+                            .color(self.theme.fg_secondary)
+                    );
+                    ui.add_space(4.0);
+                    
+                    // Horizontal scroll area for many queue items
+                    egui::ScrollArea::horizontal()
+                        .id_salt("queue_scroll")
+                        .show(ui, |ui| {
+                            for item in queue {
+                                let btn_text = format!("{} · {}", item.type_label, truncate_str(&item.title, 15));
+                                if ui.add(
+                                    egui::Button::new(
+                                        RichText::new(&btn_text)
+                                            .size(10.0)
+                                            .color(self.theme.fg_secondary)
+                                    )
+                                        .fill(self.theme.bg_primary)
+                                        .stroke(Stroke::new(1.0, self.theme.border))
+                                        .rounding(Rounding::same(4.0))
+                                ).on_hover_text(format!("Click to switch to: {}", item.title))
+                                .clicked() {
+                                    switch_to = Some(item.index);
+                                }
+                                ui.add_space(2.0);
+                            }
+                        });
+                });
+            });
+        
+        switch_to
+    }
+
     /// Render toast notifications and sidebar (with extracted data to avoid borrow conflicts)
     fn render_toasts_and_sidebar(&mut self, ctx: &egui::Context, toasts: &[ToastDisplay], history: &[ToastHistoryEntry], unread: usize) {
         // Play sounds for new toasts
@@ -240,6 +583,7 @@ impl DialogApp {
         }
 
         // Render sidebar toggle button (only when sidebar is closed)
+        // Position below the toolbar (toolbar is ~40px tall)
         if !self.sidebar_expanded {
             let button_text = if unread > 0 {
                 format!("🔔 {}", unread)
@@ -248,7 +592,7 @@ impl DialogApp {
             };
             
             egui::Area::new(egui::Id::new("sidebar_toggle"))
-                .fixed_pos(egui::pos2(ctx.screen_rect().right() - 40.0, 10.0))
+                .fixed_pos(egui::pos2(ctx.screen_rect().right() - 50.0, 50.0))  // Moved down to avoid toolbar overlap
                 .order(egui::Order::Foreground)
                 .show(ctx, |ui| {
                     if ui.add(
@@ -484,28 +828,57 @@ impl DialogApp {
             });
     }
 
-    fn render_dialog(&self, ui: &mut egui::Ui, active: &mut ActiveDialog) -> Option<serde_json::Value> {
+    fn render_dialog(&self, ui: &mut egui::Ui, active: &mut ActiveDialog, global_hold_mode: bool, font_scale: f32) -> Option<serde_json::Value> {
+        // global_hold_mode and font_scale are passed in from the parent to avoid deadlock
+        
+        // Helper to scale font sizes for content
+        let scaled = |base_size: f32| base_size * font_scale;
+
         // Title
         ui.add_space(8.0);
         ui.label(
             RichText::new(&active.request.title)
-                .size(20.0)
+                .size(scaled(20.0))
                 .color(self.theme.fg_primary)
                 .strong(),
         );
         ui.add_space(12.0);
 
         // Prompt (process escape sequences for multi-line support)
+        // Wrap in a ScrollArea for long prompts
         let prompt_text = process_escape_sequences(&active.request.prompt);
-        ui.label(
-            RichText::new(&prompt_text)
-                .size(14.0)
-                .color(self.theme.fg_secondary),
-        );
+        let max_prompt_height = 150.0 * font_scale;
+        
+        egui::ScrollArea::vertical()
+            .id_salt("prompt_scroll")
+            .max_height(max_prompt_height)
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(&prompt_text)
+                        .size(scaled(14.0))
+                        .color(self.theme.fg_secondary),
+                );
+            });
         ui.add_space(16.0);
 
-        // Timeout indicator with pause button
-        if let Some(ratio) = active.time_remaining_ratio() {
+        // Timeout indicator with pause button (or hold mode indicator)
+        if global_hold_mode {
+            // Show hold mode indicator instead of timeout bar
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new("🔒")
+                        .size(14.0)
+                );
+                ui.label(
+                    RichText::new("Hold Mode Active - No timeout")
+                        .size(11.0)
+                        .color(Color32::from_rgb(34, 211, 238))  // cyan-400
+                        .italics()
+                );
+            });
+            ui.add_space(8.0);
+        } else if let Some(ratio) = active.time_remaining_ratio() {
             ui.horizontal(|ui| {
                 // Pause/Resume button
                 let pause_text = if active.is_paused() { "▶ Resume" } else { "⏸ Pause" };
@@ -598,33 +971,40 @@ impl DialogApp {
         // (not for progress dialogs and toasts)
         if !matches!(dialog_type, DialogType::Progress { .. } | DialogType::Toast { .. }) && selection.is_none() {
             ui.add_space(12.0);
-            self.render_comment_field(ui, active);
+            self.render_comment_field(ui, active, global_hold_mode, font_scale);
         }
 
         selection
     }
 
     /// Render the collapsible comment field
-    fn render_comment_field(&self, ui: &mut egui::Ui, active: &mut ActiveDialog) {
+    fn render_comment_field(&self, ui: &mut egui::Ui, active: &mut ActiveDialog, global_hold_mode: bool, font_scale: f32) {
+        let scaled = |base_size: f32| base_size * font_scale;
         let header_text = if active.state.comment_expanded {
             "▼ Add comment (optional)"
         } else {
             "▶ Add comment (optional)"
         };
 
-        // Collapsible header
+        // Collapsible header - make it more visible
+        let header_color = if active.state.comment_expanded || !active.state.comment.is_empty() {
+            self.theme.accent
+        } else {
+            self.theme.fg_secondary
+        };
+        
         if ui.add(
             egui::Button::new(
                 RichText::new(header_text)
-                    .size(11.0)
-                    .color(self.theme.fg_secondary)
+                    .size(12.0)
+                    .color(header_color)
             )
             .fill(Color32::TRANSPARENT)
             .frame(false)
         ).clicked() {
             active.state.comment_expanded = !active.state.comment_expanded;
-            // Auto-pause timer when expanding comment
-            if active.state.comment_expanded && !active.is_paused() {
+            // Auto-pause timer when expanding comment (unless global hold mode is on)
+            if active.state.comment_expanded && !active.is_paused() && !global_hold_mode {
                 active.toggle_pause();
             }
         }
@@ -632,17 +1012,30 @@ impl DialogApp {
         if active.state.comment_expanded {
             ui.add_space(4.0);
             
-            // Comment text area
+            // Comment text area - with scroll for long comments
             let comment = &mut active.state.comment;
-            let text_edit = egui::TextEdit::multiline(comment)
-                .hint_text("Add context, clarification, or nuance that the options don't capture...")
-                .desired_rows(3)
-                .desired_width(f32::INFINITY)
-                .font(egui::TextStyle::Small);
             
-            ui.add(text_edit);
+            egui::Frame::none()
+                .fill(self.theme.bg_secondary)
+                .rounding(Rounding::same(4.0))
+                .inner_margin(8.0)
+                .show(ui, |ui| {
+                    let text_edit = egui::TextEdit::multiline(comment)
+                        .hint_text("Add context, clarification, or nuance that the options don't capture...")
+                        .desired_rows(4)
+                        .desired_width(f32::INFINITY)
+                        .font(egui::TextStyle::Body);  // Use body font for readability
+                    
+                    egui::ScrollArea::vertical()
+                        .id_salt("comment_scroll")
+                        .max_height(120.0)
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            ui.add(text_edit);
+                        });
+                });
 
-            // Character count
+            // Character count and clear button
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new(format!("{} chars", comment.len()))
@@ -652,14 +1045,30 @@ impl DialogApp {
                 
                 // Clear button if has content
                 if !comment.is_empty() {
+                    ui.add_space(8.0);
                     if ui.add(
                         egui::Button::new(RichText::new("Clear").size(10.0))
-                            .fill(Color32::TRANSPARENT)
+                            .fill(self.theme.bg_secondary)
+                            .rounding(Rounding::same(2.0))
                     ).clicked() {
                         comment.clear();
                     }
                 }
             });
+        } else if !active.state.comment.is_empty() {
+            // Show preview of existing comment when collapsed
+            ui.add_space(2.0);
+            let preview = if active.state.comment.len() > 50 {
+                format!("{}...", &active.state.comment[..50])
+            } else {
+                active.state.comment.clone()
+            };
+            ui.label(
+                RichText::new(format!("\"{}\"", preview))
+                    .size(10.0)
+                    .color(self.theme.fg_secondary)
+                    .italics()
+            );
         }
     }
 
@@ -674,57 +1083,74 @@ impl DialogApp {
             return None;
         };
 
-        for option in options {
-            let is_selected = selected.contains(&option.value);
-            
-            let response = ui.add(
-                egui::Button::new(
-                    RichText::new(format!(
-                        "{} {}",
-                        if is_selected { "●" } else { "○" },
-                        &option.label
-                    ))
-                    .size(14.0),
-                )
-                .fill(if is_selected {
-                    self.theme.accent.linear_multiply(0.3)
-                } else {
-                    self.theme.bg_secondary
-                })
-                .stroke(Stroke::new(
-                    1.0,
-                    if is_selected {
-                        self.theme.accent
-                    } else {
-                        self.theme.border
-                    },
-                ))
-                .rounding(Rounding::same(6.0))
-                .min_size(Vec2::new(ui.available_width(), 40.0)),
-            );
-
-            if let Some(desc) = &option.description {
-                ui.indent("desc", |ui| {
-                    ui.label(
-                        RichText::new(desc)
-                            .size(12.0)
-                            .color(self.theme.fg_secondary),
+        // Wrap options in a scroll area for long lists
+        let max_options_height = 300.0;
+        let needs_scroll = options.len() > 5;  // Rough heuristic
+        
+        let mut clicked_option: Option<String> = None;
+        
+        egui::ScrollArea::vertical()
+            .id_salt("options_scroll")
+            .max_height(max_options_height)
+            .auto_shrink([false, !needs_scroll])
+            .show(ui, |ui| {
+                for option in options {
+                    let is_selected = selected.contains(&option.value);
+                    
+                    let response = ui.add(
+                        egui::Button::new(
+                            RichText::new(format!(
+                                "{} {}",
+                                if is_selected { "●" } else { "○" },
+                                &option.label
+                            ))
+                            .size(14.0),
+                        )
+                        .fill(if is_selected {
+                            self.theme.accent.linear_multiply(0.3)
+                        } else {
+                            self.theme.bg_secondary
+                        })
+                        .stroke(Stroke::new(
+                            1.0,
+                            if is_selected {
+                                self.theme.accent
+                            } else {
+                                self.theme.border
+                            },
+                        ))
+                        .rounding(Rounding::same(6.0))
+                        .min_size(Vec2::new(ui.available_width(), 40.0)),
                     );
-                });
-            }
 
-            ui.add_space(4.0);
-
-            if response.clicked() {
-                if allow_multiple {
-                    if is_selected {
-                        selected.retain(|s| s != &option.value);
-                    } else {
-                        selected.push(option.value.clone());
+                    if let Some(desc) = &option.description {
+                        ui.indent("desc", |ui| {
+                            ui.label(
+                                RichText::new(desc)
+                                    .size(12.0)
+                                    .color(self.theme.fg_secondary),
+                            );
+                        });
                     }
-                } else {
-                    *selected = vec![option.value.clone()];
+
+                    ui.add_space(4.0);
+
+                    if response.clicked() {
+                        clicked_option = Some(option.value.clone());
+                    }
                 }
+            });
+        
+        // Process clicked option outside the closure to avoid borrow issues
+        if let Some(value) = clicked_option {
+            if allow_multiple {
+                if selected.contains(&value) {
+                    selected.retain(|s| s != &value);
+                } else {
+                    selected.push(value);
+                }
+            } else {
+                *selected = vec![value];
             }
         }
 
@@ -1065,6 +1491,15 @@ fn process_escape_sequences(input: &str) -> String {
     result
 }
 
+/// Truncate a string to a maximum length, adding "..." if truncated
+fn truncate_str(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}…", &s[..max_len.saturating_sub(1)])
+    }
+}
+
 /// Run the GUI application (synchronous version for main thread)
 pub fn run_gui_sync(
     manager: Arc<RwLock<DialogManager>>,
@@ -1072,12 +1507,13 @@ pub fn run_gui_sync(
 ) -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([420.0, 320.0])
-            .with_min_inner_size([320.0, 200.0])
+            .with_inner_size([550.0, 480.0])    // Larger default for readability
+            .with_min_inner_size([400.0, 300.0])  // Larger minimum
             .with_title("Cursor Dialog")
             .with_decorations(true)
             .with_transparent(false)
-            .with_always_on_top(),
+            .with_always_on_top()
+            .with_active(true),  // Start with focus
         ..Default::default()
     };
 
