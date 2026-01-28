@@ -1,0 +1,534 @@
+#!/usr/bin/env bash
+# android-studio-harness - AI Interaction Harness for Android Studio
+# Similar to godot-harness - lightweight CLI for AI agents to interact with Android Studio
+#
+# Usage:
+#   android-studio-harness start                  - Launch Android Studio
+#   android-studio-harness screenshot [file]      - Capture Android Studio window
+#   android-studio-harness send-keys <keys>       - Send keystrokes to Android Studio
+#   android-studio-harness click <x> <y>          - Click at position
+#   android-studio-harness menu <path>            - Navigate menu (e.g., "File>New>Project")
+#   android-studio-harness status                 - Check if Android Studio is running
+#   android-studio-harness projects               - List recent projects
+#   android-studio-harness focus                  - Bring Android Studio to foreground
+#   android-studio-harness close                  - Close Android Studio
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ANDROID_STUDIO_DIR="$SCRIPT_DIR/android-studio"
+LAUNCHER="$SCRIPT_DIR/android-studio-nixos"
+
+# Colors for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+json_output() {
+    echo "$1" | jq -c '.' 2>/dev/null || echo "$1"
+}
+
+usage() {
+    cat <<EOF
+android-studio-harness - AI Interaction CLI for Android Studio
+
+USAGE:
+    android-studio-harness <command> [options]
+
+COMMANDS:
+    start                   Launch Android Studio
+    stop                    Close Android Studio gracefully
+    kill                    Force kill Android Studio
+    screenshot [file]       Capture Android Studio window
+    send-keys <keys>        Send keystrokes (e.g., "ctrl+n", "Return")
+    type <text>             Type text slowly (for search dialogs, etc.)
+    click <x> <y>           Click at window-relative position
+    menu <path>             Navigate menu (e.g., "File>New>Project")
+    status                  Check if running and get window info
+    focus                   Bring Android Studio window to foreground
+    projects                List recent projects from IDE config
+    wait [seconds]          Wait for Android Studio to be ready
+
+KEYBOARD SHORTCUTS (via send-keys):
+    ctrl+shift+a            Action search (find any action)
+    ctrl+n                  Find class
+    ctrl+shift+n            Find file
+    ctrl+e                  Recent files
+    ctrl+shift+f12          Hide all tool windows
+    alt+1                   Project view
+    alt+Return              Quick fix / Show intention actions
+
+EXAMPLES:
+    android-studio-harness start
+    android-studio-harness wait 30
+    android-studio-harness screenshot /tmp/studio.png
+    android-studio-harness send-keys "ctrl+shift+a"
+    android-studio-harness type "new project"
+    android-studio-harness menu "File>New>New Project"
+
+ENVIRONMENT:
+    DISPLAY              X11 display (default: :0)
+    WAYLAND_DISPLAY      Wayland display (default: wayland-0)
+
+EOF
+    exit 0
+}
+
+# Find Android Studio window ID (X11)
+find_window_x11() {
+    xdotool search --name "Android Studio" 2>/dev/null | head -1
+}
+
+# Find Android Studio window ID (Wayland via xdg-desktop-portal)
+# Note: Direct window manipulation on Wayland is limited
+find_window_wayland() {
+    # On Wayland, we can use kdotool for KDE or limited xdotool via XWayland
+    if command -v kdotool &>/dev/null; then
+        kdotool search --name "Android Studio" 2>/dev/null | head -1
+    else
+        # Try xdotool (might work via XWayland)
+        xdotool search --name "Android Studio" 2>/dev/null | head -1
+    fi
+}
+
+# Detect display server
+get_display_server() {
+    if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+        echo "wayland"
+    else
+        echo "x11"
+    fi
+}
+
+# Find the Android Studio window
+find_window() {
+    local ds=$(get_display_server)
+    if [[ "$ds" == "wayland" ]]; then
+        find_window_wayland
+    else
+        find_window_x11
+    fi
+}
+
+# Check if Android Studio is running
+is_running() {
+    pgrep -f "studio.sh" >/dev/null 2>&1 || \
+    pgrep -f "Android Studio" >/dev/null 2>&1 || \
+    pgrep -f "AndroidStudio" >/dev/null 2>&1 || \
+    pgrep -f "idea.platform.prefix=AndroidStudio" >/dev/null 2>&1
+}
+
+cmd_start() {
+    if is_running; then
+        log_warn "Android Studio is already running"
+        json_output '{"success":true,"message":"already_running"}'
+        return 0
+    fi
+    
+    log_info "Starting Android Studio..."
+    
+    # Start in background
+    nohup "$LAUNCHER" >/tmp/android-studio.log 2>&1 &
+    local pid=$!
+    
+    log_success "Android Studio starting (PID: $pid)"
+    json_output "{\"success\":true,\"pid\":$pid,\"log\":\"/tmp/android-studio.log\"}"
+}
+
+cmd_stop() {
+    if ! is_running; then
+        log_warn "Android Studio is not running"
+        json_output '{"success":true,"message":"not_running"}'
+        return 0
+    fi
+    
+    log_info "Sending quit signal to Android Studio..."
+    
+    # Try graceful shutdown via SIGTERM
+    pkill -TERM -f "studio.sh" || true
+    
+    # Wait a bit
+    sleep 2
+    
+    if is_running; then
+        log_warn "Android Studio still running, may need force kill"
+        json_output '{"success":false,"message":"still_running"}'
+    else
+        log_success "Android Studio closed"
+        json_output '{"success":true,"closed":true}'
+    fi
+}
+
+cmd_kill() {
+    log_info "Force killing Android Studio..."
+    pkill -9 -f "studio.sh" || true
+    pkill -9 -f "Android Studio" || true
+    pkill -9 -f "idea" || true
+    
+    sleep 1
+    
+    if is_running; then
+        log_error "Failed to kill Android Studio"
+        json_output '{"success":false,"error":"kill_failed"}'
+    else
+        log_success "Android Studio killed"
+        json_output '{"success":true,"killed":true}'
+    fi
+}
+
+cmd_screenshot() {
+    local output="${1:-/tmp/android-studio_$(date +%Y%m%d_%H%M%S).png}"
+    local ds=$(get_display_server)
+    
+    if ! is_running; then
+        log_error "Android Studio is not running"
+        json_output '{"success":false,"error":"not_running"}'
+        exit 1
+    fi
+    
+    log_info "Capturing screenshot..."
+    
+    if [[ "$ds" == "wayland" ]]; then
+        # Wayland - try spectacle for KDE
+        if command -v spectacle &>/dev/null; then
+            # Try to capture active window
+            spectacle -a -b -n -o "$output" 2>/dev/null || \
+            # Fall back to full screen
+            spectacle -f -b -n -o "$output"
+        elif command -v grim &>/dev/null; then
+            grim "$output"
+        else
+            log_error "No suitable screenshot tool for Wayland"
+            json_output '{"success":false,"error":"no_screenshot_tool"}'
+            exit 1
+        fi
+    else
+        # X11 - use import or scrot
+        local wid=$(find_window)
+        if [[ -n "$wid" ]] && command -v import &>/dev/null; then
+            import -window "$wid" "$output"
+        elif command -v scrot &>/dev/null; then
+            scrot -u "$output"
+        else
+            log_error "No screenshot tool available"
+            json_output '{"success":false,"error":"no_screenshot_tool"}'
+            exit 1
+        fi
+    fi
+    
+    if [[ -f "$output" ]]; then
+        local size=$(stat -c%s "$output" 2>/dev/null || stat -f%z "$output" 2>/dev/null)
+        log_success "Screenshot saved: $output"
+        json_output "{\"success\":true,\"path\":\"$output\",\"size\":$size,\"display\":\"$ds\"}"
+    else
+        log_error "Screenshot failed"
+        json_output '{"success":false,"error":"screenshot_failed"}'
+        exit 1
+    fi
+}
+
+cmd_send_keys() {
+    local keys="$1"
+    
+    if ! is_running; then
+        log_error "Android Studio is not running"
+        json_output '{"success":false,"error":"not_running"}'
+        exit 1
+    fi
+    
+    log_info "Sending keys: $keys"
+    
+    # Focus Android Studio first
+    cmd_focus >/dev/null 2>&1 || true
+    sleep 0.2
+    
+    if command -v xdotool &>/dev/null; then
+        xdotool key --clearmodifiers "$keys"
+        log_success "Sent keys: $keys"
+        json_output "{\"success\":true,\"keys\":\"$keys\"}"
+    else
+        log_error "xdotool not available"
+        json_output '{"success":false,"error":"xdotool_not_found"}'
+        exit 1
+    fi
+}
+
+cmd_type() {
+    local text="$1"
+    
+    if ! is_running; then
+        log_error "Android Studio is not running"
+        json_output '{"success":false,"error":"not_running"}'
+        exit 1
+    fi
+    
+    log_info "Typing: $text"
+    
+    # Focus first
+    cmd_focus >/dev/null 2>&1 || true
+    sleep 0.2
+    
+    if command -v xdotool &>/dev/null; then
+        xdotool type --clearmodifiers --delay 50 "$text"
+        log_success "Typed text"
+        json_output "{\"success\":true,\"typed\":\"$text\"}"
+    else
+        log_error "xdotool not available"
+        json_output '{"success":false,"error":"xdotool_not_found"}'
+        exit 1
+    fi
+}
+
+cmd_click() {
+    local x="$1"
+    local y="$2"
+    
+    if ! is_running; then
+        log_error "Android Studio is not running"
+        json_output '{"success":false,"error":"not_running"}'
+        exit 1
+    fi
+    
+    log_info "Clicking at ($x, $y)..."
+    
+    # Focus first
+    cmd_focus >/dev/null 2>&1 || true
+    sleep 0.2
+    
+    local ds=$(get_display_server)
+    
+    if [[ "$ds" == "wayland" ]]; then
+        # On Wayland, use ydotool for mouse control
+        if command -v ydotool &>/dev/null; then
+            # Set socket path
+            export YDOTOOL_SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+            
+            # Get window geometry from kdotool to calculate absolute screen position
+            local wid=$(find_window)
+            if [[ -n "$wid" ]]; then
+                # Note: kdotool doesn't expose window geometry directly
+                # For now, assume the window is maximized on the top-left monitor
+                # We'll need the user to provide monitor offset if needed
+                # Move to absolute position and click
+                ydotool mousemove --absolute -x "$x" -y "$y"
+                sleep 0.1
+                ydotool click 0xC0  # 0xC0 = left click
+                log_success "Clicked at ($x, $y) (ydotool absolute)"
+                json_output "{\"success\":true,\"x\":$x,\"y\":$y,\"method\":\"ydotool\"}"
+            else
+                log_error "Window not found"
+                json_output '{"success":false,"error":"window_not_found"}'
+                exit 1
+            fi
+        else
+            log_error "ydotool not available for Wayland mouse control"
+            json_output '{"success":false,"error":"ydotool_unavailable","hint":"On Wayland, coordinate-based clicking requires ydotool"}'
+            exit 1
+        fi
+    else
+        # X11 - use xdotool
+        local wid=$(find_window)
+        if [[ -n "$wid" ]] && command -v xdotool &>/dev/null; then
+            xdotool mousemove --window "$wid" "$x" "$y" click 1
+            log_success "Clicked at ($x, $y)"
+            json_output "{\"success\":true,\"x\":$x,\"y\":$y}"
+        else
+            log_error "Cannot click - window not found or xdotool unavailable"
+            json_output '{"success":false,"error":"click_failed"}'
+            exit 1
+        fi
+    fi
+}
+
+cmd_menu() {
+    local menu_path="$1"
+    
+    log_info "Navigating menu: $menu_path"
+    
+    # Use keyboard shortcuts for common menus
+    case "$menu_path" in
+        "File>New>New Project"|"File>New>Project")
+            cmd_send_keys "alt+f"
+            sleep 0.3
+            cmd_send_keys "n"
+            sleep 0.3
+            cmd_send_keys "n"
+            ;;
+        "File>Open")
+            cmd_send_keys "ctrl+o"
+            ;;
+        "File>Settings"|"File>Preferences")
+            cmd_send_keys "ctrl+alt+s"
+            ;;
+        "Build>Make Project")
+            cmd_send_keys "ctrl+F9"
+            ;;
+        "Run>Run")
+            cmd_send_keys "shift+F10"
+            ;;
+        "Run>Debug")
+            cmd_send_keys "shift+F9"
+            ;;
+        *)
+            log_warn "Unknown menu path, trying action search..."
+            cmd_send_keys "ctrl+shift+a"
+            sleep 0.5
+            local action=$(echo "$menu_path" | tr '>' ' ' | awk '{print $NF}')
+            cmd_type "$action"
+            ;;
+    esac
+    
+    json_output "{\"success\":true,\"menu\":\"$menu_path\"}"
+}
+
+cmd_status() {
+    local running="false"
+    local pid=""
+    local window_id=""
+    local window_title=""
+    
+    if is_running; then
+        running="true"
+        pid=$(pgrep -f "studio.sh" | head -1 || echo "")
+        window_id=$(find_window || echo "")
+        if [[ -n "$window_id" ]] && command -v xdotool &>/dev/null; then
+            window_title=$(xdotool getwindowname "$window_id" 2>/dev/null || echo "")
+        fi
+    fi
+    
+    json_output "{\"success\":true,\"running\":$running,\"pid\":\"$pid\",\"window_id\":\"$window_id\",\"window_title\":\"$window_title\",\"display\":\"$(get_display_server)\"}"
+}
+
+cmd_focus() {
+    if ! is_running; then
+        log_error "Android Studio is not running"
+        json_output '{"success":false,"error":"not_running"}'
+        exit 1
+    fi
+    
+    local wid=$(find_window)
+    local ds=$(get_display_server)
+    
+    if [[ -z "$wid" ]]; then
+        log_error "Cannot focus - window not found"
+        json_output '{"success":false,"error":"window_not_found"}'
+        exit 1
+    fi
+    
+    if [[ "$ds" == "wayland" ]] && command -v kdotool &>/dev/null; then
+        kdotool windowactivate "$wid"
+        log_success "Focused Android Studio window (kdotool)"
+        json_output "{\"success\":true,\"focused\":true,\"method\":\"kdotool\",\"window_id\":\"$wid\"}"
+    elif command -v xdotool &>/dev/null; then
+        xdotool windowactivate "$wid"
+        log_success "Focused Android Studio window (xdotool)"
+        json_output "{\"success\":true,\"focused\":true,\"method\":\"xdotool\",\"window_id\":\"$wid\"}"
+    else
+        log_error "No window activation tool available"
+        json_output '{"success":false,"error":"no_tool"}'
+        exit 1
+    fi
+}
+
+cmd_projects() {
+    local config_dir="$HOME/.config/Google/AndroidStudio2025.2"
+    local recent_file="$config_dir/options/recentProjects.xml"
+    
+    if [[ ! -f "$recent_file" ]]; then
+        # Try alternate locations
+        recent_file=$(find "$HOME/.config" -name "recentProjects.xml" -path "*Android*" 2>/dev/null | head -1)
+    fi
+    
+    if [[ -f "$recent_file" ]]; then
+        # Extract project paths from XML
+        local projects=$(grep -oP 'key="\$USER_HOME\$/\K[^"]+' "$recent_file" 2>/dev/null | head -10)
+        json_output "{\"success\":true,\"config\":\"$config_dir\",\"projects\":[$(echo "$projects" | xargs -I{} echo '"{}",' | tr '\n' ' ' | sed 's/, $//' )]}"
+    else
+        json_output '{"success":true,"projects":[],"message":"no_recent_projects_file"}'
+    fi
+}
+
+cmd_wait() {
+    local timeout="${1:-60}"
+    local elapsed=0
+    
+    log_info "Waiting up to ${timeout}s for Android Studio to be ready..."
+    
+    while [[ $elapsed -lt $timeout ]]; do
+        if is_running; then
+            local wid=$(find_window)
+            if [[ -n "$wid" ]]; then
+                log_success "Android Studio is ready (window found)"
+                json_output "{\"success\":true,\"ready\":true,\"elapsed\":$elapsed}"
+                return 0
+            fi
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    
+    log_error "Timeout waiting for Android Studio"
+    json_output "{\"success\":false,\"error\":\"timeout\",\"elapsed\":$elapsed}"
+    exit 1
+}
+
+# Main dispatch
+case "${1:-help}" in
+    start)
+        cmd_start
+        ;;
+    stop)
+        cmd_stop
+        ;;
+    kill)
+        cmd_kill
+        ;;
+    screenshot)
+        shift
+        cmd_screenshot "${1:-}"
+        ;;
+    send-keys)
+        shift
+        cmd_send_keys "$1"
+        ;;
+    type)
+        shift
+        cmd_type "$1"
+        ;;
+    click)
+        shift
+        cmd_click "$1" "$2"
+        ;;
+    menu)
+        shift
+        cmd_menu "$1"
+        ;;
+    status)
+        cmd_status
+        ;;
+    focus)
+        cmd_focus
+        ;;
+    projects)
+        cmd_projects
+        ;;
+    wait)
+        shift
+        cmd_wait "${1:-60}"
+        ;;
+    help|--help|-h)
+        usage
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        usage
+        ;;
+esac
+

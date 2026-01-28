@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <title>Cursor Dialog</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --fg-primary: #f1f5f9;
+            --fg-secondary: #94a3b8;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --cyan: #22d3ee;
+            --border: #475569;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--fg-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        
+        .app {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px;
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: var(--bg-secondary);
+        }
+        
+        .status-badge.connected { background: var(--success); color: white; }
+        .status-badge.disconnected { background: var(--danger); color: white; }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.active { background: var(--success); }
+        .status-dot.inactive { background: var(--fg-secondary); animation: none; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Hold Mode Toggle */
+        .hold-mode {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .hold-mode.active {
+            background: #164e63;
+            border-color: var(--cyan);
+        }
+        
+        .hold-mode label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .toggle {
+            width: 50px;
+            height: 28px;
+            border-radius: 14px;
+            background: var(--bg-tertiary);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.2s;
+        }
+        
+        .toggle.on {
+            background: var(--cyan);
+        }
+        
+        .toggle.on::after {
+            transform: translateX(22px);
+        }
+        
+        /* Dialog Card */
+        .dialog-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        
+        .dialog-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .dialog-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .dialog-type {
+            font-size: 12px;
+            color: var(--fg-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .dialog-prompt {
+            padding: 16px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--fg-secondary);
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* Options */
+        .dialog-options {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .option-btn {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            color: var(--fg-primary);
+            text-align: left;
+            transition: all 0.2s;
+        }
+        
+        .option-btn:hover, .option-btn:focus {
+            border-color: var(--accent);
+            background: var(--bg-primary);
+        }
+        
+        .option-btn.selected {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.2);
+        }
+        
+        .option-label {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .option-desc {
+            font-size: 12px;
+            color: var(--fg-secondary);
+            margin-top: 4px;
+        }
+        
+        /* Confirmation buttons */
+        .confirm-buttons {
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .confirm-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .confirm-btn.yes {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .confirm-btn.yes:hover {
+            background: var(--accent-hover);
+        }
+        
+        .confirm-btn.no {
+            background: var(--bg-tertiary);
+            color: var(--fg-primary);
+        }
+        
+        .confirm-btn.no:hover {
+            background: var(--border);
+        }
+        
+        /* Text input */
+        .text-input {
+            width: 100%;
+            padding: 14px 16px;
+            margin: 16px;
+            margin-top: 0;
+            width: calc(100% - 32px);
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--fg-primary);
+            font-size: 15px;
+            resize: vertical;
+        }
+        
+        .text-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        /* Comment field */
+        .comment-section {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .comment-label {
+            font-size: 12px;
+            color: var(--fg-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .comment-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--fg-primary);
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        /* Submit button */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 16px;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .submit-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .submit-btn:disabled {
+            background: var(--bg-tertiary);
+            color: var(--fg-secondary);
+            cursor: not-allowed;
+        }
+        
+        /* Timer bar */
+        .timer-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            margin: 16px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .timer-progress {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.5s linear;
+        }
+        
+        .timer-progress.warning {
+            background: var(--warning);
+        }
+        
+        .timer-progress.danger {
+            background: var(--danger);
+        }
+        
+        /* Queue */
+        .queue-section {
+            margin-bottom: 16px;
+        }
+        
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .queue-title {
+            font-size: 14px;
+            color: var(--fg-secondary);
+        }
+        
+        .queue-count {
+            background: var(--accent);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+        }
+        
+        .queue-items {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        
+        .queue-item {
+            flex-shrink: 0;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .queue-item:hover {
+            border-color: var(--accent);
+        }
+        
+        .queue-item.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--fg-secondary);
+        }
+        
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-title {
+            font-size: 18px;
+            color: var(--fg-primary);
+            margin-bottom: 8px;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Notification permission banner */
+        .notification-banner {
+            padding: 12px 16px;
+            background: var(--warning);
+            color: black;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .notification-banner button {
+            padding: 8px 16px;
+            background: black;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        /* Dashboard styles */
+        .dashboard {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .dashboard-header {
+            margin-bottom: 24px;
+        }
+        
+        .dashboard-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+        }
+        
+        .dashboard-header h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .dashboard-subtitle {
+            color: var(--fg-secondary);
+            font-size: 14px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .status-item {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+        }
+        
+        .status-label {
+            display: block;
+            font-size: 11px;
+            color: var(--fg-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .status-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status-value.success { color: var(--success); }
+        .status-value.error { color: var(--danger); }
+        .status-value.warning { color: var(--warning); }
+        
+        .tips {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            margin-bottom: 16px;
+        }
+        
+        .tips h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        
+        .tips ul {
+            list-style: none;
+            font-size: 13px;
+            color: var(--fg-secondary);
+        }
+        
+        .tips li {
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tips li:last-child {
+            border-bottom: none;
+        }
+        
+        .test-notification-btn {
+            width: 100%;
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .test-notification-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .install-prompt {
+            background: var(--accent);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .install-prompt p {
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .install-prompt button {
+            padding: 10px 20px;
+            background: white;
+            color: var(--accent);
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <div class="loading">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        // PWA State
+        const state = {
+            connected: false,
+            holdMode: false,
+            activeDialog: null,
+            queue: [],
+            selectedOption: null,
+            comment: '',
+            textInput: '',
+        };
+
+        let ws = null;
+        let reconnectTimer = null;
+
+        // Elements
+        const app = document.getElementById('app');
+
+        // Render functions
+        function render() {
+            let html = `
+                <header class="header">
+                    <h1>🎯 Cursor Dialog</h1>
+                    <div class="status-badge ${state.connected ? 'connected' : 'disconnected'}">
+                        <span class="status-dot ${state.connected ? 'active' : 'inactive'}"></span>
+                        ${state.connected ? 'Connected' : 'Disconnected'}
+                    </div>
+                </header>
+            `;
+
+            // Notification permission banner
+            if ('Notification' in window && Notification.permission === 'default') {
+                html += `
+                    <div class="notification-banner">
+                        <span>Enable notifications for new dialogs</span>
+                        <button onclick="requestNotificationPermission()">Enable</button>
+                    </div>
+                `;
+            }
+
+            // Hold mode toggle
+            html += `
+                <div class="hold-mode ${state.holdMode ? 'active' : ''}">
+                    <label>🔒 Hold Mode</label>
+                    <button class="toggle ${state.holdMode ? 'on' : ''}" onclick="toggleHoldMode()"></button>
+                </div>
+            `;
+
+            // Queue section
+            if (state.queue.length > 0) {
+                html += `
+                    <div class="queue-section">
+                        <div class="queue-header">
+                            <span class="queue-title">Queue</span>
+                            <span class="queue-count">${state.queue.length} waiting</span>
+                        </div>
+                        <div class="queue-items">
+                            ${state.queue.map((item, i) => `
+                                <div class="queue-item" onclick="skipToDialog(${i})">
+                                    ${item.type} · ${truncate(item.title, 15)}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Active dialog or dashboard
+            if (state.activeDialog) {
+                html += renderDialog(state.activeDialog);
+            } else {
+                html += renderDashboard();
+            }
+
+            app.innerHTML = html;
+        }
+
+        function renderDashboard() {
+            const notifStatus = 'Notification' in window 
+                ? (Notification.permission === 'granted' ? '✅ Enabled' : '⚠️ ' + Notification.permission)
+                : '❌ Not supported';
+            
+            return `
+                <div class="dashboard">
+                    <div class="dashboard-header">
+                        <div class="dashboard-icon">🎯</div>
+                        <h2>Cursor Dialog Remote</h2>
+                        <p class="dashboard-subtitle">Waiting for agent requests...</p>
+                    </div>
+                    
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">Connection</span>
+                            <span class="status-value ${state.connected ? 'success' : 'error'}">
+                                ${state.connected ? '🟢 Connected' : '🔴 Disconnected'}
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Hold Mode</span>
+                            <span class="status-value ${state.holdMode ? 'warning' : ''}">
+                                ${state.holdMode ? '🔒 Active' : '🔓 Off'}
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Notifications</span>
+                            <span class="status-value">${notifStatus}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Queue</span>
+                            <span class="status-value">${state.queue.length} waiting</span>
+                        </div>
+                    </div>
+                    
+                    <div class="tips">
+                        <h3>💡 Tips</h3>
+                        <ul>
+                            <li>Enable <strong>Hold Mode</strong> to prevent timeouts</li>
+                            <li>Add to home screen for app-like experience</li>
+                            <li>Enable notifications to be alerted of new dialogs</li>
+                        </ul>
+                        <button class="test-notification-btn" onclick="testNotification()">
+                            🔔 Test Notification
+                        </button>
+                    </div>
+                    
+                    <div class="install-prompt" id="installPrompt" style="display: none;">
+                        <p>📲 Install this app for the best experience</p>
+                        <button onclick="installPWA()">Install App</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDialog(dialog) {
+            const dt = dialog.dialog_type;
+            let optionsHtml = '';
+            let actionsHtml = '';
+
+            if (dt.type === 'choice') {
+                optionsHtml = `
+                    <div class="dialog-options">
+                        ${dt.options.map(opt => `
+                            <button class="option-btn ${state.selectedOption === opt.value ? 'selected' : ''}"
+                                    onclick="selectOption('${opt.value}')">
+                                <div>
+                                    <div class="option-label">${opt.label}</div>
+                                    ${opt.description ? `<div class="option-desc">${opt.description}</div>` : ''}
+                                </div>
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                actionsHtml = `
+                    <button class="submit-btn" onclick="submitDialog()" ${!state.selectedOption ? 'disabled' : ''}>
+                        Submit Response
+                    </button>
+                `;
+            } else if (dt.type === 'confirm') {
+                actionsHtml = `
+                    <div class="confirm-buttons">
+                        <button class="confirm-btn no" onclick="submitConfirm(false)">${dt.no_label || 'No'}</button>
+                        <button class="confirm-btn yes" onclick="submitConfirm(true)">${dt.yes_label || 'Yes'}</button>
+                    </div>
+                `;
+            } else if (dt.type === 'text') {
+                optionsHtml = `
+                    <textarea class="text-input" 
+                              placeholder="${dt.placeholder || 'Enter your response...'}"
+                              ${dt.multiline ? 'rows="4"' : 'rows="1"'}
+                              oninput="state.textInput = this.value">${state.textInput}</textarea>
+                `;
+                actionsHtml = `
+                    <button class="submit-btn" onclick="submitText()" ${!state.textInput ? 'disabled' : ''}>
+                        Submit
+                    </button>
+                `;
+            }
+
+            // Timer bar
+            let timerHtml = '';
+            if (dialog.timeout_ms && !state.holdMode) {
+                const ratio = dialog.time_remaining_ratio || 1;
+                const timerClass = ratio < 0.3 ? 'danger' : ratio < 0.5 ? 'warning' : '';
+                timerHtml = `
+                    <div class="timer-bar">
+                        <div class="timer-progress ${timerClass}" style="width: ${ratio * 100}%"></div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="dialog-card">
+                    <div class="dialog-header">
+                        <div class="dialog-title">${dialog.title}</div>
+                        <div class="dialog-type">${dt.type} dialog</div>
+                    </div>
+                    ${timerHtml}
+                    <div class="dialog-prompt">${formatPrompt(dialog.prompt)}</div>
+                    ${optionsHtml}
+                    <div class="comment-section">
+                        <div class="comment-label">Add a comment (optional)</div>
+                        <textarea class="comment-input" 
+                                  placeholder="Your comment..."
+                                  oninput="state.comment = this.value">${state.comment}</textarea>
+                    </div>
+                    ${actionsHtml}
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function truncate(str, len) {
+            return str.length > len ? str.slice(0, len) + '…' : str;
+        }
+
+        function formatPrompt(text) {
+            return text.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+        }
+
+        // API functions
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                if (data.success) {
+                    state.holdMode = data.data.hold_mode;
+                }
+            } catch (e) {
+                console.error('Failed to fetch status:', e);
+            }
+        }
+
+        async function fetchCurrentDialog() {
+            try {
+                const res = await fetch('/api/current');
+                const data = await res.json();
+                if (data.success) {
+                    state.activeDialog = data.data;
+                    state.selectedOption = null;
+                    state.textInput = '';
+                    state.comment = '';
+                }
+            } catch (e) {
+                state.activeDialog = null;
+            }
+        }
+
+        async function fetchQueue() {
+            try {
+                const res = await fetch('/api/queue');
+                const data = await res.json();
+                if (data.success) {
+                    state.queue = data.data;
+                }
+            } catch (e) {
+                state.queue = [];
+            }
+        }
+
+        // Action handlers
+        function selectOption(value) {
+            state.selectedOption = value;
+            render();
+        }
+
+        async function submitDialog() {
+            if (!state.selectedOption || !state.activeDialog) return;
+
+            try {
+                const res = await fetch('/api/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: state.activeDialog.id,
+                        selection: state.selectedOption,
+                        comment: state.comment || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    state.selectedOption = null;
+                    state.comment = '';
+                    await refresh();
+                }
+            } catch (e) {
+                console.error('Failed to submit:', e);
+            }
+        }
+
+        async function submitConfirm(yes) {
+            if (!state.activeDialog) return;
+
+            try {
+                const res = await fetch('/api/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: state.activeDialog.id,
+                        selection: yes,
+                        comment: state.comment || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    state.comment = '';
+                    await refresh();
+                }
+            } catch (e) {
+                console.error('Failed to submit:', e);
+            }
+        }
+
+        async function submitText() {
+            if (!state.textInput || !state.activeDialog) return;
+
+            try {
+                const res = await fetch('/api/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: state.activeDialog.id,
+                        selection: state.textInput,
+                        comment: state.comment || null,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    state.textInput = '';
+                    state.comment = '';
+                    await refresh();
+                }
+            } catch (e) {
+                console.error('Failed to submit:', e);
+            }
+        }
+
+        async function toggleHoldMode() {
+            try {
+                const res = await fetch('/api/hold', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    state.holdMode = data.data;
+                    render();
+                }
+            } catch (e) {
+                console.error('Failed to toggle hold mode:', e);
+            }
+        }
+
+        async function skipToDialog(index) {
+            try {
+                await fetch('/api/skip', { method: 'POST' });
+                await refresh();
+            } catch (e) {
+                console.error('Failed to skip:', e);
+            }
+        }
+
+        // Test notification function
+        function testNotification() {
+            if (!('Notification' in window)) {
+                alert('Notifications not supported on this device');
+                return;
+            }
+            
+            if (Notification.permission !== 'granted') {
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') {
+                        showNotification('Test Notification', 'Notifications are working! 🎉');
+                    } else {
+                        alert('Notification permission denied');
+                    }
+                });
+            } else {
+                showNotification('Test Notification', 'Notifications are working! 🎉');
+            }
+        }
+
+        // Notification support
+        async function requestNotificationPermission() {
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                console.log('Notification permission:', permission);
+                render();
+            }
+        }
+
+        function showNotification(title, body) {
+            console.log('Attempting notification:', title, body);
+            
+            if (!('Notification' in window)) {
+                console.log('Notifications not supported');
+                return;
+            }
+            
+            if (Notification.permission !== 'granted') {
+                console.log('Notifications not granted:', Notification.permission);
+                return;
+            }
+            
+            // Send message to service worker to show notification
+            // This works better on mobile, especially when app is in background
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                console.log('Sending to service worker');
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    title: title,
+                    body: body,
+                    tag: 'cursor-dialog-' + Date.now(),
+                });
+            } else if (navigator.serviceWorker) {
+                // Service worker registered but not controlling yet
+                navigator.serviceWorker.ready.then(reg => {
+                    console.log('SW ready, showing via registration');
+                    reg.showNotification(title, {
+                        body,
+                        vibrate: [200, 100, 200],
+                        tag: 'cursor-dialog',
+                        renotify: true,
+                        requireInteraction: true,
+                    });
+                });
+            } else {
+                // Fallback to regular Notification API
+                console.log('Using fallback Notification API');
+                try {
+                    new Notification(title, { body, vibrate: [200, 100, 200] });
+                } catch (e) {
+                    console.error('Notification error:', e);
+                }
+            }
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                state.connected = true;
+                render();
+                clearTimeout(reconnectTimer);
+            };
+
+            ws.onclose = () => {
+                state.connected = false;
+                render();
+                // Reconnect after 3 seconds
+                reconnectTimer = setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (e) => {
+                console.error('WebSocket error:', e);
+            };
+
+            ws.onmessage = async (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    console.log('WebSocket message:', msg);
+                    
+                    // Check if user is typing
+                    const isTyping = document.activeElement && 
+                        (document.activeElement.tagName === 'TEXTAREA' || 
+                         document.activeElement.tagName === 'INPUT');
+                    
+                    if (msg.type === 'initial') {
+                        state.holdMode = msg.hold_mode;
+                        if (!isTyping) {
+                            await refresh();
+                        }
+                    } else if (msg.type === 'NewDialog') {
+                        showNotification('New Dialog', msg.title);
+                        // Always refresh for new dialog - it's important!
+                        await refresh();
+                    } else if (msg.type === 'DialogCompleted' || msg.type === 'QueueUpdate') {
+                        // These indicate the current dialog changed - always refresh
+                        await refresh();
+                    } else if (msg.type === 'HoldModeChanged') {
+                        state.holdMode = msg.enabled;
+                        if (!isTyping) {
+                            render();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse WebSocket message:', e);
+                }
+            };
+        }
+
+        // Refresh all data
+        async function refresh() {
+            await Promise.all([
+                fetchCurrentDialog(),
+                fetchQueue(),
+                fetchStatus(),
+            ]);
+            render();
+        }
+        
+        // Poll for new dialogs when idle (WebSocket doesn't push new dialogs yet)
+        let pollInterval = null;
+        function startPolling() {
+            if (pollInterval) return;
+            pollInterval = setInterval(async () => {
+                // Only poll if we don't have a dialog (waiting for one)
+                if (!state.activeDialog) {
+                    const res = await fetch('/api/current');
+                    const data = await res.json();
+                    if (data.success && data.data) {
+                        // New dialog arrived!
+                        state.activeDialog = data.data;
+                        showNotification('New Dialog', data.data.title);
+                        render();
+                    }
+                }
+            }, 1000); // Poll every second when waiting
+        }
+        
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        // PWA Install prompt
+        let deferredPrompt = null;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('beforeinstallprompt fired');
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install button after render
+            setTimeout(() => {
+                const prompt = document.getElementById('installPrompt');
+                if (prompt) prompt.style.display = 'flex';
+            }, 100);
+        });
+        
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choice) => {
+                    console.log('User choice:', choice.outcome);
+                    deferredPrompt = null;
+                    const prompt = document.getElementById('installPrompt');
+                    if (prompt) prompt.style.display = 'none';
+                });
+            }
+        }
+
+        // Service worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => {
+                    console.log('Service Worker registered', reg);
+                    // Check for updates
+                    reg.update();
+                })
+                .catch(err => console.error('SW registration failed:', err));
+        }
+
+        // Initialize
+        connectWebSocket();
+        refresh();
+        startPolling(); // Start polling for new dialogs
+
+        // Refresh timer bar every second (but don't re-render if user is typing)
+        setInterval(async () => {
+            // Skip if user is focused on input
+            if (document.activeElement && 
+                (document.activeElement.tagName === 'TEXTAREA' || 
+                 document.activeElement.tagName === 'INPUT')) {
+                // Just update timer ratio without full re-render
+                if (state.activeDialog && state.activeDialog.timeout_ms && !state.holdMode) {
+                    const res = await fetch('/api/current');
+                    const data = await res.json();
+                    if (data.success && data.data) {
+                        state.activeDialog.time_remaining_ratio = data.data.time_remaining_ratio;
+                        // Update just the timer bar
+                        const timerProgress = document.querySelector('.timer-progress');
+                        if (timerProgress && state.activeDialog.time_remaining_ratio !== undefined) {
+                            const ratio = state.activeDialog.time_remaining_ratio;
+                            timerProgress.style.width = (ratio * 100) + '%';
+                            timerProgress.classList.remove('warning', 'danger');
+                            if (ratio < 0.3) timerProgress.classList.add('danger');
+                            else if (ratio < 0.5) timerProgress.classList.add('warning');
+                        }
+                    }
+                }
+                return;
+            }
+            
+            // Full refresh if not typing
+            if (state.activeDialog && state.activeDialog.timeout_ms && !state.holdMode) {
+                await fetchCurrentDialog();
+                render();
+            }
+        }, 1000);
+        
+        // Status refresh less frequently
+        setInterval(async () => {
+            await fetchStatus();
+            // Only render if not typing
+            if (!document.activeElement || 
+                (document.activeElement.tagName !== 'TEXTAREA' && 
+                 document.activeElement.tagName !== 'INPUT')) {
+                render();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
+

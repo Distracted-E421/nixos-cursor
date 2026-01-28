@@ -87,3 +87,5 @@ priv/static/assets/
 nohup.out
 *.log
 *.ttf
+# Android Studio installation (too large for git)
+tools/android-companion/android-studio/

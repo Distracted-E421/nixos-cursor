@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# android-studio-nixos - NixOS-compatible Android Studio launcher
+# Wraps Android Studio with necessary environment for NixOS
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ANDROID_STUDIO_DIR="$SCRIPT_DIR/android-studio"
+
+# Check if Android Studio is extracted
+if [[ ! -d "$ANDROID_STUDIO_DIR" ]]; then
+    echo "ERROR: Android Studio not found at $ANDROID_STUDIO_DIR"
+    echo "Please extract the tar.gz first"
+    exit 1
+fi
+
+# Use nix-shell to provide required dependencies
+# Android Studio needs: libGL, X11 libs, etc.
+exec nix-shell -p \
+    libGL \
+    libGLU \
+    xorg.libX11 \
+    xorg.libXext \
+    xorg.libXrender \
+    xorg.libXtst \
+    xorg.libXi \
+    xorg.libXrandr \
+    xorg.libXcursor \
+    xorg.libXfixes \
+    fontconfig \
+    freetype \
+    zlib \
+    libpulseaudio \
+    alsa-lib \
+    nss \
+    nspr \
+    expat \
+    dbus \
+    --run "$ANDROID_STUDIO_DIR/bin/studio.sh $*"
+

@@ -1,0 +1,368 @@
+#!/usr/bin/env bash
+# android-harness - Android Development CLI for AI Agents
+# A lightweight CLI for building, deploying, and testing the Continuum Studio app
+#
+# Usage:
+#   android-harness build              - Build debug APK
+#   android-harness build-release      - Build release APK  
+#   android-harness install            - Install to connected device
+#   android-harness uninstall          - Remove app from device
+#   android-harness run                - Build, install, and launch
+#   android-harness screenshot [file]  - Capture device screen
+#   android-harness logs [filter]      - View logcat (filtered)
+#   android-harness devices            - List connected devices
+#   android-harness info               - Get device/project info
+#   android-harness test               - Run instrumented tests
+#   android-harness push <local> <remote> - Push file to device
+#   android-harness shell              - Open adb shell
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="${ANDROID_PROJECT:-$SCRIPT_DIR}"
+PACKAGE_NAME="com.continuumlogic.studio"
+MAIN_ACTIVITY="com.continuumlogic.studio.MainActivity"
+
+# Colors for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+json_output() {
+    echo "$1" | jq -c '.'
+}
+
+usage() {
+    cat <<EOF
+android-harness - Android Development CLI for AI Agents
+
+USAGE:
+    android-harness <command> [options]
+
+COMMANDS:
+    build               Build debug APK
+    build-release       Build signed release APK
+    install             Install debug APK to connected device
+    uninstall           Remove app from device
+    run                 Build, install, and launch app
+    screenshot [file]   Capture device screen to file
+    logs [filter]       Stream logcat (optional filter)
+    devices             List connected Android devices
+    info                Show project and device information
+    test                Run instrumented tests
+    push <src> <dst>    Push file to device
+    pull <src> <dst>    Pull file from device  
+    shell [cmd]         Open adb shell or run command
+    clean               Clean build artifacts
+
+ENVIRONMENT:
+    ANDROID_PROJECT    Path to project directory (default: script dir)
+    ANDROID_SERIAL     Target specific device by serial number
+
+EXAMPLES:
+    android-harness build
+    android-harness run
+    android-harness screenshot /tmp/device.png
+    android-harness logs "ContinuumStudio"
+    android-harness shell "pm list packages | grep continuum"
+
+EOF
+    exit 0
+}
+
+# Ensure a device is connected
+require_device() {
+    local devices=$(adb devices | grep -v "List of devices" | grep -v "^$" | wc -l)
+    if [[ "$devices" -eq 0 ]]; then
+        log_error "No Android devices connected"
+        echo '{"success":false,"error":"no_device_connected"}'
+        exit 1
+    fi
+}
+
+# Get project gradle wrapper
+gradlew() {
+    if [[ -x "$PROJECT_DIR/gradlew" ]]; then
+        "$PROJECT_DIR/gradlew" "$@"
+    else
+        gradle "$@"
+    fi
+}
+
+cmd_build() {
+    log_info "Building debug APK..."
+    cd "$PROJECT_DIR"
+    
+    if gradlew assembleDebug --no-daemon; then
+        local apk_path=$(find "$PROJECT_DIR" -name "*-debug.apk" -type f | head -1)
+        log_success "Build complete: $apk_path"
+        json_output "{\"success\":true,\"apk\":\"$apk_path\",\"type\":\"debug\"}"
+    else
+        log_error "Build failed"
+        json_output '{"success":false,"error":"build_failed"}'
+        exit 1
+    fi
+}
+
+cmd_build_release() {
+    log_info "Building release APK..."
+    cd "$PROJECT_DIR"
+    
+    if gradlew assembleRelease --no-daemon; then
+        local apk_path=$(find "$PROJECT_DIR" -name "*-release*.apk" -type f | head -1)
+        log_success "Build complete: $apk_path"
+        json_output "{\"success\":true,\"apk\":\"$apk_path\",\"type\":\"release\"}"
+    else
+        log_error "Build failed"
+        json_output '{"success":false,"error":"build_failed"}'
+        exit 1
+    fi
+}
+
+cmd_install() {
+    require_device
+    log_info "Installing to device..."
+    
+    local apk_path=$(find "$PROJECT_DIR" -name "*-debug.apk" -type f | head -1)
+    if [[ -z "$apk_path" ]]; then
+        log_warn "No APK found, building first..."
+        cmd_build
+        apk_path=$(find "$PROJECT_DIR" -name "*-debug.apk" -type f | head -1)
+    fi
+    
+    if adb install -r "$apk_path"; then
+        log_success "Installed: $apk_path"
+        json_output "{\"success\":true,\"installed\":\"$apk_path\"}"
+    else
+        log_error "Installation failed"
+        json_output '{"success":false,"error":"install_failed"}'
+        exit 1
+    fi
+}
+
+cmd_uninstall() {
+    require_device
+    log_info "Uninstalling $PACKAGE_NAME..."
+    
+    if adb uninstall "$PACKAGE_NAME" 2>/dev/null; then
+        log_success "Uninstalled $PACKAGE_NAME"
+        json_output "{\"success\":true,\"uninstalled\":\"$PACKAGE_NAME\"}"
+    else
+        log_warn "App may not have been installed"
+        json_output "{\"success\":true,\"message\":\"app_not_found\"}"
+    fi
+}
+
+cmd_run() {
+    require_device
+    log_info "Build, install, and launch..."
+    
+    cmd_build
+    cmd_install
+    
+    log_info "Launching app..."
+    if adb shell am start -n "$PACKAGE_NAME/$MAIN_ACTIVITY"; then
+        log_success "App launched"
+        json_output "{\"success\":true,\"launched\":\"$PACKAGE_NAME\"}"
+    else
+        log_error "Launch failed"
+        json_output '{"success":false,"error":"launch_failed"}'
+        exit 1
+    fi
+}
+
+cmd_screenshot() {
+    require_device
+    local output="${1:-/tmp/android_$(date +%Y%m%d_%H%M%S).png}"
+    
+    log_info "Capturing screenshot..."
+    local tmp_path="/sdcard/screenshot_tmp.png"
+    
+    adb shell screencap -p "$tmp_path"
+    adb pull "$tmp_path" "$output" >/dev/null
+    adb shell rm "$tmp_path"
+    
+    local size=$(stat -c%s "$output" 2>/dev/null || stat -f%z "$output" 2>/dev/null)
+    log_success "Screenshot saved: $output ($size bytes)"
+    json_output "{\"success\":true,\"path\":\"$output\",\"size\":$size}"
+}
+
+cmd_logs() {
+    require_device
+    local filter="${1:-}"
+    
+    if [[ -n "$filter" ]]; then
+        log_info "Streaming logs with filter: $filter"
+        adb logcat | grep -i "$filter"
+    else
+        log_info "Streaming all logs (Ctrl+C to stop)"
+        adb logcat
+    fi
+}
+
+cmd_devices() {
+    local devices_json=$(adb devices -l | grep -v "List of devices" | grep -v "^$" | while read line; do
+        serial=$(echo "$line" | awk '{print $1}')
+        state=$(echo "$line" | awk '{print $2}')
+        model=$(echo "$line" | grep -oP 'model:\K[^ ]+' || echo "unknown")
+        echo "{\"serial\":\"$serial\",\"state\":\"$state\",\"model\":\"$model\"}"
+    done | jq -s '.')
+    
+    json_output "{\"success\":true,\"devices\":$devices_json}"
+}
+
+cmd_info() {
+    local project_info="{}"
+    local device_info="{}"
+    
+    # Project info
+    if [[ -f "$PROJECT_DIR/app/build.gradle.kts" ]] || [[ -f "$PROJECT_DIR/app/build.gradle" ]]; then
+        local version=$(grep -oP 'versionName\s*[=:]\s*"\K[^"]+' "$PROJECT_DIR/app/build.gradle"* 2>/dev/null | head -1 || echo "unknown")
+        local version_code=$(grep -oP 'versionCode\s*[=:]\s*\K\d+' "$PROJECT_DIR/app/build.gradle"* 2>/dev/null | head -1 || echo "0")
+        project_info="{\"path\":\"$PROJECT_DIR\",\"package\":\"$PACKAGE_NAME\",\"version\":\"$version\",\"versionCode\":$version_code}"
+    fi
+    
+    # Device info (if connected)
+    if adb devices | grep -q "device$"; then
+        local model=$(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r')
+        local android_ver=$(adb shell getprop ro.build.version.release 2>/dev/null | tr -d '\r')
+        local sdk=$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d '\r')
+        device_info="{\"model\":\"$model\",\"android\":\"$android_ver\",\"sdk\":$sdk}"
+    fi
+    
+    json_output "{\"success\":true,\"project\":$project_info,\"device\":$device_info}"
+}
+
+cmd_test() {
+    require_device
+    log_info "Running instrumented tests..."
+    cd "$PROJECT_DIR"
+    
+    if gradlew connectedDebugAndroidTest --no-daemon; then
+        log_success "Tests passed"
+        json_output '{"success":true,"tests":"passed"}'
+    else
+        log_error "Tests failed"
+        json_output '{"success":false,"tests":"failed"}'
+        exit 1
+    fi
+}
+
+cmd_push() {
+    require_device
+    local src="$1"
+    local dst="$2"
+    
+    if adb push "$src" "$dst"; then
+        log_success "Pushed: $src -> $dst"
+        json_output "{\"success\":true,\"pushed\":\"$dst\"}"
+    else
+        log_error "Push failed"
+        json_output '{"success":false,"error":"push_failed"}'
+        exit 1
+    fi
+}
+
+cmd_pull() {
+    require_device
+    local src="$1"
+    local dst="$2"
+    
+    if adb pull "$src" "$dst"; then
+        log_success "Pulled: $src -> $dst"
+        json_output "{\"success\":true,\"pulled\":\"$dst\"}"
+    else
+        log_error "Pull failed"
+        json_output '{"success":false,"error":"pull_failed"}'
+        exit 1
+    fi
+}
+
+cmd_shell() {
+    require_device
+    if [[ $# -gt 0 ]]; then
+        adb shell "$@"
+    else
+        adb shell
+    fi
+}
+
+cmd_clean() {
+    log_info "Cleaning build artifacts..."
+    cd "$PROJECT_DIR"
+    
+    if gradlew clean --no-daemon; then
+        log_success "Clean complete"
+        json_output '{"success":true,"cleaned":true}'
+    else
+        log_error "Clean failed"
+        json_output '{"success":false,"error":"clean_failed"}'
+        exit 1
+    fi
+}
+
+# Main dispatch
+case "${1:-help}" in
+    build)
+        cmd_build
+        ;;
+    build-release)
+        cmd_build_release
+        ;;
+    install)
+        cmd_install
+        ;;
+    uninstall)
+        cmd_uninstall
+        ;;
+    run)
+        cmd_run
+        ;;
+    screenshot)
+        shift
+        cmd_screenshot "${1:-}"
+        ;;
+    logs)
+        shift
+        cmd_logs "${1:-}"
+        ;;
+    devices)
+        cmd_devices
+        ;;
+    info)
+        cmd_info
+        ;;
+    test)
+        cmd_test
+        ;;
+    push)
+        shift
+        cmd_push "$1" "$2"
+        ;;
+    pull)
+        shift
+        cmd_pull "$1" "$2"
+        ;;
+    shell)
+        shift
+        cmd_shell "$@"
+        ;;
+    clean)
+        cmd_clean
+        ;;
+    help|--help|-h)
+        usage
+        ;;
+    *)
+        echo "Unknown command: $1" >&2
+        usage
+        ;;
+esac
+
