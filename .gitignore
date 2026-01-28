@@ -86,3 +86,4 @@ priv/static/assets/
 *.plt.hash
 nohup.out
 *.log
+*.ttf
