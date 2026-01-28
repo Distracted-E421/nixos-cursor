@@ -8,6 +8,24 @@ use tokio::sync::oneshot;
 
 use crate::dbus_interface::{ChoiceOption, FileFilter, FilePickerMode};
 
+/// Content format for dialog prompts
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ContentFormat {
+    /// Plain text (default, backward compatible)
+    #[default]
+    Plain,
+    /// CommonMark markdown
+    Markdown,
+    /// Markdown with embedded image (base64 or file path)
+    MarkdownWithImage {
+        /// Image data as base64 or file path
+        image: String,
+        /// Whether image is base64 encoded
+        is_base64: bool,
+    },
+}
+
 /// A dialog request from the D-Bus interface
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogRequest {
@@ -17,6 +35,9 @@ pub struct DialogRequest {
     pub title: String,
     /// Main prompt/question
     pub prompt: String,
+    /// Content format (plain, markdown, etc.)
+    #[serde(default)]
+    pub content_format: ContentFormat,
     /// Type-specific dialog configuration
     pub dialog_type: DialogType,
     /// Optional timeout in milliseconds

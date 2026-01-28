@@ -3,13 +3,17 @@
 //! Renders dialogs with a modern, native-ish look.
 
 use eframe::egui::{self, Color32, RichText, Rounding, Stroke, Vec2};
+use std::cell::RefCell;
 use std::sync::Arc;
 use tokio::sync::{oneshot, RwLock};
 use tracing::{info, warn};
 
-use crate::dialog::{ActiveDialog, ActiveToast, DialogManager, DialogRequest, DialogResponse, DialogStateVariant, DialogType, ToastHistoryEntry, ToastLevel};
+use crate::dialog::{ActiveDialog, ActiveToast, ContentFormat, DialogManager, DialogRequest, DialogResponse, DialogStateVariant, DialogType, ToastHistoryEntry, ToastLevel};
 use crate::dbus_interface::ChoiceOption;
 use std::time::{Duration, Instant};
+
+// Markdown rendering cache
+use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 
 /// Display-only toast data (for rendering without holding sender)
 #[derive(Debug, Clone)]
@@ -47,6 +51,8 @@ struct QueueItemDisplay {
 pub struct DialogApp {
     /// Dialog manager (shared with D-Bus interface)
     manager: Arc<RwLock<DialogManager>>,
+    /// Markdown rendering cache (RefCell for interior mutability in closures)
+    markdown_cache: RefCell<CommonMarkCache>,
     /// Channel to receive new dialog requests (sync version for GUI)
     dialog_rx: std::sync::mpsc::Receiver<(DialogRequest, oneshot::Sender<DialogResponse>)>,
     /// Pending requests that couldn't be enqueued due to lock contention
@@ -98,6 +104,7 @@ impl DialogApp {
     ) -> Self {
         Self {
             manager,
+            markdown_cache: RefCell::new(CommonMarkCache::default()),
             dialog_rx,
             pending_requests: Vec::new(),
             close_on_complete: false,
@@ -278,41 +285,61 @@ impl eframe::App for DialogApp {
             None
         };
         
-        // Re-acquire manager for the rest of operations
-        let mut manager = self.manager.blocking_write();
-        
-        // Handle queue switch
-        if let Some(idx) = switch_to {
-            manager.switch_to_queued(idx);
+        // Re-acquire manager and handle queue switch
+        {
+            let mut manager = self.manager.blocking_write();
+            if let Some(idx) = switch_to {
+                manager.switch_to_queued(idx);
+            }
         }
         
-        let should_complete = egui::CentralPanel::default()
-            .frame(egui::Frame::none().fill(self.theme.bg_primary).inner_margin(20.0))
-            .show(ctx, |ui| {
-                let active = manager.active.as_mut().unwrap();
-                self.render_dialog(ui, active, global_hold_mode, content_font_scale)
-            })
-            .inner;
+        // Take active dialog out of manager to avoid borrow conflict with self.render_dialog
+        let mut active = {
+            let mut manager = self.manager.blocking_write();
+            manager.active.take()
+        };
+        
+        // Render the dialog (self is not borrowed by manager now)
+        let should_complete = if let Some(ref mut active_dialog) = active {
+            egui::CentralPanel::default()
+                .frame(egui::Frame::none().fill(self.theme.bg_primary).inner_margin(20.0))
+                .show(ctx, |ui| {
+                    self.render_dialog(ui, active_dialog, global_hold_mode, content_font_scale)
+                })
+                .inner
+        } else {
+            None
+        };
 
-        if let Some(selection) = should_complete {
-            if let Some(active) = manager.active.take() {
-                active.complete(selection);
-                manager.next();
+        // Put active back or complete it
+        {
+            let mut manager = self.manager.blocking_write();
+            if let Some(selection) = should_complete {
+                if let Some(active_dialog) = active.take() {
+                    active_dialog.complete(selection);
+                    manager.next();
+                }
+            } else if let Some(active_dialog) = active {
+                // Put it back - dialog not completed yet
+                manager.active = Some(active_dialog);
             }
         }
 
         // Render toasts in top-right corner (overlay)
         // Extract display data to avoid borrow conflict
-        let toast_displays: Vec<_> = manager.toasts.iter().map(|t| ToastDisplay {
-            id: t.id.clone(),
-            message: t.message.clone(),
-            level: t.level,
-            started_at: t.started_at,
-            duration: t.duration,
-        }).collect();
-        let history = manager.toast_history.clone();
-        let unread = manager.unread_count();
-        drop(manager);
+        let (toast_displays, history, unread) = {
+            let manager = self.manager.blocking_read();
+            let toast_displays: Vec<_> = manager.toasts.iter().map(|t| ToastDisplay {
+                id: t.id.clone(),
+                message: t.message.clone(),
+                level: t.level,
+                started_at: t.started_at,
+                duration: t.duration,
+            }).collect();
+            let history = manager.toast_history.clone();
+            let unread = manager.unread_count();
+            (toast_displays, history, unread)
+        };
         
         self.render_toasts_and_sidebar(ctx, &toast_displays, &history, unread);
 
@@ -331,7 +358,7 @@ impl DialogApp {
                 } else { 
                     self.theme.bg_secondary 
                 })
-                .inner_margin(egui::Margin::symmetric(12.0, 6.0)))
+                .inner_margin(egui::Margin::symmetric(12, 6)))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     // Hold Mode Toggle - the main feature!
@@ -354,7 +381,7 @@ impl DialogApp {
                                 self.theme.bg_primary
                             })
                             .stroke(Stroke::new(1.0, if hold_mode { hold_btn_color } else { self.theme.border }))
-                            .rounding(Rounding::same(4.0))
+                            .rounding(Rounding::same(4))
                     ).on_hover_text("When ON, dialogs wait indefinitely until you respond (no timeout)")
                     .clicked() {
                         let mut manager = self.manager.blocking_write();
@@ -515,7 +542,7 @@ impl DialogApp {
             .frame(egui::Frame::none()
                 .fill(self.theme.bg_secondary)
                 .stroke(Stroke::new(1.0, self.theme.border))
-                .inner_margin(egui::Margin::symmetric(8.0, 4.0)))
+                .inner_margin(egui::Margin::symmetric(8, 4)))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     // Active dialog indicator (always first "tab")
@@ -528,7 +555,7 @@ impl DialogApp {
                         )
                             .fill(self.theme.accent)
                             .stroke(Stroke::new(1.0, self.theme.accent))
-                            .rounding(Rounding::same(4.0))
+                            .rounding(Rounding::same(4))
                     ).on_hover_text("Currently active dialog");
                     
                     ui.add_space(4.0);
@@ -557,7 +584,7 @@ impl DialogApp {
                                     )
                                         .fill(self.theme.bg_primary)
                                         .stroke(Stroke::new(1.0, self.theme.border))
-                                        .rounding(Rounding::same(4.0))
+                                        .rounding(Rounding::same(4))
                                 ).on_hover_text(format!("Click to switch to: {}", item.title))
                                 .clicked() {
                                     switch_to = Some(item.index);
@@ -598,7 +625,7 @@ impl DialogApp {
                     if ui.add(
                         egui::Button::new(RichText::new(&button_text).size(16.0))
                             .fill(if unread > 0 { self.theme.accent } else { self.theme.bg_secondary })
-                            .rounding(Rounding::same(8.0))
+                            .rounding(Rounding::same(8))
                             .min_size(Vec2::new(32.0, 32.0))
                     ).clicked() {
                         self.sidebar_expanded = true;
@@ -671,7 +698,7 @@ impl DialogApp {
                             if ui.add(
                                 egui::Button::new(RichText::new("Clear").size(11.0))
                                     .fill(self.theme.bg_secondary)
-                                    .rounding(Rounding::same(4.0))
+                                    .rounding(Rounding::same(4))
                             ).clicked() {
                                 clear_history = true;
                             }
@@ -714,7 +741,7 @@ impl DialogApp {
 
                                 egui::Frame::none()
                                     .fill(self.theme.bg_secondary)
-                                    .rounding(Rounding::same(6.0))
+                                    .rounding(Rounding::same(6))
                                     .inner_margin(8.0)
                                     .show(ui, |ui| {
                                         ui.horizontal(|ui| {
@@ -786,7 +813,7 @@ impl DialogApp {
 
         egui::Frame::none()
             .fill(bg_color)
-            .rounding(Rounding::same(8.0))
+            .rounding(Rounding::same(8))
             .stroke(Stroke::new(1.0, border_color))
             .inner_margin(12.0)
             .show(ui, |ui| {
@@ -823,12 +850,12 @@ impl DialogApp {
                         bar_rect.min,
                         Vec2::new(bar_rect.width() * ratio, 2.0),
                     );
-                    ui.painter().rect_filled(progress_rect, Rounding::same(1.0), border_color.linear_multiply(0.7));
+                    ui.painter().rect_filled(progress_rect, Rounding::same(1), border_color.linear_multiply(0.7));
                 }
             });
     }
 
-    fn render_dialog(&self, ui: &mut egui::Ui, active: &mut ActiveDialog, global_hold_mode: bool, font_scale: f32) -> Option<serde_json::Value> {
+    fn render_dialog(&mut self, ui: &mut egui::Ui, active: &mut ActiveDialog, global_hold_mode: bool, font_scale: f32) -> Option<serde_json::Value> {
         // global_hold_mode and font_scale are passed in from the parent to avoid deadlock
         
         // Helper to scale font sizes for content
@@ -844,21 +871,43 @@ impl DialogApp {
         );
         ui.add_space(12.0);
 
-        // Prompt (process escape sequences for multi-line support)
-        // Wrap in a ScrollArea for long prompts
-        let prompt_text = process_escape_sequences(&active.request.prompt);
-        let max_prompt_height = 150.0 * font_scale;
+        // Prompt (render based on content format)
+        let max_prompt_height = 200.0 * font_scale;
         
         egui::ScrollArea::vertical()
             .id_salt("prompt_scroll")
             .max_height(max_prompt_height)
             .auto_shrink([false, true])
             .show(ui, |ui| {
-                ui.label(
-                    RichText::new(&prompt_text)
-                        .size(scaled(14.0))
-                        .color(self.theme.fg_secondary),
-                );
+                match &active.request.content_format {
+                    ContentFormat::Plain => {
+                        // Plain text with escape sequence processing
+                        let prompt_text = process_escape_sequences(&active.request.prompt);
+                        ui.label(
+                            RichText::new(&prompt_text)
+                                .size(scaled(14.0))
+                                .color(self.theme.fg_secondary),
+                        );
+                    }
+                    ContentFormat::Markdown => {
+                        // Render as CommonMark markdown
+                        CommonMarkViewer::new()
+                            .show(ui, &mut self.markdown_cache.borrow_mut(), &active.request.prompt);
+                    }
+                    ContentFormat::MarkdownWithImage { image: _, is_base64: _ } => {
+                        // TODO: Load and display image, then render markdown
+                        // For now, fall back to markdown only
+                        ui.label(
+                            RichText::new("📷 [Image]")
+                                .size(scaled(12.0))
+                                .color(self.theme.fg_secondary)
+                                .italics(),
+                        );
+                        ui.add_space(8.0);
+                        CommonMarkViewer::new()
+                            .show(ui, &mut self.markdown_cache.borrow_mut(), &active.request.prompt);
+                    }
+                }
             });
         ui.add_space(16.0);
 
@@ -891,7 +940,7 @@ impl DialogApp {
                 if ui.add(
                     egui::Button::new(RichText::new(pause_text).size(11.0).color(pause_color))
                         .fill(self.theme.bg_secondary)
-                        .rounding(Rounding::same(4.0))
+                        .rounding(Rounding::same(4))
                 ).clicked() {
                     active.toggle_pause();
                 }
@@ -917,8 +966,8 @@ impl DialogApp {
                     egui::pos2(remaining_rect.min.x, remaining_rect.min.y + 8.0),
                     Vec2::new(remaining_rect.width(), bar_height),
                 );
-                ui.painter().rect_filled(bg_rect, Rounding::same(3.0), self.theme.bg_secondary);
-                ui.painter().rect_filled(bar_rect, Rounding::same(3.0), timeout_color);
+                ui.painter().rect_filled(bg_rect, Rounding::same(3), self.theme.bg_secondary);
+                ui.painter().rect_filled(bar_rect, Rounding::same(3), timeout_color);
                 
                 if active.is_paused() {
                     ui.painter().text(
@@ -1017,7 +1066,7 @@ impl DialogApp {
             
             egui::Frame::none()
                 .fill(self.theme.bg_secondary)
-                .rounding(Rounding::same(4.0))
+                .rounding(Rounding::same(4))
                 .inner_margin(8.0)
                 .show(ui, |ui| {
                     let text_edit = egui::TextEdit::multiline(comment)
@@ -1049,7 +1098,7 @@ impl DialogApp {
                     if ui.add(
                         egui::Button::new(RichText::new("Clear").size(10.0))
                             .fill(self.theme.bg_secondary)
-                            .rounding(Rounding::same(2.0))
+                            .rounding(Rounding::same(2))
                     ).clicked() {
                         comment.clear();
                     }
@@ -1119,7 +1168,7 @@ impl DialogApp {
                                 self.theme.border
                             },
                         ))
-                        .rounding(Rounding::same(6.0))
+                        .rounding(Rounding::same(6))
                         .min_size(Vec2::new(ui.available_width(), 40.0)),
                     );
 

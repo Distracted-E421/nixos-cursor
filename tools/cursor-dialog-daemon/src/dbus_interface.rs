@@ -14,7 +14,7 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 use zbus::{interface, Connection, Result as ZbusResult};
 
-use crate::dialog::{DialogManager, DialogRequest, DialogResponse, DialogType};
+use crate::dialog::{ContentFormat, DialogManager, DialogRequest, DialogResponse, DialogType};
 
 /// D-Bus interface for the dialog service
 pub struct DialogInterface {
@@ -78,6 +78,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::Choice {
                 options,
                 default: if default_value.is_empty() {
@@ -127,6 +128,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::TextInput {
                 placeholder,
                 default: if default_value.is_empty() {
@@ -179,6 +181,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::Confirmation {
                 yes_label: if yes_label.is_empty() {
                     "Yes".to_string()
@@ -234,6 +237,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::Slider {
                 min,
                 max,
@@ -268,6 +272,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt: message,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::Progress {
                 progress: if progress < 0.0 { None } else { Some(progress) },
             },
@@ -326,6 +331,7 @@ impl DialogInterface {
             id: id.clone(),
             title,
             prompt,
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::FilePicker {
                 mode: match mode.as_str() {
                     "files" => FilePickerMode::MultipleFiles,
@@ -375,6 +381,7 @@ impl DialogInterface {
             id: id.clone(),
             title: String::new(), // Toasts don't have titles
             prompt: String::new(), // Message is in the type
+            content_format: ContentFormat::default(),
             dialog_type: DialogType::Toast {
                 message,
                 level: toast_level,
