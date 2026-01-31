@@ -394,8 +394,10 @@ async fn cmd_dashboard() -> ProxyResult<()> {
                 // Spawn task to read from IPC and broadcast
                 let bc = broadcaster.clone();
                 tokio::spawn(async move {
-                    while let Some(event) = stream.next().await {
-                        bc.emit(event);
+                    while let Some(event_json) = stream.next().await {
+                        if let Ok(event) = serde_json::from_str::<ProxyEvent>(&event_json) {
+                            bc.emit(event);
+                        }
                     }
                 });
                 
@@ -543,7 +545,7 @@ async fn cmd_init(force: bool) -> ProxyResult<()> {
     if force || !config.ca.cert_path.exists() {
         info!("Generating CA certificate...");
         let ca = CertificateAuthority::generate(&config.ca)?;
-        ca.save(&config.ca.cert_path, &config.ca.key_path)?;
+        ca.save()?;
         
         info!("✓ CA certificate created at {:?}", config.ca.cert_path);
         info!("  Run 'cursor-proxy trust-ca' to add to system trust store");
@@ -639,7 +641,7 @@ async fn cmd_start(port: Option<u16>, dns_mode: bool, transparent: bool, foregro
     let server = Arc::new(server);
     
     // Start IPC server for dashboard connections
-    let ipc_server = crate::ipc::IpcServer::new(server.event_broadcaster());
+    let ipc_server = crate::ipc::IpcServer::new(None, server.event_broadcaster());
     let socket_path = ipc_server.socket_path().to_path_buf();
     tokio::spawn(async move {
         if let Err(e) = ipc_server.run().await {
@@ -690,10 +692,8 @@ async fn cmd_stop() -> ProxyResult<()> {
     if IptablesManager::is_available() && IptablesManager::has_root() {
         let config = Config::load()?;
         let manager = IptablesManager::new(config.proxy.port, false)?;
-        let removed = manager.remove_all()?;
-        if removed > 0 {
-            info!("✓ Removed {} iptables rules", removed);
-        }
+        manager.remove_all()?;
+        info!("✓ Cleaned up iptables rules");
     }
     
     Ok(())
@@ -735,7 +735,7 @@ async fn cmd_status() -> ProxyResult<()> {
     // iptables status
     if IptablesManager::is_available() {
         if let Ok(rules) = IptablesManager::list_all_rules() {
-            let rule_count = rules.lines().filter(|l| l.contains("REDIRECT")).count();
+            let rule_count = rules.iter().filter(|l| l.contains("REDIRECT")).count();
             println!("iptables: {} redirect rules active", rule_count);
         }
     } else {
@@ -752,7 +752,7 @@ async fn cmd_trust_ca(show: bool, output: Option<PathBuf>) -> ProxyResult<()> {
     config.expand_paths();
     
     let ca = CertificateAuthority::load_or_generate(&config.ca)?;
-    let pem = ca.ca_cert_pem();
+    let pem = ca.ca_cert_pem()?;
     
     if show {
         println!("{}", pem);
@@ -787,26 +787,28 @@ async fn cmd_iptables(action: IptablesAction) -> ProxyResult<()> {
     
     match action {
         IptablesAction::Add => {
-            let manager = IptablesManager::new(config.proxy.port, false)?;
+            let mut manager = IptablesManager::new(config.proxy.port, false)?;
             for target in &config.iptables.targets {
-                let added = manager.add_domain(target)?;
-                info!("Added {} IPs for {}", added.len(), target);
+                manager.add_domain(target)?;
+                info!("Added rules for {}", target);
             }
         }
         
         IptablesAction::Remove => {
             let manager = IptablesManager::new(config.proxy.port, false)?;
-            let removed = manager.remove_all()?;
-            info!("Removed {} rules", removed);
+            manager.remove_all()?;
+            info!("Removed all rules");
         }
         
         IptablesAction::Show => {
             let rules = IptablesManager::list_all_rules()?;
-            println!("{}", rules);
+            for rule in rules {
+                println!("{}", rule);
+            }
         }
         
         IptablesAction::Refresh => {
-            let manager = IptablesManager::new(config.proxy.port, false)?;
+            let mut manager = IptablesManager::new(config.proxy.port, false)?;
             for target in &config.iptables.targets {
                 manager.refresh_domain(target)?;
             }
