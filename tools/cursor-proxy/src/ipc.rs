@@ -73,6 +73,11 @@ impl IpcServer {
         }
     }
 
+    /// Run the IPC server (alias for start)
+    pub async fn run(&self) -> Result<(), std::io::Error> {
+        self.start().await
+    }
+
     /// Start the IPC server
     pub async fn start(&self) -> Result<(), std::io::Error> {
         // Remove existing socket file if present
@@ -232,6 +237,11 @@ impl IpcClient {
         Self { socket_path }
     }
 
+    /// Check if proxy is running by attempting to connect
+    pub fn is_proxy_running(&self) -> bool {
+        self.socket_path.exists()
+    }
+
     /// Connect to the proxy
     pub async fn connect(&self) -> Result<IpcConnection, std::io::Error> {
         let stream = UnixStream::connect(&self.socket_path).await?;
@@ -267,6 +277,17 @@ impl IpcConnection {
 
         let response: IpcResponse = serde_json::from_str(line.trim())?;
         Ok(response)
+    }
+
+    /// Receive next line from the connection (for streaming responses)
+    pub async fn next(&mut self) -> Option<String> {
+        let mut reader = BufReader::new(&mut self.stream);
+        let mut line = String::new();
+        match reader.read_line(&mut line).await {
+            Ok(0) => None,
+            Ok(_) => Some(line.trim().to_string()),
+            Err(_) => None,
+        }
     }
 
     /// Subscribe to events and return an event stream

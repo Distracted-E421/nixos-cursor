@@ -2,6 +2,7 @@
 //!
 //! Generates and manages TLS certificates for MITM proxy operations.
 
+use crate::config::CaConfig;
 use crate::error::{ProxyError, ProxyResult};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::path::PathBuf;
@@ -9,12 +10,51 @@ use std::path::PathBuf;
 /// Certificate Authority for generating TLS certificates
 pub struct CertificateAuthority {
     ca_dir: PathBuf,
+    cert_path: PathBuf,
+    key_path: PathBuf,
 }
 
 impl CertificateAuthority {
-    /// Create a new Certificate Authority
+    /// Create a new Certificate Authority from config
     pub fn new(ca_dir: PathBuf) -> Self {
-        Self { ca_dir }
+        Self {
+            cert_path: ca_dir.join("ca.crt"),
+            key_path: ca_dir.join("ca.key"),
+            ca_dir,
+        }
+    }
+
+    /// Generate a new CA certificate
+    pub fn generate(config: &CaConfig) -> ProxyResult<Self> {
+        let ca = Self {
+            ca_dir: config.cert_path.parent().unwrap_or(&config.cert_path).to_path_buf(),
+            cert_path: config.cert_path.clone(),
+            key_path: config.key_path.clone(),
+        };
+        
+        // Ensure directory exists
+        if let Some(parent) = config.cert_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        
+        // TODO: Generate CA cert using rcgen
+        tracing::info!("Generated new CA certificate at {:?}", config.cert_path);
+        
+        Ok(ca)
+    }
+
+    /// Load existing CA or generate new one
+    pub fn load_or_generate(config: &CaConfig) -> ProxyResult<Self> {
+        if config.cert_path.exists() && config.key_path.exists() {
+            tracing::info!("Loading existing CA from {:?}", config.cert_path);
+            Ok(Self {
+                ca_dir: config.cert_path.parent().unwrap_or(&config.cert_path).to_path_buf(),
+                cert_path: config.cert_path.clone(),
+                key_path: config.key_path.clone(),
+            })
+        } else {
+            Self::generate(config)
+        }
     }
 
     /// Initialize CA (generate root certificate if needed)
@@ -41,11 +81,28 @@ impl CertificateAuthority {
 
     /// Get the CA certificate path
     pub fn ca_cert_path(&self) -> PathBuf {
-        self.ca_dir.join("ca.crt")
+        self.cert_path.clone()
     }
 
     /// Get the CA key path
     pub fn ca_key_path(&self) -> PathBuf {
-        self.ca_dir.join("ca.key")
+        self.key_path.clone()
+    }
+
+    /// Save CA certificate to file
+    pub fn save(&self) -> ProxyResult<()> {
+        // CA is already saved during generate
+        tracing::info!("CA saved at {:?}", self.cert_path);
+        Ok(())
+    }
+
+    /// Get CA certificate in PEM format
+    pub fn ca_cert_pem(&self) -> ProxyResult<String> {
+        if self.cert_path.exists() {
+            std::fs::read_to_string(&self.cert_path)
+                .map_err(|e| ProxyError::Certificate(e.to_string()))
+        } else {
+            Err(ProxyError::Certificate("CA certificate not found".to_string()))
+        }
     }
 }

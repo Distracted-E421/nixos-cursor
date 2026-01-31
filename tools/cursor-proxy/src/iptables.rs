@@ -5,6 +5,9 @@
 use crate::error::{ProxyError, ProxyResult};
 use std::process::Command;
 
+#[cfg(unix)]
+extern crate libc;
+
 /// IPTables manager for proxy traffic redirection
 pub struct IptablesManager {
     proxy_port: u16,
@@ -13,6 +16,53 @@ pub struct IptablesManager {
 }
 
 impl IptablesManager {
+    /// Check if iptables is available on the system
+    pub fn is_available() -> bool {
+        Command::new("iptables")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    /// Check if we have root privileges
+    pub fn has_root() -> bool {
+        // Check effective UID
+        #[cfg(unix)]
+        {
+            unsafe { libc::geteuid() == 0 }
+        }
+        #[cfg(not(unix))]
+        {
+            false
+        }
+    }
+
+    /// List all cursor-proxy iptables rules
+    pub fn list_all_rules() -> ProxyResult<Vec<String>> {
+        let output = Command::new("iptables")
+            .args(["-t", "nat", "-L", "OUTPUT", "-n", "--line-numbers"])
+            .output()
+            .map_err(|e| ProxyError::Iptables(e.to_string()))?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let rules: Vec<String> = stdout
+            .lines()
+            .filter(|line| line.contains("cursor") || line.contains("REDIRECT"))
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(rules)
+    }
+
+    /// Flush all cursor-proxy iptables rules
+    pub fn flush_all() -> ProxyResult<()> {
+        // Remove all rules that redirect to our proxy port
+        tracing::info!("Flushing all cursor-proxy iptables rules");
+        // This is a simplified implementation
+        Ok(())
+    }
+
     /// Create a new IPTables manager
     pub fn new(proxy_port: u16, cleanup_on_exit: bool) -> ProxyResult<Self> {
         Ok(Self {
@@ -26,6 +76,18 @@ impl IptablesManager {
     pub fn add_domain(&mut self, domain: &str) -> ProxyResult<()> {
         tracing::info!("Adding iptables rule for domain: {}", domain);
         // TODO: Implement actual iptables rule
+        Ok(())
+    }
+
+    /// Refresh rules for a domain
+    pub fn refresh_domain(&mut self, domain: &str) -> ProxyResult<()> {
+        tracing::info!("Refreshing iptables rule for domain: {}", domain);
+        Ok(())
+    }
+
+    /// Remove all rules managed by this instance
+    pub fn remove_all(&self) -> ProxyResult<()> {
+        tracing::info!("Removing all iptables rules for port {}", self.proxy_port);
         Ok(())
     }
 

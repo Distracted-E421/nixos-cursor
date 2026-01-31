@@ -72,6 +72,22 @@ impl ProxyError {
             _ => false,
         }
     }
+
+    /// Get a user-friendly error message
+    pub fn display_for_user(&self) -> String {
+        match self {
+            ProxyError::Io(e) => format!("IO error: {}", e),
+            ProxyError::Certificate(s) => format!("Certificate error: {}", s),
+            ProxyError::UpstreamConnection { target, reason } => {
+                format!("Could not connect to {}: {}", target, reason)
+            }
+            ProxyError::BindFailed { port, reason } => {
+                format!("Could not bind to port {}: {}", port, reason)
+            }
+            ProxyError::Config(e) => format!("Configuration error: {}", e),
+            _ => self.to_string(),
+        }
+    }
 }
 
 /// Configuration-specific errors

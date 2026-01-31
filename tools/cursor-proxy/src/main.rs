@@ -456,7 +456,7 @@ async fn run_demo_dashboard() {
             demo_broadcaster.emit(ProxyEvent::ConnectionOpened {
                 conn_id,
                 peer_addr: "127.0.0.1:54321".to_string(),
-                timestamp: Utc::now(),
+                timestamp: crate::events::current_timestamp(),
             });
             
             demo_broadcaster.emit(ProxyEvent::RequestStarted {
@@ -466,7 +466,8 @@ async fn run_demo_dashboard() {
                 path: path.to_string(),
                 service,
                 endpoint: endpoint.clone(),
-                timestamp: Utc::now(),
+                headers: std::collections::HashMap::new(),
+                timestamp: crate::events::current_timestamp(),
             });
             
             // Simulate request duration
@@ -482,12 +483,12 @@ async fn run_demo_dashboard() {
                 duration_ms: duration,
                 request_size: 256,
                 response_size: Some(1024),
-                timestamp: Utc::now(),
+                timestamp: crate::events::current_timestamp(),
             });
             
             demo_broadcaster.emit(ProxyEvent::ConnectionClosed {
                 conn_id,
-                timestamp: Utc::now(),
+                timestamp: crate::events::current_timestamp(),
                 duration_ms: duration + 10,
             });
             
@@ -495,19 +496,21 @@ async fn run_demo_dashboard() {
             if conn_id % 3 == 0 {
                 demo_broadcaster.emit(ProxyEvent::CaptureSaved {
                     conn_id,
+                    request_id: req_id,
                     path: format!("/root/.cursor-proxy/captures/{}.json", req_id),
                     size: 2048,
-                    timestamp: Utc::now(),
+                    timestamp: crate::events::current_timestamp(),
                 });
             }
             
             // Sometimes emit upstream event
             if conn_id % 5 == 0 {
                 demo_broadcaster.emit(ProxyEvent::UpstreamConnection {
+                    host: "api2.cursor.sh".to_string(),
                     target: "api2.cursor.sh".to_string(),
                     action: UpstreamAction::Reused,
                     pool_size: 3,
-                    timestamp: Utc::now(),
+                    timestamp: crate::events::current_timestamp(),
                 });
             }
         }

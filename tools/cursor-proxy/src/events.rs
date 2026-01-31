@@ -71,16 +71,20 @@ pub enum ProxyEvent {
 
     /// Upstream connection pool event
     UpstreamConnection {
+        target: String,
         host: String,
         action: UpstreamAction,
         pool_size: usize,
+        timestamp: u64,
     },
 
     /// Capture saved to disk
     CaptureSaved {
+        conn_id: u64,
         request_id: u64,
         path: String,
         size: usize,
+        timestamp: u64,
     },
 
     /// Agent activity detected (AI assistant behavior)
