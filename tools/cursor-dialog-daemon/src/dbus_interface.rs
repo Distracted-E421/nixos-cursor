@@ -22,13 +22,19 @@ pub struct DialogInterface {
     dialog_tx: mpsc::Sender<(DialogRequest, oneshot::Sender<DialogResponse>)>,
     /// Active dialogs waiting for responses
     pending: Arc<RwLock<HashMap<String, oneshot::Sender<DialogResponse>>>>,
+    /// Shared reference to dialog manager for state control
+    manager: Arc<RwLock<DialogManager>>,
 }
 
 impl DialogInterface {
-    pub fn new(dialog_tx: mpsc::Sender<(DialogRequest, oneshot::Sender<DialogResponse>)>) -> Self {
+    pub fn new(
+        dialog_tx: mpsc::Sender<(DialogRequest, oneshot::Sender<DialogResponse>)>,
+        manager: Arc<RwLock<DialogManager>>,
+    ) -> Self {
         Self {
             dialog_tx,
             pending: Arc::new(RwLock::new(HashMap::new())),
+            manager,
         }
     }
 }
@@ -430,6 +436,59 @@ impl DialogInterface {
     async fn ping(&self) -> String {
         "pong".to_string()
     }
+
+    /// Get current hold mode state
+    ///
+    /// When hold mode is ON, all dialogs ignore timeouts and wait
+    /// indefinitely for user response.
+    ///
+    /// # Returns
+    /// "true" or "false"
+    async fn get_hold_mode(&self) -> String {
+        let manager = self.manager.read().await;
+        manager.is_hold_mode().to_string()
+    }
+
+    /// Set hold mode state
+    ///
+    /// # Arguments
+    /// * `enabled` - Whether to enable hold mode
+    ///
+    /// # Returns
+    /// New hold mode state as "true" or "false"
+    async fn set_hold_mode(&self, enabled: bool) -> String {
+        let mut manager = self.manager.write().await;
+        manager.settings.hold_mode = enabled;
+        info!("D-Bus: Hold mode set to {}", enabled);
+        enabled.to_string()
+    }
+
+    /// Toggle hold mode
+    ///
+    /// # Returns
+    /// New hold mode state as "true" or "false"
+    async fn toggle_hold_mode(&self) -> String {
+        let mut manager = self.manager.write().await;
+        manager.toggle_hold_mode();
+        let new_state = manager.is_hold_mode();
+        info!("D-Bus: Hold mode toggled to {}", new_state);
+        new_state.to_string()
+    }
+
+    /// Get current daemon settings
+    ///
+    /// # Returns
+    /// JSON with settings: {"hold_mode": bool, "font_scale": float, ...}
+    async fn get_settings(&self) -> String {
+        let manager = self.manager.read().await;
+        serde_json::to_string(&serde_json::json!({
+            "hold_mode": manager.settings.hold_mode,
+            "font_scale": manager.settings.font_scale,
+            "sounds_enabled": manager.settings.sounds_enabled,
+            "focus_on_dialog": manager.settings.focus_on_dialog,
+        }))
+        .unwrap_or_default()
+    }
 }
 
 impl DialogInterface {
@@ -503,8 +562,9 @@ pub enum FilePickerMode {
 /// Start the D-Bus service
 pub async fn start_dbus_service(
     dialog_tx: mpsc::Sender<(DialogRequest, oneshot::Sender<DialogResponse>)>,
+    manager: Arc<RwLock<DialogManager>>,
 ) -> ZbusResult<Connection> {
-    let interface = DialogInterface::new(dialog_tx);
+    let interface = DialogInterface::new(dialog_tx, manager);
 
     let connection = Connection::session().await?;
 

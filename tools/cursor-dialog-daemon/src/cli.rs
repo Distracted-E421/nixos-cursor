@@ -134,6 +134,21 @@ enum Commands {
 
     /// Get daemon info
     Info,
+
+    /// Get current hold mode state
+    HoldGet,
+
+    /// Set hold mode on/off (use: hold-set on, hold-set off, hold-set true, hold-set false)
+    HoldSet {
+        /// Enable (on/true) or disable (off/false) hold mode
+        state: String,
+    },
+
+    /// Toggle hold mode
+    HoldToggle,
+
+    /// Get daemon settings
+    Settings,
 }
 
 #[tokio::main]
@@ -265,6 +280,36 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Info => {
             proxy.call("GetInfo", &()).await?
+        }
+
+        Commands::HoldGet => {
+            let state: String = proxy.call("GetHoldMode", &()).await?;
+            println!("Hold mode: {}", state);
+            return Ok(());
+        }
+
+        Commands::HoldSet { state } => {
+            let enabled = match state.to_lowercase().as_str() {
+                "on" | "true" | "1" | "yes" => true,
+                "off" | "false" | "0" | "no" => false,
+                _ => {
+                    eprintln!("Invalid value '{}'. Use: on/off, true/false, 1/0, yes/no", state);
+                    std::process::exit(1);
+                }
+            };
+            let new_state: String = proxy.call("SetHoldMode", &(enabled,)).await?;
+            println!("Hold mode set to: {}", new_state);
+            return Ok(());
+        }
+
+        Commands::HoldToggle => {
+            let state: String = proxy.call("ToggleHoldMode", &()).await?;
+            println!("Hold mode toggled to: {}", state);
+            return Ok(());
+        }
+
+        Commands::Settings => {
+            proxy.call("GetSettings", &()).await?
         }
     };
 

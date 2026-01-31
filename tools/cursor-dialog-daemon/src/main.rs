@@ -83,11 +83,12 @@ fn main() -> anyhow::Result<()> {
 
     // Start D-Bus service within the tokio runtime
     let no_dbus = args.no_dbus;
+    let dbus_manager = manager.clone();
     let _dbus_guard = rt.enter();  // Enter runtime context for any async work
     
     rt.spawn(async move {
         if !no_dbus {
-            match dbus_interface::start_dbus_service(async_tx).await {
+            match dbus_interface::start_dbus_service(async_tx, dbus_manager).await {
                 Ok(conn) => {
                     info!("D-Bus service started successfully");
                     // Keep connection alive - this task runs forever
