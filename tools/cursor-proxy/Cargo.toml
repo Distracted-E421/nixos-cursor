@@ -25,6 +25,7 @@ rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2"
 tokio-rustls = "0.26"
 webpki-roots = "0.26"
+rcgen = { version = "0.13", features = ["x509-parser"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
