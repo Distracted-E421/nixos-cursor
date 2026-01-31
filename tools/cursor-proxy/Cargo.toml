@@ -39,6 +39,14 @@ thiserror = "2"
 dirs = "5"
 libc = "0.2"
 
+# Additional utilities
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+dashmap = "6"
+rustls-native-certs = "0.8"
+shellexpand = "3"
+
 # Optional: egui dashboard
 eframe = { version = "0.29", optional = true }
 egui = { version = "0.29", optional = true }

@@ -112,22 +112,15 @@ impl ProxyServer {
             return Ok(());
         }
         
-        let manager = IptablesManager::new(
+        let mut manager = IptablesManager::new(
             self.config.proxy.port,
             self.config.iptables.cleanup_on_exit,
         )?;
         
         // Add rules for configured targets
         for target in &self.config.iptables.targets {
-            match manager.add_domain(target) {
-                Ok(ips) => {
-                    if ips.is_empty() {
-                        warn!("No IPs found for target: {}", target);
-                    }
-                }
-                Err(e) => {
-                    warn!("Failed to add iptables rules for {}: {}", target, e);
-                }
+            if let Err(e) = manager.add_domain(target) {
+                warn!("Failed to add iptables rules for {}: {}", target, e);
             }
         }
         
@@ -228,11 +221,11 @@ impl ProxyServer {
         self.events.emit(ProxyEvent::ConnectionOpened {
             conn_id,
             peer_addr: peer_addr.to_string(),
-            timestamp: Utc::now(),
+            timestamp: crate::events::current_timestamp(),
         });
         
         // Generate certificate for this domain
-        let (certs, key) = self.ca.generate_cert_for_domain(&ctx.target_domain)?;
+        let (certs, key) = self.ca.generate_cert_for_domain(&ctx.target_domain).await?;
         
         // Create TLS server config with ALPN for HTTP/2
         let mut server_config = ServerConfig::builder()
@@ -276,7 +269,7 @@ impl ProxyServer {
         // Emit ConnectionClosed event
         self.events.emit(ProxyEvent::ConnectionClosed {
             conn_id,
-            timestamp: Utc::now(),
+            timestamp: crate::events::current_timestamp(),
             duration_ms: conn_start.elapsed().as_millis() as u64,
         });
         
@@ -401,7 +394,8 @@ impl ProxyServer {
             path: path.clone(),
             service: service.clone(),
             endpoint: endpoint.clone(),
-            timestamp: Utc::now(),
+            headers: std::collections::HashMap::new(),
+            timestamp: crate::events::current_timestamp(),
         });
         
         // Start capture if enabled and this is an interesting request
@@ -438,7 +432,7 @@ impl ProxyServer {
                     duration_ms,
                     request_size: 0, // TODO: track actual size
                     response_size: None, // TODO: track actual size
-                    timestamp: Utc::now(),
+                    timestamp: crate::events::current_timestamp(),
                 });
                 
                 Ok(response)
@@ -452,7 +446,8 @@ impl ProxyServer {
                     conn_id,
                     request_id,
                     error: e.to_string(),
-                    timestamp: Utc::now(),
+                    duration_ms,
+                    timestamp: crate::events::current_timestamp(),
                 });
                 // Return 502 Bad Gateway
                 let response = Response::builder()

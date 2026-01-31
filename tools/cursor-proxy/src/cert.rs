@@ -3,6 +3,7 @@
 //! Generates and manages TLS certificates for MITM proxy operations.
 
 use crate::error::{ProxyError, ProxyResult};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::path::PathBuf;
 
 /// Certificate Authority for generating TLS certificates
@@ -24,10 +25,18 @@ impl CertificateAuthority {
     }
 
     /// Generate a certificate for a given hostname
-    pub fn generate_cert(&self, hostname: &str) -> ProxyResult<(Vec<u8>, Vec<u8>)> {
-        // TODO: Implement certificate generation
+    /// Returns (certs, private_key) in rustls format
+    pub fn generate_cert(&self, hostname: &str) -> ProxyResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
+        // TODO: Implement certificate generation with rcgen
         tracing::debug!("Generating certificate for {}", hostname);
-        Err(ProxyError::Certificate("Not implemented".to_string()))
+        Err(ProxyError::Certificate("Certificate generation not implemented".to_string()))
+    }
+
+    /// Generate a certificate for a domain (async version)
+    pub async fn generate_cert_for_domain(&self, domain: &str) -> ProxyResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
+        // TODO: Implement certificate generation
+        tracing::debug!("Generating certificate for domain: {}", domain);
+        self.generate_cert(domain)
     }
 
     /// Get the CA certificate path

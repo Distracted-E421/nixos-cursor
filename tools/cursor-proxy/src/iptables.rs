@@ -9,15 +9,24 @@ use std::process::Command;
 pub struct IptablesManager {
     proxy_port: u16,
     mark: u32,
+    cleanup_on_exit: bool,
 }
 
 impl IptablesManager {
     /// Create a new IPTables manager
-    pub fn new(proxy_port: u16) -> Self {
-        Self {
+    pub fn new(proxy_port: u16, cleanup_on_exit: bool) -> ProxyResult<Self> {
+        Ok(Self {
             proxy_port,
             mark: 0x1, // Default fwmark
-        }
+            cleanup_on_exit,
+        })
+    }
+
+    /// Add a domain to redirect through the proxy
+    pub fn add_domain(&mut self, domain: &str) -> ProxyResult<()> {
+        tracing::info!("Adding iptables rule for domain: {}", domain);
+        // TODO: Implement actual iptables rule
+        Ok(())
     }
 
     /// Setup iptables rules for transparent proxying

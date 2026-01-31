@@ -15,7 +15,7 @@ pub enum ProxyError {
     Http(String),
 
     #[error("Configuration error: {0}")]
-    Config(String),
+    Config(#[from] ConfigError),
 
     #[error("Certificate error: {0}")]
     Certificate(String),
@@ -29,8 +29,62 @@ pub enum ProxyError {
     #[error("Upstream connection error: {0}")]
     Upstream(String),
 
+    #[error("Upstream connection failed to {target}: {reason}")]
+    UpstreamConnection { target: String, reason: String },
+
+    #[error("Upstream TLS error for {target}: {reason}")]
+    UpstreamTls { target: String, reason: String },
+
+    #[error("Client TLS error: {0}")]
+    ClientTls(String),
+
     #[error("Injection error: {0}")]
     Injection(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
+
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("Invalid config: {field}={value}: {reason}")]
+    InvalidConfig {
+        field: String,
+        value: String,
+        reason: String,
+    },
+
+    #[error("Failed to bind to port {port}: {reason}")]
+    BindFailed { port: u16, reason: String },
+
+    #[error("Hyper error: {0}")]
+    Hyper(String),
+}
+
+impl ProxyError {
+    /// Check if this error is recoverable (connection should continue)
+    pub fn is_recoverable(&self) -> bool {
+        match self {
+            ProxyError::UpstreamConnection { .. } => true,
+            ProxyError::UpstreamTls { .. } => true,
+            ProxyError::Upstream(_) => true,
+            ProxyError::Hyper(_) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Configuration-specific errors
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("Config not found: {0}")]
+    NotFound(String),
+
+    #[error("Parse error: {0}")]
+    Parse(String),
+
+    #[error("Write error: {0}")]
+    Write(String),
 }
 
 /// Result type for proxy operations

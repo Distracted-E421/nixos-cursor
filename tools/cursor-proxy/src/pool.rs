@@ -192,15 +192,15 @@ impl Http2Pool {
         port: u16,
     ) -> ProxyResult<PooledConnection> {
         // Resolve DNS
-        let ips = self.dns.resolve(domain).await?;
-        if ips.is_empty() {
+        let addrs = self.dns.resolve(domain, port).await?;
+        if addrs.is_empty() {
             return Err(ProxyError::Internal(format!("No IPs for {}", domain)));
         }
         
-        // Try each IP until one works
+        // Try each address until one works
         let mut last_error = None;
-        for ip in &ips {
-            let addr = SocketAddr::new(*ip, port);
+        for addr in &addrs {
+            let addr = *addr;
             
             match self.try_connect(domain, addr).await {
                 Ok(conn) => return Ok(conn),
