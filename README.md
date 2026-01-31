@@ -4,7 +4,43 @@
 [![CI](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml/badge.svg)](https://github.com/Distracted-E421/nixos-cursor/actions/workflows/cursor-studio.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The **definitive Cursor IDE package for NixOS** — featuring multi-version management, MCP server integration, isolation tools, and the new **Cursor Studio** native application.
+The **definitive Cursor IDE package for NixOS** — featuring multi-version management, MCP server integration, and home-manager module.
+
+---
+
+## ⚠️ Project Transition Notice (January 2026)
+
+**nixos-cursor is transitioning** to focus solely on **NixOS packaging**.
+
+Application code has been migrated to a new ecosystem:
+
+| Component | Old Location | New Location |
+|-----------|--------------|--------------|
+| **Desktop UI** | `cursor-studio-egui/` | [continuum-studio](https://github.com/Distracted-E421/continuum-studio) |
+| **AI Orchestration** | `services/cursor-docs/` | [synapsix](https://github.com/Distracted-E421/synapsix) |
+| **Dialog System** | `tools/cursor-dialog-daemon/` | `synapsix/dialog/` |
+| **Proxy/Injection** | `tools/cursor-proxy/` | `synapsix/tools/proxy/` |
+| **Version Management** | `versions/` | `synapsix/tools/cursor-versions/` |
+
+### The New Ecosystem
+
+**Continuum Studio** — AI orchestration platform with:
+- **Synapsix Harnesses** — Control Cursor, Android Studio, Godot from one interface
+- **NeSy (Neurosymbolic AI)** — Formal verification of agent actions via Z3 SMT solver
+- **Dialog System** — Interactive agent feedback with 8 phases (queue, memory, workflows, AFK)
+- **Service Discovery** — DNS-SD with CoreDNS integration
+
+### What Stays Here
+
+This repository will continue to provide:
+- ✅ NixOS/Darwin Cursor packages (100+ versions)
+- ✅ Home-manager module for Cursor configuration
+- ✅ Version pinning and security updates
+- ✅ Flake examples and documentation
+
+### Migration Status
+
+Directories marked with `MIGRATED.md` files contain legacy code. Use the new locations instead.
 
 ---
 
