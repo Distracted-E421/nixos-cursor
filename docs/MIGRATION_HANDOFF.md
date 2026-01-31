@@ -325,3 +325,88 @@ After main migration:
 3. Update any external documentation
 4. Notify any users of path changes
 5. Consider deprecation notices in old locations
+
+## Launching Cursor Through Continuum Studio
+
+Once migration is complete, Cursor should be launched through Continuum Studio to get:
+
+1. **NeSy Orchestrator integration** - Formal verification of all agent actions
+2. **Synapsix harnesses** - Proper integration with other apps (Godot, Android Studio)
+3. **Metrics dashboard** - Real-time observability of agent actions
+4. **Security constraints** - SMT-verified action verification
+
+### Launch Steps
+
+1. **Start Synapsix services**:
+   ```bash
+   # Start the NeSy orchestrator (if not auto-started)
+   cd ~/synapsix && iex -S mix
+   
+   # Or via systemd (if configured)
+   systemctl --user start synapsix-nesy
+   ```
+
+2. **Start Continuum Studio UI**:
+   ```bash
+   cd ~/continuum-studio/ui && cargo run --release
+   ```
+
+3. **Register Cursor harness**:
+   The harness will auto-register when Cursor connects via the dialog daemon.
+
+4. **Start Cursor through harness**:
+   ```bash
+   # Via Continuum Studio UI - click "Launch Cursor"
+   # Or via command:
+   synapsix-harness launch cursor
+   ```
+
+### What This Enables
+
+When Cursor is launched through Continuum Studio:
+
+- **All LLM agent actions** are verified by NeSy before execution
+- **Priority hierarchy** ensures NeSy can override LLM decisions
+- **Security constraints** block dangerous operations (forbidden paths, commands)
+- **Telemetry events** stream to the metrics dashboard
+- **Audit logging** captures all actions for compliance
+
+### Configuration
+
+The harness uses configuration from:
+- `~/.config/synapsix/harnesses/cursor.toml` - Cursor-specific settings
+- `~/.config/synapsix/security.toml` - Security constraints
+- `~/.config/synapsix/orchestrator.toml` - NeSy orchestrator settings
+
+## Current Session Progress (Jan 31, 2026)
+
+### Completed This Session
+
+1. ✅ **OxiZ SMT Solver** - Pure Rust SMT solver integrated via Rustler NIF
+2. ✅ **rustler_precompiled setup** - Cross-platform binary distribution
+3. ✅ **Telemetry infrastructure** - Event emission, logging, metrics
+4. ✅ **WebSocket streaming** - Real-time metrics to dashboard
+5. ✅ **Native metrics UI skeleton** - egui-based dashboard structure
+6. ✅ **NeSy Orchestrator** - GenServer for agent security management
+7. ✅ **D2 workflow diagrams** - 12 diagrams (8 detailed + 4 simple)
+8. ✅ **Archive setup** - 7 legacy components archived
+
+### Remaining Migration Work
+
+- [ ] Transfer cursor-docs to synapsix/lib/synapsix/docs/
+- [ ] Transfer cursor-studio-egui to continuum-studio/ui/
+- [ ] Transfer cursor-proxy to synapsix/tools/proxy/
+- [ ] Transfer security assets to synapsix/priv/security/
+- [ ] Clean up nixos-cursor (remove transferred code)
+- [ ] Update cross-references between repos
+- [ ] Update all documentation
+
+### Agent Instructions
+
+When resuming this migration:
+
+1. Follow the steps in this document sequentially
+2. Test each transfer before proceeding
+3. Keep nixos-cursor packaging functional throughout
+4. Update this document with any issues encountered
+5. Mark checkboxes as completed
