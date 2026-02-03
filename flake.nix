@@ -365,7 +365,7 @@
           cursor-isolation-tools = pkgs.stdenv.mkDerivation {
             pname = "cursor-isolation-tools";
             version = "0.1.0";
-            src = ./tools/cursor-isolation;
+            src = ./archive/cursor-isolation;
             
             installPhase = ''
               mkdir -p $out/bin
