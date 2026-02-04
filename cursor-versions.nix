@@ -557,8 +557,24 @@ in
   # These versions require Cursor Studio external modes for custom mode functionality
   
   # ═══════════════════════════════════════════════════════════════════
-  # 2.4.x Era - LATEST (January 2026)
+  # 2.4.x Era - LATEST (February 2026)
   # ═══════════════════════════════════════════════════════════════════
+
+  cursor-2_4_27 = mkCursorVersion {
+    version = "2.4.27";
+    hash = "sha256-VAdpltgyfajmJdKKiEXIY6IzkJAg790LWZrONkEnkNc=";
+    srcUrl = "https://downloads.cursor.com/production/4f2b772756b8f609e1354b3063de282ccbe7a69b/linux/x64/Cursor-2.4.27-x86_64.AppImage";
+    binaryName = "cursor-2.4.27";
+    dataStrategy = "isolated";
+  };
+
+  cursor-2_4_23 = mkCursorVersion {
+    version = "2.4.23";
+    hash = "sha256-FOeCVRvrp014rUx5dNG7bIu3tUl22gqBFthN6DwgJCU=";
+    srcUrl = "https://downloads.cursor.com/production/379934e04d2b3290cf7aefa14560f942e4212925/linux/x64/Cursor-2.4.23-x86_64.AppImage";
+    binaryName = "cursor-2.4.23";
+    dataStrategy = "isolated";
+  };
 
   cursor-2_4_21 = mkCursorVersion {
     version = "2.4.21";
