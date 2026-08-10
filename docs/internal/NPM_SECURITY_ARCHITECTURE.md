@@ -111,7 +111,13 @@ The **Shai-Hulud** supply chain attack campaign (November 2025) has demonstrated
 **Goal**: Detect malicious packages before they can execute
 
 1. **Integrate with security scanners**
-   - NPMScan API for real-time malware detection
+   - ✅ NPMScan MCP server — agent-facing only (2026-08-10). The AI assistant can query
+     `search_packages`, `get_package`, `query_vulnerabilities`, `batch_query_vulnerabilities`,
+     and `get_latest_advisories` mid-conversation via `programs.cursor.mcp.npmscan.enable`.
+     See [docs/MCP_NPMSCAN_SETUP.md](../MCP_NPMSCAN_SETUP.md). This is opt-in, advisory, and
+     conversational — it does **not** run automatically before `npm install`, and does **not**
+     feed into Cursor Studio's `SecurityScanner`/blocklist (`cursor-studio-egui/src/security.rs`).
+     The actual pre-install pipeline scan described below is still unimplemented.
    - Socket.dev for supply chain analysis
    - Snyk for vulnerability scanning
 
@@ -475,6 +481,7 @@ mcp.security = {
 | Date | Change |
 |------|--------|
 | 2025-11-27 | Initial architecture document |
+| 2026-08-10 | Added npmscan.com MCP server integration (agent-facing, opt-in) |
 
 ---
 

@@ -187,6 +187,14 @@ let
         };
       })
 
+      # npmscan MCP Server (remote HTTP, npm package security scanning)
+      (mkIf (cfg.mcp.enable && cfg.mcp.npmscan.enable) {
+        npmscan = {
+          type = "http";
+          url = cfg.mcp.npmscan.url;
+        };
+      })
+
       # Playwright MCP Server (browser automation)
       (mkIf (cfg.mcp.enable && cfg.mcp.playwright.enable) (
         let
@@ -348,6 +356,22 @@ in
 
             Required token permissions: repo, read:org
             Create at: https://github.com/settings/tokens
+          '';
+        };
+      };
+
+      npmscan = {
+        enable = mkEnableOption "npmscan.com MCP server for npm package security scanning (remote, no auth)";
+
+        url = mkOption {
+          type = types.str;
+          default = "https://npmscan.com/api/mcp";
+          description = ''
+            npmscan MCP server endpoint. Public, unauthenticated, rate-limited
+            to ~30 requests/minute per IP. Override only if self-hosting or
+            using a private instance.
+
+            See docs/MCP_NPMSCAN_SETUP.md for available tools.
           '';
         };
       };

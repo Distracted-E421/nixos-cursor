@@ -189,9 +189,14 @@ programs.cursor = {
     
     # Browser automation
     playwright.enable = true;
+    
+    # npm package security scanning (opt-in, remote, no auth)
+    npmscan.enable = true;
   };
 };
 ```
+
+See [docs/MCP_NPMSCAN_SETUP.md](docs/MCP_NPMSCAN_SETUP.md) for available npmscan tools.
 
 ### Cursor Studio Module
 
