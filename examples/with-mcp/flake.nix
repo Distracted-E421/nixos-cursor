@@ -68,6 +68,8 @@
                 browserPackage = pkgs.chromium;
                 headless = false;
               };
+
+              npmscan.enable = true; # npm package security scanning (remote, no auth)
             };
           };
         })

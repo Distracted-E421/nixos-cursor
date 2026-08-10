@@ -10,6 +10,7 @@ Cursor with all MCP servers enabled - the full AI-powered experience.
 - **nixos** MCP - Package/option search
 - **github** MCP - Repository operations
 - **playwright** MCP - Browser automation
+- **npmscan** MCP - npm package security scanning (remote, no auth)
 
 **Note:** You may need to disable a few of the tools you are not using per server, as well as ensure the built in cursor browser (currently broken, unknown if fixable for NixOS) is disabled. These are not the only mcp servers that work on NixOS, but these are the only ones I really use in my workflow.
 
@@ -69,6 +70,13 @@ mcp_github_search_code({ query: "..." })
 mcp_playwright_browser_navigate({ url: "https://example.com" })
 mcp_playwright_browser_snapshot()
 mcp_playwright_browser_take_screenshot({ filename: "test.png" })
+```
+
+**npm Package Security** (see [docs/MCP_NPMSCAN_SETUP.md](../../docs/MCP_NPMSCAN_SETUP.md)):
+
+```typescript
+mcp_npmscan_query_vulnerabilities({ name: "lodash", version: "4.17.15" })
+mcp_npmscan_batch_query_vulnerabilities({ packages: [...] })
 ```
 
 ## Configuration Options
